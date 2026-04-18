@@ -12,15 +12,14 @@ const lineConfig = {
 
 app.use(express.static(path.join(__dirname, '../public')));
 
-app.post('/webhook',
-  express.raw({ type: '*/*' }),
-  (req, res, next) => {
-    req.rawBody = req.body;
+app.post('/webhook', (req, res, next) => {
+  let data = '';
+  req.on('data', chunk => { data += chunk; });
+  req.on('end', () => {
+    req.rawBody = Buffer.from(data);
     next();
-  },
-  line.middleware(lineConfig),
-  require('./webhook')
-);
+  });
+}, line.middleware(lineConfig), require('./webhook'));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
