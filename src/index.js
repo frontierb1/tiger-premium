@@ -10,21 +10,22 @@ const lineConfig = {
   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
 };
 
-// Static files (LIFF pages)
 app.use(express.static(path.join(__dirname, '../public')));
 
-// LINE Webhook ต้องมาก่อน express.json()
 app.post('/webhook',
+  express.raw({ type: '*/*' }),
+  (req, res, next) => {
+    req.rawBody = req.body;
+    next();
+  },
   line.middleware(lineConfig),
   require('./webhook')
 );
 
-// LIFF API ใช้ JSON
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/api', require('./liff-api'));
 
-// Health check
 app.get('/', (req, res) => {
   res.json({ status: 'Tiger Premium OK 🐯', time: new Date().toISOString() });
 });
