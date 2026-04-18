@@ -2,8 +2,6 @@ require('dotenv').config();
 const express = require('express');
 const line = require('@line/bot-sdk');
 const path = require('path');
-const webhookRouter = require('./webhook');
-const liffRouter = require('./liff-api');
 
 const app = express();
 
@@ -15,12 +13,16 @@ const lineConfig = {
 // Static files (LIFF pages)
 app.use(express.static(path.join(__dirname, '../public')));
 
-// LINE Webhook (ต้องใช้ raw body)
-app.post('/webhook', line.middleware(lineConfig), webhookRouter);
+// LINE Webhook ต้องมาก่อน express.json()
+app.post('/webhook',
+  line.middleware(lineConfig),
+  require('./webhook')
+);
 
-// LIFF API (JSON)
+// LIFF API ใช้ JSON
 app.use(express.json());
-app.use('/api', liffRouter);
+app.use(express.urlencoded({ extended: true }));
+app.use('/api', require('./liff-api'));
 
 // Health check
 app.get('/', (req, res) => {
