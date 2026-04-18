@@ -8,12 +8,18 @@ const client = new line.messagingApi.MessagingApiClient({
   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
 });
 
-const LIFF_ID = process.env.LIFF_ID;
-const BASE_URL = process.env.BASE_URL;
+router.post('/', express.raw({ type: '*/*' }), async (req, res) => {
+  const signature = req.headers['x-line-signature'];
+  
+  if (!line.validateSignature(req.body, process.env.LINE_CHANNEL_SECRET, signature)) {
+    return res.status(401).send('Unauthorized');
+  }
 
-router.post('/', async (req, res) => {
   res.sendStatus(200);
-  const events = req.body.events;
+
+  const body = JSON.parse(req.body.toString());
+  const events = body.events || [];
+  
   for (const event of events) {
     try {
       await handleEvent(event);
@@ -25,58 +31,32 @@ router.post('/', async (req, res) => {
 
 async function handleEvent(event) {
   if (event.type === 'follow') {
-    await sendWelcomeMessage(event.source.userId, event.replyToken);
+    await client.replyMessage({
+      replyToken: event.replyToken,
+      messages: [{ type: 'text', text: '🐯 ยินดีต้อนรับสู่ Tiger Premium!\n\nกดเมนูด้านล่างเพื่อ:\n📋 สมัครสมาชิก\n📅 เช็ควันหมดอายุ\n🔄 ต่ออายุ\n🏠 ดูข้อมูลบ้าน' }],
+    });
   }
+
   if (event.type === 'message' && event.message.type === 'text') {
     const text = event.message.text.trim();
     if (text === 'เช็ควันหมดอายุ' || text === 'วันหมดอายุ') {
-      await sendExpireInfo(event.source.userId, event.replyToken);
+      const member = await getMemberByLineId(event.source.userId);
+      if (!member) {
+        await client.replyMessage({
+          replyToken: event.replyToken,
+          messages: [{ type: 'text', text: '❌ ไม่พบข้อมูลสมาชิก\nกรุณาสมัครสมาชิกก่อนครับ' }],
+        });
+        return;
+      }
+      const expire = dayjs(member.expireDate);
+      const daysLeft = expire.diff(dayjs(), 'day');
+      const emoji = daysLeft <= 3 ? '🔴' : daysLeft <= 7 ? '🟡' : '🟢';
+      await client.replyMessage({
+        replyToken: event.replyToken,
+        messages: [{ type: 'text', text: `${emoji} สถานะสมาชิก\n\n📅 หมดอายุ: ${member.expireDate}\n⏰ เหลืออีก ${daysLeft} วัน` }],
+      });
     }
   }
-  if (event.type === 'postback') {
-    await handlePostback(event);
-  }
-}
-
-async function sendWelcomeMessage(userId, replyToken) {
-  await client.replyMessage({
-    replyToken,
-    messages: [{
-      type: 'text',
-      text: '🐯 ยินดีต้อนรับสู่ Tiger Premium!\n\nกดเมนูด้านล่างเพื่อ:\n📋 สมัครสมาชิก\n📅 เช็ควันหมดอายุ\n🔄 ต่ออายุ\n🏠 ดูข้อมูลบ้าน',
-    }],
-  });
-}
-
-async function sendExpireInfo(userId, replyToken) {
-  const member = await getMemberByLineId(userId);
-  if (!member) {
-    await client.replyMessage({
-      replyToken,
-      messages: [{
-        type: 'text',
-        text: '❌ ไม่พบข้อมูลสมาชิก\nกรุณาสมัครสมาชิกก่อนครับ',
-      }],
-    });
-    return;
-  }
-
-  const expire = dayjs(member.expireDate);
-  const daysLeft = expire.diff(dayjs(), 'day');
-  const emoji = daysLeft <= 3 ? '🔴' : daysLeft <= 7 ? '🟡' : '🟢';
-
-  await client.replyMessage({
-    replyToken,
-    messages: [{
-      type: 'text',
-      text: `${emoji} สถานะสมาชิก Tiger Premium\n\n👤 ${member.displayName}\n📅 หมดอายุ: ${member.expireDate}\n⏰ เหลืออีก ${daysLeft} วัน\n\n${daysLeft <= 7 ? '⚠️ ใกล้หมดอายุแล้ว! กด "ต่ออายุ" ในเมนูได้เลยครับ' : '✅ ยังใช้งานได้ปกติครับ'}`,
-    }],
-  });
-}
-
-async function handlePostback(event) {
-  const data = event.postback.data;
-  // รองรับ postback จาก Rich Menu
 }
 
 module.exports = router;
