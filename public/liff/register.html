@@ -61,6 +61,11 @@
   </div>
 
   <div class="section" style="margin-top:16px">
+    <div class="section-title">อีเมลที่ใช้สมัคร YouTube</div>
+    <input type="email" class="input-box" id="member-email" placeholder="example@gmail.com" oninput="checkReady()" style="background:#1a1a1a;border:1.5px solid #2a2a2a;border-radius:12px;padding:14px 16px;font-size:15px;color:#fff;width:100%;outline:none;"/>
+  </div>
+
+  <div class="section" style="margin-top:16px">
     <div class="section-title">แนบสลิปโอนเงิน</div>
     <div class="upload-box" id="upload-box" onclick="document.getElementById('slip-input').click()">
       <div id="upload-placeholder">
@@ -111,7 +116,9 @@
     }
 
     function checkReady() {
-      document.getElementById('submit-btn').disabled = !(selectedPkg && slipFile);
+      const email = document.getElementById('member-email').value.trim();
+      const emailValid = email.includes('@') && email.includes('.');
+      document.getElementById('submit-btn').disabled = !(selectedPkg && slipFile && emailValid);
     }
 
     function showAlert(msg, type) {
@@ -120,16 +127,17 @@
 
     async function submit() {
       const btn = document.getElementById('submit-btn');
+      const email = document.getElementById('member-email').value.trim();
       btn.disabled = true;
       btn.textContent = 'กำลังตรวจสลิป...';
 
       try {
-        // Upload slip ไปยัง server แล้ว verify
         const formData = new FormData();
         formData.append('slip', slipFile);
         formData.append('lineUserId', profile.userId);
         formData.append('displayName', profile.displayName);
         formData.append('packageType', selectedPkg);
+        formData.append('memberEmail', email);
 
         const res = await fetch(`${BASE_URL}/api/register`, {
           method: 'POST',
