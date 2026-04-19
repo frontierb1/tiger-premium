@@ -1,8 +1,10 @@
 const express = require('express');
-const axios = require('axios');
+const multer = require('multer');
 const { getMemberByLineId, addMember, renewMember } = require('./sheets');
 const dayjs = require('dayjs');
+
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
 const PACKAGES = {
   '1month':  { label: '1 เดือน', price: 79,  months: 1 },
@@ -10,12 +12,10 @@ const PACKAGES = {
   '3months': { label: '3 เดือน', price: 230, months: 3 },
 };
 
-// ดึงข้อมูลสมาชิกตาม LINE User ID
 router.get('/member/:lineUserId', async (req, res) => {
   try {
     const member = await getMemberByLineId(req.params.lineUserId);
     if (!member) return res.json({ found: false });
-
     const expire = dayjs(member.expireDate);
     const daysLeft = expire.diff(dayjs(), 'day');
     res.json({ found: true, ...member, daysLeft });
@@ -24,99 +24,85 @@ router.get('/member/:lineUserId', async (req, res) => {
   }
 });
 
-// ดูแพ็กเกจ
 router.get('/packages', (req, res) => {
   res.json(PACKAGES);
 });
 
-// สมัครสมาชิก (หลังตรวจสลิปผ่าน)
-router.post('/register', async (req, res) => {
+router.post('/register', upload.single('slip'), async (req, res) => {
   try {
-    const { lineUserId, displayName, packageType, slipUrl } = req.body;
-    if (!lineUserId || !packageType || !slipUrl) {
-      return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
+    const { lineUserId, displayName, packageType, memberEmail } = req.body;
+
+    if (!lineUserId || !packageType || !memberEmail) {
+      return res.status(400).json({ error: 'ข้อมูลไม่ครบ กรุณากรอกให้ครบทุกช่อง' });
     }
 
-    // ตรวจสลิป
-    const slipResult = await verifySlip(slipUrl, PACKAGES[packageType]?.price);
-    if (!slipResult.valid) {
-      return res.status(400).json({ error: slipResult.message });
+    if (!req.file) {
+      return res.status(400).json({ error: 'กรุณาแนบสลิปโอนเงิน' });
     }
 
-    // บันทึกลง Sheet
-    const result = await addMember({ lineUserId, displayName, packageType, slipUrl });
+    if (!PACKAGES[packageType]) {
+      return res.status(400).json({ error: 'แพ็กเกจไม่ถูกต้อง' });
+    }
+
+    const slipBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+
+    const result = await addMember({
+      lineUserId,
+      displayName,
+      packageType,
+      memberEmail,
+      slipUrl: slipBase64,
+    });
+
     if (!result.success) return res.status(500).json({ error: result.error });
 
-    // ส่งข้อความยืนยันกลับไปใน LINE
     await sendLineMessage(lineUserId,
-      `✅ สมัครสมาชิก Tiger Premium สำเร็จ!\n\n📦 แพ็กเกจ: ${PACKAGES[packageType].label}\n📅 หมดอายุ: ${result.expireDate}\n\nแอดมินจะส่งข้อมูลเข้าบ้านให้ภายใน 24 ชม. ครับ 🐯`
+      `✅ สมัครสมาชิก Tiger Premium สำเร็จ!\n\n📦 แพ็กเกจ: ${PACKAGES[packageType].label}\n📧 อีเมล: ${memberEmail}\n📅 หมดอายุ: ${result.expireDate}\n\nแอดมินจะส่งข้อมูลเข้าบ้านให้ภายใน 24 ชม. ครับ 🐯`
     );
 
     res.json({ success: true, expireDate: result.expireDate });
   } catch (err) {
+    console.error('register error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// ต่ออายุ
-router.post('/renew', async (req, res) => {
+router.post('/renew', upload.single('slip'), async (req, res) => {
   try {
-    const { lineUserId, packageType, slipUrl } = req.body;
-    if (!lineUserId || !packageType || !slipUrl) {
+    const { lineUserId, packageType } = req.body;
+
+    if (!lineUserId || !packageType) {
       return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
     }
 
-    // ตรวจสลิป
-    const slipResult = await verifySlip(slipUrl, PACKAGES[packageType]?.price);
-    if (!slipResult.valid) {
-      return res.status(400).json({ error: slipResult.message });
+    if (!req.file) {
+      return res.status(400).json({ error: 'กรุณาแนบสลิปโอนเงิน' });
     }
 
-    // อัปเดต Sheet
-    const result = await renewMember(lineUserId, packageType, slipUrl);
+    if (!PACKAGES[packageType]) {
+      return res.status(400).json({ error: 'แพ็กเกจไม่ถูกต้อง' });
+    }
+
+    const slipBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+
+    const result = await renewMember(lineUserId, packageType, slipBase64);
     if (!result.success) return res.status(500).json({ error: result.error });
 
-    // ส่งข้อความยืนยัน
     await sendLineMessage(lineUserId,
       `✅ ต่ออายุสำเร็จ!\n\n📦 แพ็กเกจ: ${PACKAGES[packageType].label}\n📅 หมดอายุใหม่: ${result.expireDate}\n\nขอบคุณที่ใช้บริการ Tiger Premium 🐯`
     );
 
     res.json({ success: true, expireDate: result.expireDate });
   } catch (err) {
+    console.error('renew error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// ตรวจสลิป (Thunder Solution หรือ EasySlip)
-async function verifySlip(slipUrl, expectedAmount) {
-  try {
-    // TODO: เปลี่ยนเป็น Thunder Solution API endpoint จริง
-    // ตอนนี้ข้ามการตรวจสำหรับ dev (ใส่ logic จริงตอน production)
-    if (process.env.NODE_ENV === 'development') {
-      return { valid: true, amount: expectedAmount };
-    }
-
-    const THUNDER_API_KEY = process.env.THUNDER_API_KEY;
-    const response = await axios.post('https://api.thunder.co.th/slip/verify', {
-      url: slipUrl,
-    }, {
-      headers: { 'Authorization': `Bearer ${THUNDER_API_KEY}` }
-    });
-
-    const amount = response.data?.amount;
-    if (amount < expectedAmount) {
-      return { valid: false, message: `ยอดเงินไม่ถูกต้อง (พบ ${amount} บาท ต้องการ ${expectedAmount} บาท)` };
-    }
-    return { valid: true, amount };
-  } catch (err) {
-    console.error('verifySlip error:', err.message);
-    return { valid: false, message: 'ไม่สามารถตรวจสลิปได้ กรุณาลองใหม่' };
-  }
-}
-
 async function sendLineMessage(userId, text) {
   try {
-    const client = new (require('@line/bot-sdk').messagingApi.MessagingApiClient)({
+    const { messagingApi } = require('@line/bot-sdk');
+    const client = new messagingApi.MessagingApiClient({
       channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
     });
     await client.pushMessage({ to: userId, messages: [{ type: 'text', text }] });
