@@ -1,6 +1,6 @@
 const express = require('express');
 const multer = require('multer');
-const { getMemberByLineId, addMember, renewMember } = require('./sheets');
+const { getMemberByLineId, getMembersByLineId, addMember, renewMember } = require('./sheets');
 const dayjs = require('dayjs');
 
 const router = express.Router();
@@ -12,6 +12,7 @@ const PACKAGES = {
   '3months': { label: '3 เดือน', price: 230, months: 3 },
 };
 
+// ดึงข้อมูลสมาชิก 1 คน (เมลแรก)
 router.get('/member/:lineUserId', async (req, res) => {
   try {
     const member = await getMemberByLineId(req.params.lineUserId);
@@ -24,6 +25,21 @@ router.get('/member/:lineUserId', async (req, res) => {
   }
 });
 
+// ดึงข้อมูลสมาชิกทุกเมล (รองรับหลายเมลต่อ LINE ID)
+router.get('/members/:lineUserId', async (req, res) => {
+  try {
+    const members = await getMembersByLineId(req.params.lineUserId);
+    if (!members || members.length === 0) return res.json({ found: false, members: [] });
+    const result = members.map(m => ({
+      ...m,
+      daysLeft: dayjs(m.expireDate).diff(dayjs(), 'day'),
+    }));
+    res.json({ found: true, members: result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/packages', (req, res) => {
   res.json(PACKAGES);
 });
@@ -31,35 +47,23 @@ router.get('/packages', (req, res) => {
 router.post('/register', upload.single('slip'), async (req, res) => {
   try {
     const { lineUserId, displayName, packageType, memberEmail } = req.body;
-
     if (!lineUserId || !packageType || !memberEmail) {
       return res.status(400).json({ error: 'ข้อมูลไม่ครบ กรุณากรอกให้ครบทุกช่อง' });
     }
-
     if (!req.file) {
       return res.status(400).json({ error: 'กรุณาแนบสลิปโอนเงิน' });
     }
-
     if (!PACKAGES[packageType]) {
       return res.status(400).json({ error: 'แพ็กเกจไม่ถูกต้อง' });
     }
-
-    const slipBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
-
     const result = await addMember({
-      lineUserId,
-      displayName,
-      packageType,
-      memberEmail,
-      slipUrl: slipBase64,
+      lineUserId, displayName, packageType, memberEmail,
+      slipUrl: `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`,
     });
-
     if (!result.success) return res.status(500).json({ error: result.error });
-
     await sendLineMessage(lineUserId,
       `✅ สมัครสมาชิก Tiger Premium สำเร็จ!\n\n📦 แพ็กเกจ: ${PACKAGES[packageType].label}\n📧 อีเมล: ${memberEmail}\n📅 หมดอายุ: ${result.expireDate}\n\nแอดมินจะส่งข้อมูลเข้าบ้านให้ภายใน 24 ชม. ครับ 🐯`
     );
-
     res.json({ success: true, expireDate: result.expireDate });
   } catch (err) {
     console.error('register error:', err);
@@ -70,28 +74,22 @@ router.post('/register', upload.single('slip'), async (req, res) => {
 router.post('/renew', upload.single('slip'), async (req, res) => {
   try {
     const { lineUserId, packageType } = req.body;
-
     if (!lineUserId || !packageType) {
       return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
     }
-
     if (!req.file) {
       return res.status(400).json({ error: 'กรุณาแนบสลิปโอนเงิน' });
     }
-
     if (!PACKAGES[packageType]) {
       return res.status(400).json({ error: 'แพ็กเกจไม่ถูกต้อง' });
     }
-
-    const slipBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
-
-    const result = await renewMember(lineUserId, packageType, slipBase64);
+    const result = await renewMember(lineUserId, packageType,
+      `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`
+    );
     if (!result.success) return res.status(500).json({ error: result.error });
-
     await sendLineMessage(lineUserId,
       `✅ ต่ออายุสำเร็จ!\n\n📦 แพ็กเกจ: ${PACKAGES[packageType].label}\n📅 หมดอายุใหม่: ${result.expireDate}\n\nขอบคุณที่ใช้บริการ Tiger Premium 🐯`
     );
-
     res.json({ success: true, expireDate: result.expireDate });
   } catch (err) {
     console.error('renew error:', err);
