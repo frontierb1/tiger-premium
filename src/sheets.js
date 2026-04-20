@@ -18,7 +18,7 @@ function rowToMember(row) {
     package:       row[2],
     expireDate:    row[3],
     status:        row[4],
-    houseEmail:    row[5],
+    memberEmail:    row[5],
     slipUrl:       row[6],
     createdAt:     row[7],
    inviteStatus:  row[8],   // I: invite_status
