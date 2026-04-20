@@ -13,19 +13,18 @@ async function getSheets() {
 
 function rowToMember(row) {
   return {
-    lineUserId:   row[0],
-    displayName:  row[1],
-    package:      row[2],
-    expireDate:   row[3],
-    status:       row[4],
-    houseEmail:   row[5],
-    housePassword:row[6],
-    slipUrl:      row[7],
-    createdAt:    row[8],
+    lineUserId:    row[0],
+    displayName:   row[1],
+    package:       row[2],
+    expireDate:    row[3],
+    status:        row[4],
+    houseEmail:    row[5],
+    housePassword: row[6],
+    slipUrl:       row[7],
+    createdAt:     row[8],
   };
 }
 
-// ดึงแถวแรกที่เจอ
 async function getMemberByLineId(lineUserId) {
   try {
     const sheets = await getSheets();
@@ -42,7 +41,6 @@ async function getMemberByLineId(lineUserId) {
   }
 }
 
-// ดึงทุกแถวที่มี LINE ID นี้ (รองรับหลายเมล)
 async function getMembersByLineId(lineUserId) {
   try {
     const sheets = await getSheets();
@@ -55,6 +53,23 @@ async function getMembersByLineId(lineUserId) {
   } catch (err) {
     console.error('getMembersByLineId error:', err.message);
     return [];
+  }
+}
+
+// เช็คว่าอีเมลนี้มีในระบบแล้วหรือยัง
+async function checkEmailExists(email) {
+  try {
+    const sheets = await getSheets();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Members!A:I',
+    });
+    const rows = res.data.values || [];
+    const found = rows.find(r => r[5] && r[5].toLowerCase() === email.toLowerCase());
+    return found ? true : false;
+  } catch (err) {
+    console.error('checkEmailExists error:', err.message);
+    return false;
   }
 }
 
@@ -133,4 +148,4 @@ function calculateExpireDate(packageType, fromDate = null) {
   return base.add(months, 'month').format('YYYY-MM-DD');
 }
 
-module.exports = { getMemberByLineId, getMembersByLineId, addMember, renewMember, getMembersExpiringIn };
+module.exports = { getMemberByLineId, getMembersByLineId, checkEmailExists, addMember, renewMember, getMembersExpiringIn };
