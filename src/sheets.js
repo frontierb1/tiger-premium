@@ -102,7 +102,7 @@ async function addMember(data) {
   }
 }
 
-async function renewMember(lineUserId, packageType, slipUrl) {
+async function renewMember(lineUserId, packageType, slipUrl, memberEmail) {
   try {
     const sheets = await getSheets();
     const res = await sheets.spreadsheets.values.get({
@@ -110,14 +110,23 @@ async function renewMember(lineUserId, packageType, slipUrl) {
       range: 'Members!A:I',
     });
     const rows = res.data.values || [];
-    const rowIndex = rows.findIndex(r => r[0] === lineUserId);
+
+    // ค้นหาแถวจาก email ที่เลือก ถ้าไม่มีให้ใช้แถวแรกของ LINE ID
+    let rowIndex = -1;
+    if (memberEmail) {
+      rowIndex = rows.findIndex(r => r[0] === lineUserId && r[5] && r[5].toLowerCase() === memberEmail.toLowerCase());
+    }
+    if (rowIndex === -1) {
+      rowIndex = rows.findIndex(r => r[0] === lineUserId);
+    }
     if (rowIndex === -1) return { success: false, error: 'ไม่พบสมาชิก' };
+
     const newExpire = calculateExpireDate(packageType, rows[rowIndex][3]);
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
       range: `Members!C${rowIndex + 1}:H${rowIndex + 1}`,
       valueInputOption: 'USER_ENTERED',
-      requestBody: { values: [[packageType, newExpire, 'active', '', slipUrl ? 'มีสลิป ✓' : '', '']] },
+      requestBody: { values: [[packageType, newExpire, 'active', memberEmail || rows[rowIndex][5] || '', slipUrl ? 'มีสลิป ✓' : '', '']] },
     });
     return { success: true, expireDate: newExpire };
   } catch (err) {
