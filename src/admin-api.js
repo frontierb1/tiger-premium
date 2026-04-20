@@ -6,12 +6,10 @@ const router = express.Router();
 const ADMIN_KEY = process.env.ADMIN_KEY || 'tiger2026admin';
 
 function authCheck(req, res, next) {
-  const key = req.headers['x-admin-key'];
-  if (key !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
+  if (req.headers['x-admin-key'] !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
   next();
 }
 
-// ดึงสมาชิกทั้งหมด
 router.get('/members', authCheck, async (req, res) => {
   try {
     const members = await getAllMembers();
@@ -21,7 +19,6 @@ router.get('/members', authCheck, async (req, res) => {
   }
 });
 
-// ดึงบ้านทั้งหมด
 router.get('/houses', authCheck, async (req, res) => {
   try {
     const houses = await getHouses();
@@ -31,20 +28,36 @@ router.get('/houses', authCheck, async (req, res) => {
   }
 });
 
-// แอดมินกด "เชิญแล้ว" → อัปเดต Sheet + ส่ง LINE แจ้งลูกค้า
-router.post('/invite', authCheck, async (req, res) => {
+// แอดมินกด "ส่งเชิญ" → status = inviting + แจ้งลูกค้า
+router.post('/inviting', authCheck, async (req, res) => {
   try {
     const { rowIndex, lineUserId, houseId } = req.body;
-    if (!rowIndex || !lineUserId) {
-      return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
-    }
+    if (!rowIndex || !lineUserId) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
 
-    const result = await updateInviteStatus(rowIndex, houseId || '', 'invited');
+    const result = await updateInviteStatus(rowIndex, houseId || '', 'inviting');
     if (!result.success) return res.status(500).json({ error: result.error });
 
-    // ส่ง LINE แจ้งลูกค้าว่าเชิญแล้ว
     await sendLineMessage(lineUserId,
-      `✅ Tiger Premium — เชิญเข้ากลุ่มแล้ว!\n\nแอดมินได้เชิญคุณเข้า YouTube Premium Family เรียบร้อยแล้วครับ\n\n📧 กรุณาตรวจสอบอีเมลที่ใช้สมัคร และกดยอมรับคำเชิญครับ 🐯`
+      `📨 Tiger Premium — ส่งคำเชิญแล้ว!\n\nแอดมินส่งคำเชิญเข้า YouTube Premium Family ให้คุณแล้วครับ\n\n✅ กรุณาตรวจสอบอีเมลที่ใช้สมัคร แล้วกด "ยอมรับคำเชิญ" ครับ 🐯`
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// แอดมินกด "กดรับแล้ว" → status = invited (ซ่อนจาก Dashboard)
+router.post('/invite', authCheck, async (req, res) => {
+  try {
+    const { rowIndex, lineUserId } = req.body;
+    if (!rowIndex || !lineUserId) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
+
+    const result = await updateInviteStatus(rowIndex, '', 'invited');
+    if (!result.success) return res.status(500).json({ error: result.error });
+
+    await sendLineMessage(lineUserId,
+      `✅ Tiger Premium — เข้าร่วมสำเร็จ!\n\nยืนยันว่าคุณได้กดรับคำเชิญ YouTube Premium Family เรียบร้อยแล้ว\n\nขอบคุณที่ใช้บริการ Tiger Premium ครับ 🐯`
     );
 
     res.json({ success: true });
