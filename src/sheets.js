@@ -21,8 +21,8 @@ function rowToMember(row) {
     houseEmail:    row[5],
     slipUrl:       row[6],
     createdAt:     row[7],
-    inviteStatus:  row[8],
-     houseId:      row[9],
+   inviteStatus:  row[8],   // I: invite_status
+    houseId:       row[9],   // J: house_id
   };
 }
 
