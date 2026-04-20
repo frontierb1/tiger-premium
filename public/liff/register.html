@@ -150,6 +150,14 @@
       return true;
     }
 
+    async function checkEmailDuplicate(email) {
+      try {
+        const res = await fetch(`${BASE_URL}/api/check-email?email=${encodeURIComponent(email)}`);
+        const data = await res.json();
+        return data.exists;
+      } catch { return false; }
+    }
+
     function validateEmailStrict() {
       const email = document.getElementById('member-email').value.trim();
       const msg = document.getElementById('email-msg');
@@ -202,6 +210,14 @@
       return valid;
     }
 
+    async function checkEmailDuplicate(email) {
+      try {
+        const res = await fetch(`${BASE_URL}/api/check-email?email=${encodeURIComponent(email)}`);
+        const data = await res.json();
+        return data.exists;
+      } catch { return false; }
+    }
+
     async function submit() {
       if (!validate()) return;
 
@@ -211,6 +227,15 @@
       btn.textContent = 'กำลังตรวจสลิป...';
 
       try {
+        // เช็คอีเมลซ้ำก่อน
+        const isDuplicate = await checkEmailDuplicate(email);
+        if (isDuplicate) {
+          showAlert(`❌ อีเมล ${email} มีในระบบแล้ว ไม่สามารถสมัครซ้ำได้ครับ`, 'error');
+          btn.disabled = false;
+          btn.textContent = 'ยืนยันสมัครสมาชิก';
+          return;
+        }
+
         const formData = new FormData();
         formData.append('slip', slipFile);
         formData.append('lineUserId', profile.userId);
