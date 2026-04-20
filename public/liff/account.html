@@ -3,113 +3,103 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ข้อมูลบ้าน - Tiger Premium</title>
+  <title>ข้อมูลของฉัน - Tube Premium</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; padding-bottom: 40px; }
     .header { background: linear-gradient(135deg, #ff6b00, #ff9500); padding: 20px; display: flex; align-items: center; gap: 12px; }
     .header a { color: #fff; text-decoration: none; font-size: 20px; }
     .header h1 { font-size: 18px; font-weight: 700; }
-    .info-card { background: #1a1a1a; border-radius: 12px; margin: 16px; overflow: hidden; border: 1px solid #2a2a2a; }
-    .info-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid #222; }
+    .loading { text-align: center; padding: 80px 20px; color: #666; }
+    .not-found { text-align: center; padding: 60px 20px; }
+    .not-found .icon { font-size: 56px; margin-bottom: 16px; }
+    .not-found p { color: #888; font-size: 15px; line-height: 1.6; }
+    .not-found a { color: #ff9500; }
+    .member-card { margin: 16px 16px 0; background: #1a1a1a; border-radius: 16px; overflow: hidden; border: 1px solid #2a2a2a; margin-bottom: 12px; }
+    .card-header { background: #ff6b00; padding: 14px 18px; }
+    .card-header .email { font-size: 15px; font-weight: 700; color: #fff; word-break: break-all; }
+    .card-header .pkg { font-size: 12px; color: #ffe0c0; margin-top: 2px; }
+    .card-body { padding: 14px 18px; }
+    .info-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #222; }
     .info-row:last-child { border-bottom: none; }
     .info-label { font-size: 13px; color: #888; }
-    .info-value { font-size: 14px; font-weight: 600; text-align: right; max-width: 60%; word-break: break-all; }
-    .copy-btn { background: #2a2a2a; border: none; color: #ff9500; padding: 6px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; margin-left: 8px; flex-shrink: 0; }
-    .copy-btn:active { background: #3a3a3a; }
-    .warning { background: #1a1400; border: 1px solid #f59e0b; border-radius: 10px; margin: 0 16px; padding: 12px 14px; font-size: 13px; color: #fbbf24; }
-    .loading-screen { text-align: center; padding: 60px 20px; color: #666; }
-    .not-found { text-align: center; padding: 60px 20px; }
-    .not-found .icon { font-size: 48px; margin-bottom: 12px; }
-    .not-found p { color: #888; font-size: 14px; }
-    .not-found a { color: #ff9500; }
-    .section-title { font-size: 13px; color: #888; margin: 16px 16px 8px; }
-    .expire-info { background: #1a1a1a; border-radius: 12px; margin: 0 16px 16px; padding: 14px 16px; border: 1px solid #2a2a2a; }
-    .expire-days { font-size: 28px; font-weight: 700; color: #ff9500; }
-    .expire-date { font-size: 13px; color: #888; margin-top: 2px; }
+    .info-value { font-size: 13px; font-weight: 600; }
+    .days-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .days-badge.green { background: #0a2a0a; color: #22c55e; border: 1px solid #22c55e; }
+    .days-badge.yellow { background: #2a1a00; color: #f59e0b; border: 1px solid #f59e0b; }
+    .days-badge.red { background: #2a0a0a; color: #ef4444; border: 1px solid #ef4444; }
+    .renew-btn { display: block; margin: 0 16px 12px; background: #ff6b00; color: #fff; border: none; border-radius: 12px; padding: 13px; font-size: 14px; font-weight: 700; cursor: pointer; text-align: center; text-decoration: none; }
   </style>
 </head>
 <body>
   <div class="header">
     <a href="index.html">←</a>
-    <h1>🏠 ข้อมูลบ้าน</h1>
+    <h1>🏠 ข้อมูลของฉัน</h1>
   </div>
 
-  <div id="loading-screen" class="loading-screen">กำลังโหลดข้อมูล...</div>
+  <div id="loading" class="loading">กำลังโหลดข้อมูล...</div>
 
   <div id="not-found" class="not-found" style="display:none">
     <div class="icon">🔍</div>
-    <p>ไม่พบข้อมูลสมาชิก<br><br><a href="register.html">กด สมัครสมาชิก</a> ก่อนนะครับ</p>
+    <p>ไม่พบข้อมูลสมาชิก<br><br>
+    กรุณา <a href="register.html">สมัครสมาชิก</a> ก่อนนะครับ</p>
   </div>
 
-  <div id="main-content" style="display:none">
-    <div class="expire-info">
-      <div class="expire-days" id="days-left">- วัน</div>
-      <div class="expire-date" id="expire-date">หมดอายุ -</div>
-    </div>
-
-    <div class="warning">⚠️ อย่าแชร์รหัสผ่านให้คนอื่น เพื่อความปลอดภัยของบ้าน</div>
-
-    <div class="section-title">ข้อมูลเข้าบ้าน YouTube Premium</div>
-    <div class="info-card">
-      <div class="info-row">
-        <div class="info-label">อีเมลหัวบ้าน</div>
-        <div style="display:flex;align-items:center">
-          <div class="info-value" id="house-email">-</div>
-          <button class="copy-btn" onclick="copy('house-email')">คัดลอก</button>
-        </div>
-      </div>
-      <div class="info-row">
-        <div class="info-label">รหัสผ่าน</div>
-        <div style="display:flex;align-items:center">
-          <div class="info-value" id="house-password">-</div>
-          <button class="copy-btn" onclick="copy('house-password')">คัดลอก</button>
-        </div>
-      </div>
-      <div class="info-row">
-        <div class="info-label">แพ็กเกจ</div>
-        <div class="info-value" id="package">-</div>
-      </div>
-    </div>
-  </div>
+  <div id="main-content" style="display:none"></div>
 
   <script>
     const LIFF_ID = '2009843737-CwJgLFBY';
     const BASE_URL = window.location.origin;
-    const PKG_LABEL = { '1month': '1 เดือน (79 บาท)', '2months': '2 เดือน (155 บาท)', '3months': '3 เดือน (230 บาท)' };
+    const PKG = { '1month': '1 เดือน (79 บาท)', '2months': '2 เดือน (155 บาท)', '3months': '3 เดือน (230 บาท)' };
 
     async function init() {
       await liff.init({ liffId: LIFF_ID });
       if (!liff.isLoggedIn()) { liff.login(); return; }
       const profile = await liff.getProfile();
-      const res = await fetch(`${BASE_URL}/api/member/${profile.userId}`);
+
+      const res = await fetch(`${BASE_URL}/api/members/${profile.userId}`);
       const data = await res.json();
 
-      document.getElementById('loading-screen').style.display = 'none';
+      document.getElementById('loading').style.display = 'none';
 
-      if (!data.found || !data.houseEmail) {
+      if (!data.found || data.members.length === 0) {
         document.getElementById('not-found').style.display = 'block';
         return;
       }
 
       document.getElementById('main-content').style.display = 'block';
-      document.getElementById('days-left').textContent = `เหลืออีก ${data.daysLeft} วัน`;
-      document.getElementById('expire-date').textContent = `หมดอายุ ${data.expireDate}`;
-      document.getElementById('house-email').textContent = data.houseEmail;
-      document.getElementById('house-password').textContent = data.housePassword || '-';
-      document.getElementById('package').textContent = PKG_LABEL[data.package] || data.package;
-    }
-    init();
+      const container = document.getElementById('main-content');
 
-    function copy(id) {
-      const text = document.getElementById(id).textContent;
-      navigator.clipboard.writeText(text).then(() => {
-        const btn = event.target;
-        btn.textContent = 'คัดลอกแล้ว ✓';
-        setTimeout(() => btn.textContent = 'คัดลอก', 1500);
+      data.members.forEach(member => {
+        const days = member.daysLeft;
+        const color = days > 7 ? 'green' : days > 0 ? 'yellow' : 'red';
+        const statusText = days > 7 ? `เหลืออีก ${days} วัน` : days > 0 ? `⚠️ เหลืออีก ${days} วัน` : '❌ หมดอายุแล้ว';
+
+        container.innerHTML += `
+          <div class="member-card">
+            <div class="card-header">
+              <div class="email">📧 ${member.houseEmail || '-'}</div>
+              <div class="pkg">${PKG[member.package] || member.package}</div>
+            </div>
+            <div class="card-body">
+              <div class="info-row">
+                <div class="info-label">วันหมดอายุ</div>
+                <div class="info-value">${member.expireDate}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">สถานะ</div>
+                <div class="info-value">
+                  <span class="days-badge ${color}">${statusText}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          ${days <= 7 ? `<a href="renew.html" class="renew-btn">🔄 ต่ออายุ ${member.houseEmail || ''}</a>` : ''}
+        `;
       });
     }
+    init().catch(console.error);
   </script>
 </body>
 </html>
