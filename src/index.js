@@ -1,43 +1,99 @@
-require('dotenv').config();
-const express = require('express');
-const line = require('@line/bot-sdk');
-const path = require('path');
-const { runNotifications } = require('./notify');
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tiger Premium</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; }
+    .header { background: linear-gradient(135deg, #ff6b00, #ff9500); padding: 24px 20px; text-align: center; }
+    .header h1 { font-size: 22px; font-weight: 700; }
+    .header p { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+    .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 20px; }
+    .menu-card { background: #1a1a1a; border-radius: 16px; padding: 20px; text-align: center; cursor: pointer; border: 1px solid #2a2a2a; transition: all 0.2s; text-decoration: none; color: #fff; display: block; }
+    .menu-card:active { transform: scale(0.96); background: #222; }
+    .menu-card .icon { font-size: 32px; margin-bottom: 8px; }
+    .menu-card .label { font-size: 14px; font-weight: 600; }
+    .menu-card .sub { font-size: 11px; color: #888; margin-top: 4px; }
+    .menu-card.primary { border-color: #ff6b00; }
+    .status-bar { background: #1a1a1a; margin: 0 20px 20px; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #666; flex-shrink: 0; }
+    .status-dot.green { background: #22c55e; box-shadow: 0 0 8px #22c55e88; }
+    .status-dot.red { background: #ef4444; }
+    .status-dot.yellow { background: #f59e0b; }
+    .status-text { font-size: 13px; color: #aaa; }
+    .status-text strong { color: #fff; display: block; font-size: 15px; }
+    .loading { text-align: center; padding: 40px; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🐯 Tiger Premium</h1>
+    <p>YouTube Premium Family</p>
+  </div>
 
-const app = express();
+  <div id="status-bar" class="status-bar" style="display:none">
+    <div id="dot" class="status-dot"></div>
+    <div class="status-text">
+      <strong id="status-text">-</strong>
+      <span id="status-sub">-</span>
+    </div>
+  </div>
+  <div id="loading" class="loading">กำลังโหลด...</div>
 
-const lineConfig = {
-  channelSecret: process.env.LINE_CHANNEL_SECRET,
-  channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
-};
+  <div class="menu-grid">
+    <a href="register.html" class="menu-card primary">
+      <div class="icon">📋</div>
+      <div class="label">สมัครสมาชิก</div>
+      <div class="sub">เริ่มใช้งานได้เลย</div>
+    </a>
+    <a href="check.html" class="menu-card">
+      <div class="icon">📅</div>
+      <div class="label">เช็ควันหมดอายุ</div>
+      <div class="sub">ดูสถานะตัวเอง</div>
+    </a>
+    <a href="renew.html" class="menu-card">
+      <div class="icon">🔄</div>
+      <div class="label">ต่ออายุ</div>
+      <div class="sub">แนบสลิปยืนยัน</div>
+    </a>
+    <a href="account.html" class="menu-card">
+      <div class="icon">🏠</div>
+      <div class="label">ข้อมูลบ้าน</div>
+      <div class="sub">เมล + รหัสผ่าน</div>
+    </a>
+  </div>
 
-app.use(express.static(path.join(__dirname, '../public')));
+  <script>
+    const LIFF_ID = '2009843737-CwJgLFBY';
+    const BASE_URL = window.location.origin;
 
-app.use('/webhook', require('./webhook'));
+    async function init() {
+      await liff.init({ liffId: LIFF_ID });
+      if (!liff.isLoggedIn()) { liff.login(); return; }
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use('/api', require('./liff-api'));
+      const profile = await liff.getProfile();
+      const res = await fetch(`${BASE_URL}/api/member/${profile.userId}`);
+      const data = await res.json();
 
-app.get('/', (req, res) => {
-  res.json({ status: 'Tiger Premium OK 🐯', time: new Date().toISOString() });
-});
+      document.getElementById('loading').style.display = 'none';
+      const bar = document.getElementById('status-bar');
+      bar.style.display = 'flex';
 
-// Endpoint สำหรับ trigger แจ้งเตือน (เรียกจาก cron)
-app.get('/run-notify', async (req, res) => {
-  const key = req.query.key;
-  if (key !== process.env.NOTIFY_KEY) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-  try {
-    await runNotifications();
-    res.json({ success: true, time: new Date().toISOString() });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🐯 Tiger Premium running on port ${PORT}`);
-});
+      if (data.found) {
+        const dot = document.getElementById('dot');
+        const days = data.daysLeft;
+        dot.className = 'status-dot ' + (days > 7 ? 'green' : days > 0 ? 'yellow' : 'red');
+        document.getElementById('status-text').textContent = `เหลืออีก ${days} วัน`;
+        document.getElementById('status-sub').textContent = `หมดอายุ ${data.expireDate}`;
+      } else {
+        document.getElementById('status-text').textContent = 'ยังไม่ได้สมัครสมาชิก';
+        document.getElementById('status-sub').textContent = 'กดสมัครสมาชิกด้านล่าง';
+      }
+    }
+    init().catch(console.error);
+  </script>
+</body>
+</html>
