@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Dashboard - Tiger Premium</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a1628; color: #fff; min-height: 100vh; }
+
+    /* Login */
+    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .login-card { background: #0d1f3c; border: 1px solid #1e3a5f; border-radius: 16px; padding: 32px; width: 320px; }
+    .login-card h2 { font-size: 20px; margin-bottom: 6px; color: #fff; }
+    .login-card p { font-size: 13px; color: #85B7EB; margin-bottom: 24px; }
+    .login-card input { width: 100%; background: #0a1628; border: 1.5px solid #1e3a5f; border-radius: 10px; padding: 12px 14px; font-size: 14px; color: #fff; outline: none; margin-bottom: 12px; }
+    .login-card input:focus { border-color: #378ADD; }
+    .btn-primary { width: 100%; background: #185FA5; color: #fff; border: none; border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 700; cursor: pointer; }
+    .btn-primary:hover { background: #1e6fc0; }
+    .login-error { color: #ef4444; font-size: 13px; margin-top: 8px; text-align: center; }
+
+    /* Header */
+    .header { background: #0c2461; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1e3a5f; }
+    .header h1 { font-size: 18px; font-weight: 700; }
+    .header span { font-size: 12px; color: #85B7EB; }
+    .logout-btn { background: none; border: 1px solid #1e3a5f; color: #85B7EB; border-radius: 8px; padding: 6px 14px; font-size: 12px; cursor: pointer; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; padding: 16px 24px 0; border-bottom: 1px solid #1e3a5f; }
+    .tab { padding: 10px 20px; font-size: 14px; cursor: pointer; border-radius: 8px 8px 0 0; color: #85B7EB; background: none; border: none; border-bottom: 2px solid transparent; }
+    .tab.active { color: #fff; border-bottom: 2px solid #378ADD; background: #0d1f3c; }
+
+    /* Content */
+    .content { padding: 20px 24px; }
+
+    /* Stats */
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+    .stat-card { background: #0d1f3c; border: 1px solid #1e3a5f; border-radius: 12px; padding: 16px; }
+    .stat-card .label { font-size: 12px; color: #85B7EB; margin-bottom: 6px; }
+    .stat-card .value { font-size: 28px; font-weight: 700; }
+    .stat-card.red .value { color: #ef4444; }
+    .stat-card.yellow .value { color: #f59e0b; }
+    .stat-card.green .value { color: #22c55e; }
+    .stat-card.blue .value { color: #378ADD; }
+
+    /* Table */
+    .table-wrap { background: #0d1f3c; border: 1px solid #1e3a5f; border-radius: 12px; overflow: hidden; }
+    .table-header { padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1e3a5f; }
+    .table-header h3 { font-size: 15px; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #0a1628; padding: 10px 14px; text-align: left; font-size: 12px; color: #85B7EB; font-weight: 500; }
+    td { padding: 12px 14px; font-size: 13px; border-bottom: 1px solid #1a2a40; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #0f2240; }
+
+    /* Badges */
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge.pending { background: #2a1a00; color: #f59e0b; border: 1px solid #f59e0b; }
+    .badge.invited { background: #0a2a0a; color: #22c55e; border: 1px solid #22c55e; }
+    .badge.red { background: #2a0a0a; color: #ef4444; border: 1px solid #ef4444; }
+    .badge.yellow { background: #2a1a00; color: #f59e0b; border: 1px solid #f59e0b; }
+    .badge.green { background: #0a2a0a; color: #22c55e; border: 1px solid #22c55e; }
+
+    /* Buttons */
+    .btn-invite { background: #185FA5; color: #fff; border: none; border-radius: 8px; padding: 6px 14px; font-size: 12px; cursor: pointer; font-weight: 600; }
+    .btn-invite:hover { background: #1e6fc0; }
+    .btn-invite:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-copy { background: #0a1628; color: #85B7EB; border: 1px solid #1e3a5f; border-radius: 8px; padding: 5px 10px; font-size: 11px; cursor: pointer; }
+    .btn-copy:hover { background: #1e3a5f; }
+
+    /* Search */
+    .search-bar { background: #0a1628; border: 1px solid #1e3a5f; border-radius: 8px; padding: 8px 14px; font-size: 13px; color: #fff; outline: none; width: 220px; }
+    .search-bar::placeholder { color: #555; }
+
+    /* Loading */
+    .loading { text-align: center; padding: 40px; color: #555; }
+    .empty { text-align: center; padding: 40px; color: #555; font-size: 14px; }
+
+    /* House selector */
+    .house-select { background: #0a1628; border: 1px solid #1e3a5f; border-radius: 8px; padding: 6px 10px; font-size: 12px; color: #fff; outline: none; }
+
+    /* Notification */
+    .notif { position: fixed; top: 20px; right: 20px; background: #0a2a0a; border: 1px solid #22c55e; color: #86efac; border-radius: 10px; padding: 12px 18px; font-size: 14px; z-index: 999; }
+    .notif.error { background: #2a0a0a; border-color: #ef4444; color: #fca5a5; }
+  </style>
+</head>
+<body>
+
+<!-- Login -->
+<div class="login-wrap" id="login-page">
+  <div class="login-card">
+    <h2>🐯 Tiger Admin</h2>
+    <p>เข้าสู่ระบบแอดมิน</p>
+    <input type="password" id="admin-pass" placeholder="รหัสผ่านแอดมิน" onkeydown="if(event.key==='Enter')login()"/>
+    <button class="btn-primary" onclick="login()">เข้าสู่ระบบ</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboard" style="display:none">
+  <div class="header">
+    <div>
+      <h1>🐯 Tiger Premium — Admin</h1>
+      <span id="last-update">กำลังโหลด...</span>
+    </div>
+    <button class="logout-btn" onclick="logout()">ออกจากระบบ</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('pending')">รอเชิญ <span id="pending-count"></span></button>
+    <button class="tab" onclick="switchTab('houses')">จัดการบ้าน</button>
+    <button class="tab" onclick="switchTab('expiring')">ใกล้หมดอายุ</button>
+    <button class="tab" onclick="switchTab('all')">สมาชิกทั้งหมด</button>
+  </div>
+
+  <div class="content">
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card blue"><div class="label">สมาชิกทั้งหมด</div><div class="value" id="stat-total">-</div></div>
+      <div class="stat-card yellow"><div class="label">รอเชิญ</div><div class="value" id="stat-pending">-</div></div>
+      <div class="stat-card red"><div class="label">หมดอายุแล้ว</div><div class="value" id="stat-expired">-</div></div>
+      <div class="stat-card yellow"><div class="label">ใกล้หมด (7วัน)</div><div class="value" id="stat-expiring">-</div></div>
+    </div>
+
+    <!-- Tab: รอเชิญ -->
+    <div id="tab-pending">
+      <div class="table-wrap">
+        <div class="table-header">
+          <h3>รายการรอเชิญ</h3>
+          <input class="search-bar" placeholder="ค้นหาอีเมล..." oninput="filterTable('pending-table', this.value)"/>
+        </div>
+        <div id="pending-loading" class="loading">กำลังโหลด...</div>
+        <table id="pending-table" style="display:none">
+          <thead>
+            <tr>
+              <th>อีเมลลูกค้า</th>
+              <th>แพ็กเกจ</th>
+              <th>วันสมัคร</th>
+              <th>หมดอายุ</th>
+              <th>บ้าน</th>
+              <th>การดำเนินการ</th>
+            </tr>
+          </thead>
+          <tbody id="pending-body"></tbody>
+        </table>
+        <div id="pending-empty" class="empty" style="display:none">ไม่มีรายการรอเชิญ ✅</div>
+      </div>
+    </div>
+
+    <!-- Tab: จัดการบ้าน -->
+    <div id="tab-houses" style="display:none">
+      <div class="table-wrap">
+        <div class="table-header"><h3>บ้านทั้งหมด</h3></div>
+        <div id="houses-loading" class="loading">กำลังโหลด...</div>
+        <table id="houses-table" style="display:none">
+          <thead>
+            <tr>
+              <th>บ้าน</th>
+              <th>อีเมลหัวบ้าน</th>
+              <th>วันหมดอายุ</th>
+              <th>สมาชิก</th>
+              <th>สถานะ</th>
+              <th>Copy เมลสมาชิก</th>
+            </tr>
+          </thead>
+          <tbody id="houses-body"></tbody>
+        </table>
+        <div id="houses-empty" class="empty" style="display:none">ยังไม่มีข้อมูลบ้าน กรุณาเพิ่มใน Sheet</div>
+      </div>
+    </div>
+
+    <!-- Tab: ใกล้หมดอายุ -->
+    <div id="tab-expiring" style="display:none">
+      <div class="table-wrap">
+        <div class="table-header"><h3>ใกล้หมดอายุ (7 วัน)</h3></div>
+        <div id="expiring-loading" class="loading">กำลังโหลด...</div>
+        <table id="expiring-table" style="display:none">
+          <thead>
+            <tr>
+              <th>อีเมลลูกค้า</th>
+              <th>แพ็กเกจ</th>
+              <th>วันหมดอายุ</th>
+              <th>เหลือ (วัน)</th>
+              <th>บ้าน</th>
+              <th>ส่งแจ้งเตือน</th>
+            </tr>
+          </thead>
+          <tbody id="expiring-body"></tbody>
+        </table>
+        <div id="expiring-empty" class="empty" style="display:none">ไม่มีสมาชิกใกล้หมดอายุ ✅</div>
+      </div>
+    </div>
+
+    <!-- Tab: สมาชิกทั้งหมด -->
+    <div id="tab-all" style="display:none">
+      <div class="table-wrap">
+        <div class="table-header">
+          <h3>สมาชิกทั้งหมด</h3>
+          <input class="search-bar" placeholder="ค้นหาอีเมล..." oninput="filterTable('all-table', this.value)"/>
+        </div>
+        <div id="all-loading" class="loading">กำลังโหลด...</div>
+        <table id="all-table" style="display:none">
+          <thead>
+            <tr>
+              <th>อีเมลลูกค้า</th>
+              <th>แพ็กเกจ</th>
+              <th>วันหมดอายุ</th>
+              <th>เหลือ (วัน)</th>
+              <th>บ้าน</th>
+              <th>สถานะเชิญ</th>
+            </tr>
+          </thead>
+          <tbody id="all-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const BASE_URL = window.location.origin;
+  const ADMIN_PASSWORD = 'tiger2026admin';
+  let allMembers = [];
+  let allHouses = [];
+  let currentTab = 'pending';
+
+  function login() {
+    const pass = document.getElementById('admin-pass').value;
+    if (pass === ADMIN_PASSWORD) {
+      document.getElementById('login-page').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      loadAll();
+    } else {
+      document.getElementById('login-error').textContent = '❌ รหัสผ่านไม่ถูกต้อง';
+    }
+  }
+
+  function logout() {
+    document.getElementById('login-page').style.display = 'flex';
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('admin-pass').value = '';
+  }
+
+  function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    ['pending','houses','expiring','all'].forEach(t => {
+      document.getElementById(`tab-${t}`).style.display = t === tab ? 'block' : 'none';
+    });
+  }
+
+  async function loadAll() {
+    try {
+      const res = await fetch(`${BASE_URL}/api/admin/members`, {
+        headers: { 'x-admin-key': 'tiger2026admin' }
+      });
+      const data = await res.json();
+      allMembers = data.members || [];
+
+      const housesRes = await fetch(`${BASE_URL}/api/admin/houses`, {
+        headers: { 'x-admin-key': 'tiger2026admin' }
+      });
+      const housesData = await housesRes.json();
+      allHouses = housesData.houses || [];
+
+      renderAll();
+      document.getElementById('last-update').textContent = `อัปเดตล่าสุด ${new Date().toLocaleTimeString('th-TH')}`;
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  function renderAll() {
+    const today = new Date();
+    const pending = allMembers.filter(m => m.inviteStatus === 'pending');
+    const expired = allMembers.filter(m => {
+      const d = new Date(m.expireDate);
+      return d < today && m.status === 'active';
+    });
+    const expiring = allMembers.filter(m => {
+      const days = Math.ceil((new Date(m.expireDate) - today) / 86400000);
+      return days >= 0 && days <= 7 && m.status === 'active';
+    });
+
+    document.getElementById('stat-total').textContent = allMembers.length;
+    document.getElementById('stat-pending').textContent = pending.length;
+    document.getElementById('stat-expired').textContent = expired.length;
+    document.getElementById('stat-expiring').textContent = expiring.length;
+    document.getElementById('pending-count').textContent = pending.length > 0 ? `(${pending.length})` : '';
+
+    renderPending(pending);
+    renderHouses();
+    renderExpiring(expiring);
+    renderAll2();
+  }
+
+  function daysLeft(expireDate) {
+    return Math.ceil((new Date(expireDate) - new Date()) / 86400000);
+  }
+
+  function daysBadge(days) {
+    const cls = days > 7 ? 'green' : days > 0 ? 'yellow' : 'red';
+    return `<span class="badge ${cls}">${days > 0 ? days + ' วัน' : 'หมดแล้ว'}</span>`;
+  }
+
+  function pkgLabel(p) {
+    return p === '1month' ? '1 เดือน' : p === '2months' ? '2 เดือน' : '3 เดือน';
+  }
+
+  function renderPending(members) {
+    document.getElementById('pending-loading').style.display = 'none';
+    if (members.length === 0) {
+      document.getElementById('pending-empty').style.display = 'block';
+      return;
+    }
+    document.getElementById('pending-table').style.display = 'table';
+    const houseOptions = allHouses.map(h => `<option value="${h.houseId}">${h.houseId}</option>`).join('');
+
+    document.getElementById('pending-body').innerHTML = members.map((m, i) => `
+      <tr id="row-${m.rowIndex}">
+        <td>${m.houseEmail || '-'}</td>
+        <td>${pkgLabel(m.package)}</td>
+        <td>${m.createdAt ? m.createdAt.split(' ')[0] : '-'}</td>
+        <td>${m.expireDate}</td>
+        <td>
+          <select class="house-select" id="house-sel-${m.rowIndex}">
+            <option value="">เลือกบ้าน</option>
+            ${houseOptions}
+          </select>
+        </td>
+        <td>
+          <button class="btn-invite" onclick="markInvited(${m.rowIndex}, '${m.lineUserId}', '${m.houseEmail}')">
+            เชิญแล้ว ✓
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function renderHouses() {
+    document.getElementById('houses-loading').style.display = 'none';
+    if (allHouses.length === 0) {
+      document.getElementById('houses-empty').style.display = 'block';
+      return;
+    }
+    document.getElementById('houses-table').style.display = 'table';
+
+    document.getElementById('houses-body').innerHTML = allHouses.map(h => {
+      const members = allMembers.filter(m => m.houseId === h.houseId);
+      const days = daysLeft(h.expireDate);
+      const emails = members.map(m => m.houseEmail).filter(Boolean).join(', ');
+      return `
+        <tr>
+          <td><strong>${h.houseId}</strong></td>
+          <td>${h.houseEmail}</td>
+          <td>${h.expireDate} ${daysBadge(days)}</td>
+          <td>${members.length} / ${h.maxMembers} คน</td>
+          <td><span class="badge ${h.status === 'active' ? 'invited' : 'red'}">${h.status}</span></td>
+          <td>
+            ${emails ? `<button class="btn-copy" onclick="copyText('${emails}', this)">Copy เมล (${members.length})</button>` : '-'}
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function renderExpiring(members) {
+    document.getElementById('expiring-loading').style.display = 'none';
+    if (members.length === 0) {
+      document.getElementById('expiring-empty').style.display = 'block';
+      return;
+    }
+    document.getElementById('expiring-table').style.display = 'table';
+    document.getElementById('expiring-body').innerHTML = members.map(m => `
+      <tr>
+        <td>${m.houseEmail || '-'}</td>
+        <td>${pkgLabel(m.package)}</td>
+        <td>${m.expireDate}</td>
+        <td>${daysBadge(daysLeft(m.expireDate))}</td>
+        <td>${m.houseId || '-'}</td>
+        <td>
+          <button class="btn-invite" onclick="sendReminder('${m.lineUserId}', '${m.houseEmail}', this)">
+            ส่งแจ้งเตือน
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function renderAll2() {
+    document.getElementById('all-loading').style.display = 'none';
+    document.getElementById('all-table').style.display = 'table';
+    document.getElementById('all-body').innerHTML = allMembers.map(m => {
+      const days = daysLeft(m.expireDate);
+      return `
+        <tr>
+          <td>${m.houseEmail || '-'}</td>
+          <td>${pkgLabel(m.package)}</td>
+          <td>${m.expireDate}</td>
+          <td>${daysBadge(days)}</td>
+          <td>${m.houseId || '-'}</td>
+          <td><span class="badge ${m.inviteStatus === 'invited' ? 'invited' : 'pending'}">${m.inviteStatus === 'invited' ? 'เชิญแล้ว' : 'รอเชิญ'}</span></td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  async function markInvited(rowIndex, lineUserId, email) {
+    const houseId = document.getElementById(`house-sel-${rowIndex}`)?.value || '';
+    try {
+      const res = await fetch(`${BASE_URL}/api/admin/invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-key': 'tiger2026admin' },
+        body: JSON.stringify({ rowIndex, lineUserId, houseId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showNotif(`✅ บันทึกแล้ว — ${email}`);
+        await loadAll();
+      } else {
+        showNotif(`❌ ${data.error}`, true);
+      }
+    } catch (err) {
+      showNotif('❌ เกิดข้อผิดพลาด', true);
+    }
+  }
+
+  async function sendReminder(lineUserId, email, btn) {
+    btn.disabled = true;
+    btn.textContent = 'กำลังส่ง...';
+    try {
+      const res = await fetch(`${BASE_URL}/api/admin/remind`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-key': 'tiger2026admin' },
+        body: JSON.stringify({ lineUserId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showNotif(`✅ ส่งแจ้งเตือนให้ ${email} แล้ว`);
+        btn.textContent = 'ส่งแล้ว ✓';
+      } else {
+        showNotif(`❌ ${data.error}`, true);
+        btn.disabled = false;
+        btn.textContent = 'ส่งแจ้งเตือน';
+      }
+    } catch (err) {
+      showNotif('❌ เกิดข้อผิดพลาด', true);
+      btn.disabled = false;
+      btn.textContent = 'ส่งแจ้งเตือน';
+    }
+  }
+
+  function copyText(text, btn) {
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = 'Copied ✓';
+      setTimeout(() => btn.textContent = orig, 1500);
+    });
+  }
+
+  function filterTable(tableId, query) {
+    const rows = document.querySelectorAll(`#${tableId} tbody tr`);
+    rows.forEach(row => {
+      row.style.display = row.textContent.toLowerCase().includes(query.toLowerCase()) ? '' : 'none';
+    });
+  }
+
+  function showNotif(msg, isError = false) {
+    const el = document.createElement('div');
+    el.className = `notif${isError ? ' error' : ''}`;
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+  }
+
+  setInterval(loadAll, 60000);
+</script>
+</body>
+</html>
