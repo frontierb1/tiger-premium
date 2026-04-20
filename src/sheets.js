@@ -105,7 +105,8 @@ async function addMember(data) {
           data.memberEmail || '',                       // F: member_email
           data.slipUrl ? 'มีสลิป ✓' : '',             // G: slip_url
           dayjs().format('YYYY-MM-DD HH:mm:ss'),       // H: created_at
-          '',                                           // I: house_id
+          '', 
+          'pending',           // I: house_id
         ]],
       },
     });
