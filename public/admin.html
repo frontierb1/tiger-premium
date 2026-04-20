@@ -13,73 +13,80 @@
     .login-card p { font-size: 13px; color: #85B7EB; margin-bottom: 24px; }
     .login-card input { width: 100%; background: #0a1628; border: 1.5px solid #1e3a5f; border-radius: 10px; padding: 12px 14px; font-size: 14px; color: #fff; outline: none; margin-bottom: 12px; }
     .login-card input:focus { border-color: #378ADD; }
-    .btn-primary { width: 100%; background: #185FA5; color: #fff; border: none; border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 700; cursor: pointer; }
+    .btn-login { width: 100%; background: #185FA5; color: #fff; border: none; border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 700; cursor: pointer; }
     .login-error { color: #ef4444; font-size: 13px; margin-top: 8px; text-align: center; }
-    .header { background: #0c2461; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1e3a5f; }
-    .header h1 { font-size: 18px; font-weight: 700; }
+    .header { background: #0c2461; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1e3a5f; }
+    .header h1 { font-size: 17px; font-weight: 700; }
     .header-right { display: flex; align-items: center; gap: 12px; }
     .last-update { font-size: 12px; color: #85B7EB; }
-    .logout-btn { background: none; border: 1px solid #1e3a5f; color: #85B7EB; border-radius: 8px; padding: 6px 14px; font-size: 12px; cursor: pointer; }
-    .tabs { display: flex; gap: 4px; padding: 16px 24px 0; border-bottom: 1px solid #1e3a5f; overflow-x: auto; }
-    .tab { padding: 10px 20px; font-size: 14px; cursor: pointer; border-radius: 8px 8px 0 0; color: #85B7EB; background: none; border: none; border-bottom: 2px solid transparent; white-space: nowrap; }
+    .logout-btn { background: none; border: 1px solid #1e3a5f; color: #85B7EB; border-radius: 8px; padding: 6px 12px; font-size: 12px; cursor: pointer; }
+    /* Alert banner */
+    .alert-banner { background: #2a0a0a; border: 1px solid #ef4444; border-radius: 10px; margin: 12px 24px 0; padding: 12px 16px; display: none; }
+    .alert-banner.show { display: block; }
+    .alert-banner h4 { color: #ef4444; font-size: 13px; margin-bottom: 6px; }
+    .alert-banner ul { padding-left: 16px; }
+    .alert-banner li { color: #fca5a5; font-size: 12px; margin-bottom: 2px; }
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; padding: 14px 24px 0; border-bottom: 1px solid #1e3a5f; overflow-x: auto; }
+    .tab { padding: 9px 18px; font-size: 13px; cursor: pointer; border-radius: 8px 8px 0 0; color: #85B7EB; background: none; border: none; border-bottom: 2px solid transparent; white-space: nowrap; }
     .tab.active { color: #fff; border-bottom: 2px solid #378ADD; background: #0d1f3c; }
-    .content { padding: 20px 24px; }
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
-    .stat-card { background: #0d1f3c; border: 1px solid #1e3a5f; border-radius: 12px; padding: 16px; }
-    .stat-card .label { font-size: 12px; color: #85B7EB; margin-bottom: 6px; }
-    .stat-card .value { font-size: 28px; font-weight: 700; }
-    .stat-card.red .value { color: #ef4444; }
-    .stat-card.yellow .value { color: #f59e0b; }
-    .stat-card.green .value { color: #22c55e; }
+    .content { padding: 16px 24px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+    .stat-card { background: #0d1f3c; border: 1px solid #1e3a5f; border-radius: 12px; padding: 14px; }
+    .stat-card .label { font-size: 11px; color: #85B7EB; margin-bottom: 4px; }
+    .stat-card .value { font-size: 26px; font-weight: 700; }
     .stat-card.blue .value { color: #378ADD; }
+    .stat-card.yellow .value { color: #f59e0b; }
     .stat-card.orange .value { color: #ff9500; }
-    .table-wrap { background: #0d1f3c; border: 1px solid #1e3a5f; border-radius: 12px; overflow: hidden; }
-    .table-header { padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1e3a5f; flex-wrap: wrap; gap: 8px; }
-    .table-header h3 { font-size: 15px; font-weight: 600; }
+    .stat-card.red .value { color: #ef4444; }
+    /* Bulk panel */
+    .bulk-panel { background: #0c2461; border: 1px solid #1e3a5f; border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
+    .bulk-panel-title { font-size: 13px; font-weight: 600; color: #B5D4F4; margin-bottom: 10px; }
+    .bulk-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+    .bulk-row label { font-size: 12px; color: #85B7EB; min-width: 80px; }
+    .house-sel-main { background: #0a1628; border: 1.5px solid #378ADD; border-radius: 8px; padding: 7px 10px; font-size: 13px; color: #fff; outline: none; min-width: 200px; }
+    .slot-badge { font-size: 12px; padding: 4px 10px; border-radius: 8px; background: #0a1628; border: 1px solid #1e3a5f; color: #85B7EB; }
+    .slot-badge.ok { border-color: #22c55e; color: #22c55e; }
+    .slot-badge.full { border-color: #ef4444; color: #ef4444; }
+    .bulk-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    /* Table */
+    .table-wrap { background: #0d1f3c; border: 1px solid #1e3a5f; border-radius: 10px; overflow: hidden; }
+    .table-header { padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1e3a5f; flex-wrap: wrap; gap: 8px; }
+    .table-header h3 { font-size: 14px; font-weight: 600; }
     table { width: 100%; border-collapse: collapse; }
-    th { background: #0a1628; padding: 10px 14px; text-align: left; font-size: 12px; color: #85B7EB; font-weight: 500; }
-    td { padding: 11px 14px; font-size: 13px; border-bottom: 1px solid #1a2a40; vertical-align: middle; }
+    th { background: #0a1628; padding: 9px 12px; text-align: left; font-size: 11px; color: #85B7EB; font-weight: 500; }
+    td { padding: 10px 12px; font-size: 12px; border-bottom: 1px solid #1a2a40; vertical-align: middle; }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: #0f2240; }
     tr.selected-row td { background: #0c2461; }
-    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    tr.overflow-row td { background: #2a0a0a; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
     .badge.pending { background: #2a1a00; color: #f59e0b; border: 1px solid #f59e0b; }
     .badge.inviting { background: #0a1a2a; color: #378ADD; border: 1px solid #378ADD; }
     .badge.invited { background: #0a2a0a; color: #22c55e; border: 1px solid #22c55e; }
     .badge.red { background: #2a0a0a; color: #ef4444; border: 1px solid #ef4444; }
     .badge.yellow { background: #2a1a00; color: #f59e0b; border: 1px solid #f59e0b; }
     .badge.green { background: #0a2a0a; color: #22c55e; border: 1px solid #22c55e; }
-    .btn-sm { border: none; border-radius: 8px; padding: 6px 14px; font-size: 12px; cursor: pointer; font-weight: 600; }
+    .badge.warn { background: #2a0a0a; color: #ef4444; border: 1px solid #ef4444; }
+    .btn-sm { border: none; border-radius: 7px; padding: 5px 12px; font-size: 11px; cursor: pointer; font-weight: 600; }
     .btn-blue { background: #185FA5; color: #fff; }
     .btn-blue:hover { background: #1e6fc0; }
     .btn-green { background: #1a4a1a; color: #22c55e; border: 1px solid #22c55e; }
-    .btn-green:hover { background: #1f5a1f; }
     .btn-orange { background: #3a2000; color: #ff9500; border: 1px solid #ff9500; }
     .btn-gray { background: #0a1628; color: #85B7EB; border: 1px solid #1e3a5f; }
     .btn-gray:hover { background: #1e3a5f; }
-    .btn-sm:disabled { opacity: 0.4; cursor: not-allowed; }
-    .search-bar { background: #0a1628; border: 1px solid #1e3a5f; border-radius: 8px; padding: 7px 14px; font-size: 13px; color: #fff; outline: none; width: 200px; }
-    .house-select { background: #0a1628; border: 1px solid #1e3a5f; border-radius: 8px; padding: 6px 10px; font-size: 12px; color: #fff; outline: none; }
-    .loading { text-align: center; padding: 40px; color: #555; }
-    .empty { text-align: center; padding: 40px; color: #555; font-size: 14px; }
-    .notif { position: fixed; top: 20px; right: 20px; border-radius: 10px; padding: 12px 18px; font-size: 14px; z-index: 999; max-width: 320px; }
+    .btn-sm:disabled { opacity: 0.35; cursor: not-allowed; }
+    .search-bar { background: #0a1628; border: 1px solid #1e3a5f; border-radius: 7px; padding: 6px 12px; font-size: 12px; color: #fff; outline: none; width: 180px; }
+    .loading { text-align: center; padding: 32px; color: #555; }
+    .empty { text-align: center; padding: 32px; color: #555; font-size: 13px; }
+    .notif { position: fixed; top: 16px; right: 16px; border-radius: 10px; padding: 10px 16px; font-size: 13px; z-index: 999; max-width: 300px; }
     .notif.success { background: #0a2a0a; border: 1px solid #22c55e; color: #86efac; }
     .notif.error { background: #2a0a0a; border: 1px solid #ef4444; color: #fca5a5; }
     .notif.info { background: #0a1a2a; border: 1px solid #378ADD; color: #B5D4F4; }
-    /* Bulk bar ใหม่ */
-    .bulk-panel { background: #0c2461; border: 1px solid #1e3a5f; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
-    .bulk-panel-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #B5D4F4; }
-    .bulk-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
-    .bulk-row label { font-size: 13px; color: #85B7EB; min-width: 100px; }
-    .house-sel-main { background: #0a1628; border: 1.5px solid #378ADD; border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #fff; outline: none; min-width: 220px; }
-    .slot-info { font-size: 13px; padding: 6px 12px; border-radius: 8px; background: #0a1628; border: 1px solid #1e3a5f; color: #85B7EB; }
-    .slot-info.ok { border-color: #22c55e; color: #22c55e; }
-    .slot-info.full { border-color: #ef4444; color: #ef4444; }
-    .bulk-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
-    input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: #378ADD; }
+    input[type=checkbox] { width: 15px; height: 15px; cursor: pointer; accent-color: #378ADD; }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
-    .selected-count-badge { background: #185FA5; color: #fff; border-radius: 20px; padding: 2px 10px; font-size: 12px; margin-left: 6px; }
+    .overflow-warn { color: #ef4444; font-size: 11px; font-weight: 600; margin-left: 4px; }
   </style>
 </head>
 <body>
@@ -89,7 +96,7 @@
     <h2>🐯 Tiger Admin</h2>
     <p>เข้าสู่ระบบแอดมิน Dashboard</p>
     <input type="password" id="admin-pass" placeholder="รหัสผ่านแอดมิน" onkeydown="if(event.key==='Enter')login()"/>
-    <button class="btn-primary" onclick="login()">เข้าสู่ระบบ</button>
+    <button class="btn-login" onclick="login()">เข้าสู่ระบบ</button>
     <div class="login-error" id="login-error"></div>
   </div>
 </div>
@@ -101,6 +108,12 @@
       <span class="last-update" id="last-update">กำลังโหลด...</span>
       <button class="logout-btn" onclick="logout()">ออกจากระบบ</button>
     </div>
+  </div>
+
+  <!-- Alert banner สำหรับบ้านที่มีปัญหา -->
+  <div class="alert-banner" id="alert-banner">
+    <h4>⚠️ พบปัญหาข้อมูลบ้าน — กรุณาตรวจสอบ</h4>
+    <ul id="alert-list"></ul>
   </div>
 
   <div class="tabs">
@@ -121,20 +134,19 @@
 
     <!-- Tab: รอเชิญ -->
     <div id="tab-pending" class="tab-content active">
-      <!-- Bulk Panel -->
       <div class="bulk-panel">
-        <div class="bulk-panel-title">📋 เลือกบ้านและส่งเชิญ</div>
+        <div class="bulk-panel-title">🏠 ส่งเชิญหมู่ — เลือกบ้านแล้วติ๊กสมาชิก</div>
         <div class="bulk-row">
           <label>เลือกบ้าน:</label>
           <select class="house-sel-main" id="main-house-select" onchange="onHouseChange()">
-            <option value="">-- เลือกบ้านก่อน --</option>
+            <option value="">-- เลือกบ้าน (เฉพาะที่ว่าง) --</option>
           </select>
-          <span class="slot-info" id="slot-info">เลือกบ้านก่อน</span>
+          <span class="slot-badge" id="slot-info">-</span>
         </div>
         <div class="bulk-row" id="bulk-hint" style="display:none">
           <label>เลือกแล้ว:</label>
-          <span id="selected-count-text" class="selected-count-badge">0</span>
-          <span id="max-slot-text" style="font-size:12px;color:#85B7EB"></span>
+          <span id="selected-count-text" style="font-size:13px;font-weight:700;color:#fff">0</span>
+          <span id="max-slot-text" style="font-size:11px;color:#85B7EB"></span>
         </div>
         <div class="bulk-actions">
           <button class="btn-sm btn-gray" id="btn-copy-selected" onclick="copySelectedEmails()" disabled>📋 Copy เมลที่เลือก</button>
@@ -157,7 +169,7 @@
               <th>แพ็กเกจ</th>
               <th>วันสมัคร</th>
               <th>หมดอายุ</th>
-              <th>บ้านที่จะเชิญ</th>
+              <th>ส่งเชิญทีละคน</th>
             </tr>
           </thead>
           <tbody id="pending-body"></tbody>
@@ -197,16 +209,7 @@
         <div class="table-header"><h3>ใกล้หมดอายุภายใน 7 วัน</h3></div>
         <div id="expiring-loading" class="loading">กำลังโหลด...</div>
         <table id="expiring-table" style="display:none">
-          <thead>
-            <tr>
-              <th>อีเมลลูกค้า</th>
-              <th>แพ็กเกจ</th>
-              <th>วันหมดอายุ</th>
-              <th>เหลือ</th>
-              <th>บ้าน</th>
-              <th>ส่งแจ้งเตือน</th>
-            </tr>
-          </thead>
+          <thead><tr><th>อีเมลลูกค้า</th><th>แพ็กเกจ</th><th>วันหมดอายุ</th><th>เหลือ</th><th>บ้าน</th><th>ส่งแจ้งเตือน</th></tr></thead>
           <tbody id="expiring-body"></tbody>
         </table>
         <div id="expiring-empty" class="empty" style="display:none">✅ ไม่มีสมาชิกใกล้หมดอายุ</div>
@@ -216,22 +219,16 @@
     <!-- Tab: จัดการบ้าน -->
     <div id="tab-houses" class="tab-content">
       <div class="table-wrap">
-        <div class="table-header"><h3>บ้านทั้งหมด</h3></div>
+        <div class="table-header">
+          <h3>บ้านทั้งหมด</h3>
+          <input class="search-bar" placeholder="ค้นหาบ้าน/อีเมลหัวบ้าน..." oninput="filterTable('houses-body',this.value)"/>
+        </div>
         <div id="houses-loading" class="loading">กำลังโหลด...</div>
         <table id="houses-table" style="display:none">
-          <thead>
-            <tr>
-              <th>บ้าน</th>
-              <th>อีเมลหัวบ้าน</th>
-              <th>วันหมดอายุ</th>
-              <th>สมาชิก / ที่นั่ง</th>
-              <th>ที่ว่าง</th>
-              <th>Copy เมลสมาชิก</th>
-            </tr>
-          </thead>
+          <thead><tr><th>บ้าน</th><th>อีเมลหัวบ้าน</th><th>วันหมดอายุ</th><th>สมาชิก / ที่นั่ง</th><th>ที่ว่าง</th><th>สถานะ</th><th>Copy เมลสมาชิก</th></tr></thead>
           <tbody id="houses-body"></tbody>
         </table>
-        <div id="houses-empty" class="empty" style="display:none">ยังไม่มีข้อมูลบ้าน กรุณาเพิ่มใน Sheet Houses</div>
+        <div id="houses-empty" class="empty" style="display:none">ยังไม่มีข้อมูลบ้าน</div>
       </div>
     </div>
 
@@ -240,20 +237,11 @@
       <div class="table-wrap">
         <div class="table-header">
           <h3>สมาชิกทั้งหมด (ไม่รวม invited)</h3>
-          <input class="search-bar" placeholder="ค้นหาอีเมล..." oninput="filterTable('all-body',this.value)"/>
+          <input class="search-bar" placeholder="ค้นหาอีเมล/บ้าน..." oninput="filterTable('all-body',this.value)"/>
         </div>
         <div id="all-loading" class="loading">กำลังโหลด...</div>
         <table id="all-table" style="display:none">
-          <thead>
-            <tr>
-              <th>อีเมลลูกค้า</th>
-              <th>แพ็กเกจ</th>
-              <th>วันหมดอายุ</th>
-              <th>เหลือ</th>
-              <th>บ้าน</th>
-              <th>สถานะ</th>
-            </tr>
-          </thead>
+          <thead><tr><th>อีเมลลูกค้า</th><th>แพ็กเกจ</th><th>วันหมดอายุ</th><th>เหลือ</th><th>บ้าน</th><th>สถานะ</th></tr></thead>
           <tbody id="all-body"></tbody>
         </table>
       </div>
@@ -264,8 +252,7 @@
 <script>
 const BASE_URL = window.location.origin;
 const ADMIN_PASSWORD = 'tiger2026admin';
-let allMembers = [];
-let allHouses = [];
+let allMembers = [], allHouses = [];
 let selectedRows = new Set();
 let currentMaxSlot = 0;
 
@@ -279,13 +266,11 @@ function login() {
     document.getElementById('login-error').textContent = '❌ รหัสผ่านไม่ถูกต้อง';
   }
 }
-
 function logout() {
   document.getElementById('login-page').style.display = 'flex';
   document.getElementById('dashboard').style.display = 'none';
   document.getElementById('admin-pass').value = '';
 }
-
 function switchTab(tab, el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -303,7 +288,7 @@ async function loadAll() {
     allHouses = (await hRes.json()).houses || [];
     renderAll();
     document.getElementById('last-update').textContent = `อัปเดต ${new Date().toLocaleTimeString('th-TH')}`;
-  } catch (err) { showNotif('โหลดข้อมูลไม่สำเร็จ', 'error'); }
+  } catch { showNotif('โหลดข้อมูลไม่สำเร็จ', 'error'); }
 }
 
 function daysLeft(d) { return Math.ceil((new Date(d) - new Date()) / 86400000); }
@@ -313,11 +298,31 @@ function daysBadge(days) {
 }
 function pkgLabel(p) { return p === '1month' ? '1 เดือน' : p === '2months' ? '2 เดือน' : '3 เดือน'; }
 
+function getHouseUsed(houseId) {
+  return allMembers.filter(m => m.houseId === houseId && m.inviteStatus !== 'invited').length;
+}
 function getHouseSlot(houseId) {
-  const house = allHouses.find(h => h.houseId === houseId);
-  if (!house) return 0;
-  const used = allMembers.filter(m => m.houseId === houseId && m.inviteStatus !== 'invited').length;
-  return Math.max(0, house.maxMembers - used);
+  const h = allHouses.find(x => x.houseId === houseId);
+  if (!h) return 0;
+  return Math.max(0, h.maxMembers - getHouseUsed(houseId));
+}
+
+function checkOverflow() {
+  const problems = [];
+  allHouses.forEach(h => {
+    const used = getHouseUsed(h.houseId);
+    if (used > h.maxMembers) {
+      problems.push(`${h.houseId}: มีสมาชิก ${used} คน เกินจาก ${h.maxMembers} คน`);
+    }
+  });
+  const banner = document.getElementById('alert-banner');
+  const list = document.getElementById('alert-list');
+  if (problems.length > 0) {
+    list.innerHTML = problems.map(p => `<li>${p}</li>`).join('');
+    banner.classList.add('show');
+  } else {
+    banner.classList.remove('show');
+  }
 }
 
 function renderAll() {
@@ -333,6 +338,7 @@ function renderAll() {
   document.getElementById('badge-pending').textContent = pending.length > 0 ? `(${pending.length})` : '';
   document.getElementById('badge-inviting').textContent = inviting.length > 0 ? `(${inviting.length})` : '';
 
+  checkOverflow();
   populateHouseSelect();
   renderPending(pending);
   renderInviting(inviting);
@@ -344,15 +350,24 @@ function renderAll() {
 function populateHouseSelect() {
   const sel = document.getElementById('main-house-select');
   const cur = sel.value;
-  sel.innerHTML = '<option value="">-- เลือกบ้านก่อน --</option>';
-  allHouses.forEach(h => {
+  sel.innerHTML = '<option value="">-- เลือกบ้าน (เฉพาะที่ว่าง) --</option>';
+
+  // เรียงบ้านที่ว่างขึ้นก่อน
+  const sorted = [...allHouses].sort((a, b) => {
+    const slotA = getHouseSlot(a.houseId);
+    const slotB = getHouseSlot(b.houseId);
+    return slotB - slotA;
+  });
+
+  sorted.forEach(h => {
     const slot = getHouseSlot(h.houseId);
+    if (slot <= 0) return; // บ้านเต็มไม่แสดง
     const opt = document.createElement('option');
     opt.value = h.houseId;
     opt.textContent = `${h.houseId} — ว่าง ${slot}/${h.maxMembers} ที่`;
-    opt.disabled = slot === 0;
     sel.appendChild(opt);
   });
+
   if (cur) { sel.value = cur; onHouseChange(); }
 }
 
@@ -360,8 +375,8 @@ function onHouseChange() {
   const houseId = document.getElementById('main-house-select').value;
   clearSelection();
   if (!houseId) {
-    document.getElementById('slot-info').textContent = 'เลือกบ้านก่อน';
-    document.getElementById('slot-info').className = 'slot-info';
+    document.getElementById('slot-info').textContent = '-';
+    document.getElementById('slot-info').className = 'slot-badge';
     document.getElementById('bulk-hint').style.display = 'none';
     currentMaxSlot = 0;
     updateBulkActions();
@@ -369,17 +384,12 @@ function onHouseChange() {
   }
   const slot = getHouseSlot(houseId);
   currentMaxSlot = slot;
-  const slotEl = document.getElementById('slot-info');
-  slotEl.textContent = slot > 0 ? `ว่างอีก ${slot} ที่` : 'เต็มแล้ว';
-  slotEl.className = `slot-info ${slot > 0 ? 'ok' : 'full'}`;
-  document.getElementById('bulk-hint').style.display = slot > 0 ? 'flex' : 'none';
+  const el = document.getElementById('slot-info');
+  el.textContent = `ว่างอีก ${slot} ที่`;
+  el.className = `slot-badge ${slot > 0 ? 'ok' : 'full'}`;
+  document.getElementById('bulk-hint').style.display = 'flex';
   document.getElementById('max-slot-text').textContent = `(เลือกได้สูงสุด ${slot} คน)`;
   updateBulkActions();
-
-  // Highlight rows ของบ้านนี้
-  document.querySelectorAll('#pending-body tr').forEach(row => {
-    row.classList.remove('selected-row');
-  });
 }
 
 function renderPending(members) {
@@ -392,14 +402,27 @@ function renderPending(members) {
   document.getElementById('pending-table').style.display = 'table';
   document.getElementById('pending-empty').style.display = 'none';
 
+  // สร้าง options บ้านสำหรับ dropdown แต่ละแถว
+  const houseOpts = allHouses
+    .filter(h => getHouseSlot(h.houseId) > 0)
+    .sort((a,b) => getHouseSlot(b.houseId) - getHouseSlot(a.houseId))
+    .map(h => `<option value="${h.houseId}">${h.houseId} (ว่าง ${getHouseSlot(h.houseId)})</option>`)
+    .join('');
+
   document.getElementById('pending-body').innerHTML = members.map(m => `
     <tr id="row-${m.rowIndex}">
-      <td><input type="checkbox" class="row-check" data-row="${m.rowIndex}" data-email="${m.houseEmail || ''}" data-uid="${m.lineUserId}" onchange="onCheckChange(this)"/></td>
+      <td><input type="checkbox" class="row-check" data-row="${m.rowIndex}" data-email="${m.houseEmail||''}" data-uid="${m.lineUserId}" onchange="onCheckChange(this)"/></td>
       <td>${m.houseEmail || '-'}</td>
       <td>${pkgLabel(m.package)}</td>
       <td>${m.createdAt ? m.createdAt.split(' ')[0] : '-'}</td>
       <td>${m.expireDate}</td>
-      <td><span class="badge pending">รอเชิญ</span></td>
+      <td style="display:flex;gap:6px;align-items:center">
+        <select class="search-bar" id="single-house-${m.rowIndex}" style="width:140px;padding:4px 8px">
+          <option value="">เลือกบ้าน</option>
+          ${houseOpts}
+        </select>
+        <button class="btn-sm btn-blue" onclick="singleInvite(${m.rowIndex},'${m.lineUserId}','${m.houseEmail}',this)">📨 ส่งเชิญ</button>
+      </td>
     </tr>
   `).join('');
 }
@@ -454,9 +477,15 @@ function renderHouses() {
     return;
   }
   document.getElementById('houses-table').style.display = 'table';
-  document.getElementById('houses-body').innerHTML = allHouses.map(h => {
+
+  // เรียงบ้านว่างขึ้นก่อน
+  const sorted = [...allHouses].sort((a,b) => getHouseSlot(b.houseId) - getHouseSlot(a.houseId));
+
+  document.getElementById('houses-body').innerHTML = sorted.map(h => {
     const members = allMembers.filter(m => m.houseId === h.houseId && m.inviteStatus !== 'invited');
+    const used = getHouseUsed(h.houseId);
     const slot = getHouseSlot(h.houseId);
+    const isOverflow = used > h.maxMembers;
     const days = daysLeft(h.expireDate);
     const emails = members.map(m => m.houseEmail).filter(Boolean);
     const chunks = [];
@@ -464,13 +493,15 @@ function renderHouses() {
     const copyBtns = chunks.map((chunk, i) =>
       `<button class="btn-sm btn-gray" style="margin:2px" onclick="copyText('${chunk.join(', ')}',this)">Copy ${i*5+1}-${Math.min(i*5+5,emails.length)}</button>`
     ).join('');
+
     return `
-      <tr>
-        <td><strong>${h.houseId}</strong></td>
+      <tr class="${isOverflow ? 'overflow-row' : ''}">
+        <td><strong>${h.houseId}</strong>${isOverflow ? '<span class="overflow-warn">⚠️ เกิน!</span>' : ''}</td>
         <td>${h.houseEmail}</td>
         <td>${h.expireDate} ${daysBadge(days)}</td>
-        <td>${members.length} / ${h.maxMembers}</td>
-        <td><span class="badge ${slot > 0 ? 'green' : 'red'}">${slot > 0 ? `ว่าง ${slot}` : 'เต็ม'}</span></td>
+        <td>${used} / ${h.maxMembers}${isOverflow ? ' <span class="overflow-warn">เกิน!</span>' : ''}</td>
+        <td><span class="badge ${slot > 0 ? 'green' : 'red'}">${slot > 0 ? 'ว่าง ' + slot : 'เต็ม'}</span></td>
+        <td><span class="badge ${h.status === 'active' ? 'invited' : 'red'}">${h.status}</span></td>
         <td>${copyBtns || '-'}</td>
       </tr>
     `;
@@ -489,19 +520,15 @@ function renderAllMembers(members) {
       <td>${m.expireDate}</td>
       <td>${daysBadge(daysLeft(m.expireDate))}</td>
       <td>${m.houseId || '-'}</td>
-      <td><span class="badge ${badgeMap[m.inviteStatus] || 'pending'}">${statusMap[m.inviteStatus] || 'รอเชิญ'}</span></td>
+      <td><span class="badge ${badgeMap[m.inviteStatus]||'pending'}">${statusMap[m.inviteStatus]||'รอเชิญ'}</span></td>
     </tr>
   `).join('');
 }
 
-// Checkbox logic — เลือกได้ตามที่ว่างของบ้านที่เลือก
+// Checkbox logic
 function onCheckChange(el) {
   const houseId = document.getElementById('main-house-select').value;
-  if (!houseId) {
-    el.checked = false;
-    showNotif('กรุณาเลือกบ้านก่อนครับ', 'info');
-    return;
-  }
+  if (!houseId) { el.checked = false; showNotif('กรุณาเลือกบ้านในกล่องด้านบนก่อนครับ', 'info'); return; }
   if (el.checked) {
     if (selectedRows.size >= currentMaxSlot) {
       el.checked = false;
@@ -524,12 +551,8 @@ function toggleSelectAll(el) {
   if (el.checked) {
     let count = 0;
     document.querySelectorAll('.row-check').forEach(c => {
-      if (count < currentMaxSlot) {
-        c.checked = true;
-        selectedRows.add(c.dataset.row);
-        document.getElementById('row-' + c.dataset.row).classList.add('selected-row');
-        count++;
-      } else c.checked = false;
+      if (count < currentMaxSlot) { c.checked = true; selectedRows.add(c.dataset.row); document.getElementById('row-'+c.dataset.row).classList.add('selected-row'); count++; }
+      else c.checked = false;
     });
   } else {
     document.querySelectorAll('.row-check').forEach(c => c.checked = false);
@@ -555,13 +578,10 @@ function updateBulkActions() {
 }
 
 function copySelectedEmails() {
-  const checks = document.querySelectorAll('.row-check');
   const emails = [];
-  checks.forEach(c => { if (c.checked && c.dataset.email) emails.push(c.dataset.email); });
+  document.querySelectorAll('.row-check').forEach(c => { if (c.checked && c.dataset.email) emails.push(c.dataset.email); });
   if (!emails.length) { showNotif('ไม่มีอีเมลที่เลือก', 'error'); return; }
-  navigator.clipboard.writeText(emails.join(', ')).then(() => {
-    showNotif(`✅ Copy ${emails.length} อีเมลแล้ว`, 'success');
-  });
+  navigator.clipboard.writeText(emails.join(', ')).then(() => showNotif(`✅ Copy ${emails.length} อีเมลแล้ว`, 'success'));
 }
 
 async function bulkInvite() {
@@ -569,10 +589,8 @@ async function bulkInvite() {
   if (!houseId) { showNotif('กรุณาเลือกบ้านก่อนครับ', 'info'); return; }
   const checks = document.querySelectorAll('.row-check:checked');
   if (!checks.length) return;
-
   const btn = document.getElementById('btn-bulk-invite');
   btn.disabled = true; btn.textContent = 'กำลังส่ง...';
-
   let success = 0;
   for (const c of checks) {
     try {
@@ -581,15 +599,32 @@ async function bulkInvite() {
         headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_PASSWORD },
         body: JSON.stringify({ rowIndex: parseInt(c.dataset.row), lineUserId: c.dataset.uid, houseId }),
       });
-      const data = await res.json();
-      if (data.success) success++;
+      if ((await res.json()).success) success++;
     } catch {}
   }
-
   clearSelection();
   await loadAll();
   btn.textContent = '📨 ส่งเชิญทั้งที่เลือก';
   showNotif(`✅ ส่งเชิญ ${success} คน ไปบ้าน ${houseId} แล้ว`, 'success');
+}
+
+async function singleInvite(rowIndex, lineUserId, email, btn) {
+  const houseId = document.getElementById(`single-house-${rowIndex}`)?.value || '';
+  if (!houseId) { showNotif('กรุณาเลือกบ้านก่อนครับ', 'info'); return; }
+  // ตรวจสอบที่ว่างก่อนส่ง
+  const slot = getHouseSlot(houseId);
+  if (slot <= 0) { showNotif(`บ้าน ${houseId} เต็มแล้วครับ`, 'error'); return; }
+  btn.disabled = true; btn.textContent = 'กำลังส่ง...';
+  try {
+    const res = await fetch(`${BASE_URL}/api/admin/inviting`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_PASSWORD },
+      body: JSON.stringify({ rowIndex, lineUserId, houseId }),
+    });
+    const data = await res.json();
+    if (data.success) { showNotif(`📨 ส่งเชิญ ${email} ไปบ้าน ${houseId} แล้ว`, 'success'); await loadAll(); }
+    else { showNotif(`❌ ${data.error}`, 'error'); btn.disabled = false; btn.textContent = '📨 ส่งเชิญ'; }
+  } catch { showNotif('❌ เกิดข้อผิดพลาด', 'error'); btn.disabled = false; btn.textContent = '📨 ส่งเชิญ'; }
 }
 
 async function markInvited(rowIndex, lineUserId, email, btn) {
