@@ -3,97 +3,162 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Tiger Premium</title>
+  <title>สมัครสมาชิก - Tiger Premium</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; }
-    .header { background: linear-gradient(135deg, #ff6b00, #ff9500); padding: 24px 20px; text-align: center; }
-    .header h1 { font-size: 22px; font-weight: 700; }
-    .header p { font-size: 13px; opacity: 0.85; margin-top: 4px; }
-    .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 20px; }
-    .menu-card { background: #1a1a1a; border-radius: 16px; padding: 20px; text-align: center; cursor: pointer; border: 1px solid #2a2a2a; transition: all 0.2s; text-decoration: none; color: #fff; display: block; }
-    .menu-card:active { transform: scale(0.96); background: #222; }
-    .menu-card .icon { font-size: 32px; margin-bottom: 8px; }
-    .menu-card .label { font-size: 14px; font-weight: 600; }
-    .menu-card .sub { font-size: 11px; color: #888; margin-top: 4px; }
-    .menu-card.primary { border-color: #ff6b00; }
-    .status-bar { background: #1a1a1a; margin: 0 20px 20px; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
-    .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #666; flex-shrink: 0; }
-    .status-dot.green { background: #22c55e; box-shadow: 0 0 8px #22c55e88; }
-    .status-dot.red { background: #ef4444; }
-    .status-dot.yellow { background: #f59e0b; }
-    .status-text { font-size: 13px; color: #aaa; }
-    .status-text strong { color: #fff; display: block; font-size: 15px; }
-    .loading { text-align: center; padding: 40px; color: #666; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; padding-bottom: 40px; }
+    .header { background: linear-gradient(135deg, #ff6b00, #ff9500); padding: 20px; display: flex; align-items: center; gap: 12px; }
+    .header a { color: #fff; text-decoration: none; font-size: 20px; }
+    .header h1 { font-size: 18px; font-weight: 700; }
+    .section { margin: 20px 16px 0; }
+    .section-title { font-size: 13px; color: #888; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .pkg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .pkg-card { background: #1a1a1a; border: 2px solid #2a2a2a; border-radius: 12px; padding: 14px 8px; text-align: center; cursor: pointer; transition: all 0.2s; }
+    .pkg-card.selected { border-color: #ff6b00; background: #1f1200; }
+    .pkg-card .months { font-size: 11px; color: #888; }
+    .pkg-card .price { font-size: 20px; font-weight: 700; color: #ff9500; margin: 4px 0; }
+    .pkg-card .baht { font-size: 11px; color: #666; }
+    .upload-box { background: #1a1a1a; border: 2px dashed #333; border-radius: 12px; padding: 32px 20px; text-align: center; cursor: pointer; margin-top: 0; }
+    .upload-box.has-image { border-color: #22c55e; border-style: solid; }
+    .upload-box img { max-width: 100%; border-radius: 8px; max-height: 200px; object-fit: contain; }
+    .upload-icon { font-size: 36px; margin-bottom: 8px; }
+    .upload-text { font-size: 14px; color: #888; }
+    input[type=file] { display: none; }
+    .btn { width: 100%; background: #ff6b00; color: #fff; border: none; border-radius: 12px; padding: 16px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 16px; transition: opacity 0.2s; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn.loading { opacity: 0.7; }
+    .alert { border-radius: 10px; padding: 12px 14px; margin-top: 12px; font-size: 14px; }
+    .alert.error { background: #2a0a0a; border: 1px solid #ef4444; color: #fca5a5; }
+    .alert.success { background: #0a2a0a; border: 1px solid #22c55e; color: #86efac; }
   </style>
 </head>
 <body>
   <div class="header">
-    <h1>🐯 Tiger Premium</h1>
-    <p>YouTube Premium Family</p>
+    <a href="index.html">←</a>
+    <h1>📋 สมัครสมาชิก</h1>
   </div>
 
-  <div id="status-bar" class="status-bar" style="display:none">
-    <div id="dot" class="status-dot"></div>
-    <div class="status-text">
-      <strong id="status-text">-</strong>
-      <span id="status-sub">-</span>
+  <div class="section">
+    <div class="section-title">เลือกแพ็กเกจ</div>
+    <div class="pkg-grid">
+      <div class="pkg-card" data-pkg="1month" onclick="selectPkg(this)">
+        <div class="months">1 เดือน</div>
+        <div class="price">79</div>
+        <div class="baht">บาท</div>
+      </div>
+      <div class="pkg-card" data-pkg="2months" onclick="selectPkg(this)">
+        <div class="months">2 เดือน</div>
+        <div class="price">155</div>
+        <div class="baht">บาท</div>
+      </div>
+      <div class="pkg-card" data-pkg="3months" onclick="selectPkg(this)">
+        <div class="months">3 เดือน</div>
+        <div class="price">230</div>
+        <div class="baht">บาท</div>
+      </div>
     </div>
   </div>
-  <div id="loading" class="loading">กำลังโหลด...</div>
 
-  <div class="menu-grid">
-    <a href="register.html" class="menu-card primary">
-      <div class="icon">📋</div>
-      <div class="label">สมัครสมาชิก</div>
-      <div class="sub">เริ่มใช้งานได้เลย</div>
-    </a>
-    <a href="check.html" class="menu-card">
-      <div class="icon">📅</div>
-      <div class="label">เช็ควันหมดอายุ</div>
-      <div class="sub">ดูสถานะตัวเอง</div>
-    </a>
-    <a href="renew.html" class="menu-card">
-      <div class="icon">🔄</div>
-      <div class="label">ต่ออายุ</div>
-      <div class="sub">แนบสลิปยืนยัน</div>
-    </a>
-    <a href="account.html" class="menu-card">
-      <div class="icon">🏠</div>
-      <div class="label">ข้อมูลบ้าน</div>
-      <div class="sub">เมล + รหัสผ่าน</div>
-    </a>
+  <div class="section" style="margin-top:16px">
+    <div class="section-title">อีเมลที่ใช้สมัคร YouTube</div>
+    <input type="email" class="input-box" id="member-email" placeholder="example@gmail.com" oninput="checkReady()" style="background:#1a1a1a;border:1.5px solid #2a2a2a;border-radius:12px;padding:14px 16px;font-size:15px;color:#fff;width:100%;outline:none;"/>
+  </div>
+
+  <div class="section" style="margin-top:16px">
+    <div class="section-title">แนบสลิปโอนเงิน</div>
+    <div class="upload-box" id="upload-box" onclick="document.getElementById('slip-input').click()">
+      <div id="upload-placeholder">
+        <div class="upload-icon">📎</div>
+        <div class="upload-text">แตะเพื่อแนบสลิป</div>
+      </div>
+      <img id="slip-preview" style="display:none"/>
+    </div>
+    <input type="file" id="slip-input" accept="image/*" onchange="previewSlip(this)"/>
+  </div>
+
+  <div class="section">
+    <div id="alert-box"></div>
+    <button class="btn" id="submit-btn" onclick="submit()" disabled>ยืนยันสมัครสมาชิก</button>
   </div>
 
   <script>
     const LIFF_ID = '2009843737-CwJgLFBY';
     const BASE_URL = window.location.origin;
+    let profile = null;
+    let selectedPkg = null;
+    let slipFile = null;
 
-    async function init() {
-      await liff.init({ liffId: LIFF_ID });
+    liff.init({ liffId: LIFF_ID }).then(async () => {
       if (!liff.isLoggedIn()) { liff.login(); return; }
+      profile = await liff.getProfile();
+    });
 
-      const profile = await liff.getProfile();
-      const res = await fetch(`${BASE_URL}/api/member/${profile.userId}`);
-      const data = await res.json();
+    function selectPkg(el) {
+      document.querySelectorAll('.pkg-card').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+      selectedPkg = el.dataset.pkg;
+      checkReady();
+    }
 
-      document.getElementById('loading').style.display = 'none';
-      const bar = document.getElementById('status-bar');
-      bar.style.display = 'flex';
+    function previewSlip(input) {
+      if (!input.files[0]) return;
+      slipFile = input.files[0];
+      const reader = new FileReader();
+      reader.onload = e => {
+        document.getElementById('slip-preview').src = e.target.result;
+        document.getElementById('slip-preview').style.display = 'block';
+        document.getElementById('upload-placeholder').style.display = 'none';
+        document.getElementById('upload-box').classList.add('has-image');
+      };
+      reader.readAsDataURL(slipFile);
+      checkReady();
+    }
 
-      if (data.found) {
-        const dot = document.getElementById('dot');
-        const days = data.daysLeft;
-        dot.className = 'status-dot ' + (days > 7 ? 'green' : days > 0 ? 'yellow' : 'red');
-        document.getElementById('status-text').textContent = `เหลืออีก ${days} วัน`;
-        document.getElementById('status-sub').textContent = `หมดอายุ ${data.expireDate}`;
-      } else {
-        document.getElementById('status-text').textContent = 'ยังไม่ได้สมัครสมาชิก';
-        document.getElementById('status-sub').textContent = 'กดสมัครสมาชิกด้านล่าง';
+    function checkReady() {
+      const email = document.getElementById('member-email').value.trim();
+      const emailValid = email.includes('@') && email.includes('.');
+      document.getElementById('submit-btn').disabled = !(selectedPkg && slipFile && emailValid);
+    }
+
+    function showAlert(msg, type) {
+      document.getElementById('alert-box').innerHTML = `<div class="alert ${type}">${msg}</div>`;
+    }
+
+    async function submit() {
+      const btn = document.getElementById('submit-btn');
+      const email = document.getElementById('member-email').value.trim();
+      btn.disabled = true;
+      btn.textContent = 'กำลังตรวจสลิป...';
+
+      try {
+        const formData = new FormData();
+        formData.append('slip', slipFile);
+        formData.append('lineUserId', profile.userId);
+        formData.append('displayName', profile.displayName);
+        formData.append('packageType', selectedPkg);
+        formData.append('memberEmail', email);
+
+        const res = await fetch(`${BASE_URL}/api/register`, {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          showAlert(`✅ สมัครสำเร็จ! หมดอายุ ${data.expireDate}<br>แอดมินจะส่งข้อมูลเข้าบ้านให้ภายใน 24 ชม.`, 'success');
+          btn.textContent = 'สมัครสำเร็จแล้ว ✅';
+        } else {
+          showAlert(`❌ ${data.error}`, 'error');
+          btn.disabled = false;
+          btn.textContent = 'ยืนยันสมัครสมาชิก';
+        }
+      } catch (err) {
+        showAlert('เกิดข้อผิดพลาด กรุณาลองใหม่', 'error');
+        btn.disabled = false;
+        btn.textContent = 'ยืนยันสมัครสมาชิก';
       }
     }
-    init().catch(console.error);
   </script>
 </body>
 </html>
