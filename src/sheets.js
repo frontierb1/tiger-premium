@@ -21,8 +21,8 @@ function rowToMember(row) {
     houseEmail:    row[5],
     slipUrl:       row[6],
     createdAt:     row[7],
-    houseId:       row[8],
-    inviteStatus:  row[9],
+    inviteStatus:  row[8],
+     houseId:      row[9],
   };
 }
 
@@ -105,8 +105,8 @@ async function addMember(data) {
           data.memberEmail || '',                       // F: member_email
           data.slipUrl ? 'มีสลิป ✓' : '',             // G: slip_url
           dayjs().format('YYYY-MM-DD HH:mm:ss'),       // H: created_at
-          '', 
-          'pending',           // I: house_id
+          'pending', // I: invite_status
+                    '',        // J: house_id         
         ]],
       },
     });
