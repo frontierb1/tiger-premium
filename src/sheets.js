@@ -83,16 +83,18 @@ async function addMember(data) {
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [[
-          data.lineUserId,
-          data.displayName || '',
-          data.packageType,
-          expireDate,
-          'active',
-          data.memberEmail || '',
-          '',
-          data.slipUrl ? 'มีสลิป ✓' : '',
-          dayjs().format('YYYY-MM-DD HH:mm:ss'),
-        ]],
+  data.lineUserId,        // A: line_user_id
+  data.displayName || '', // B: display_name
+  data.packageType,       // C: package
+  expireDate,             // D: expire_date
+  'active',               // E: status
+  data.memberEmail || '', // F: member_email
+  '',                     // G: house_password (ว่าง)
+  data.slipUrl ? 'มีสลิป ✓' : '', // H: slip_url
+  '',                     // I: house_id (แอดมินใส่เอง)
+  'pending',              // J: invite_status
+  dayjs().format('YYYY-MM-DD HH:mm:ss'), // K: created_at
+]],
       },
     });
     return { success: true, expireDate };
