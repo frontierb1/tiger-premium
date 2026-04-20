@@ -299,7 +299,7 @@ function daysBadge(days) {
 function pkgLabel(p) { return p === '1month' ? '1 เดือน' : p === '2months' ? '2 เดือน' : '3 เดือน'; }
 
 function getHouseUsed(houseId) {
-  return allMembers.filter(m => m.houseId === houseId && (m.inviteStatus === 'inviting' || m.inviteStatus === 'invited')).length;
+  return allMembers.filter(m => m.houseId === houseId && (m.inviteStatus === "inviting" || m.inviteStatus === "invited")).length;
 }
 function getHouseSlot(houseId) {
   const h = allHouses.find(x => x.houseId === houseId);
