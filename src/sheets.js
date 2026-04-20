@@ -19,9 +19,10 @@ function rowToMember(row) {
     expireDate:    row[3],
     status:        row[4],
     houseEmail:    row[5],
-    housePassword: row[6],
-    slipUrl:       row[7],
-    createdAt:     row[8],
+    slipUrl:       row[6],
+    createdAt:     row[7],
+    houseId:       row[8],
+    inviteStatus:  row[9],
   };
 }
 
@@ -30,7 +31,7 @@ async function getMemberByLineId(lineUserId) {
     const sheets = await getSheets();
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: 'Members!A:I',
+      range: 'Members!A:J',
     });
     const rows = res.data.values || [];
     const row = rows.find(r => r[0] === lineUserId);
@@ -46,7 +47,7 @@ async function getMembersByLineId(lineUserId) {
     const sheets = await getSheets();
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: 'Members!A:I',
+      range: 'Members!A:J',
     });
     const rows = res.data.values || [];
     return rows.filter(r => r[0] === lineUserId).map(rowToMember);
@@ -56,17 +57,30 @@ async function getMembersByLineId(lineUserId) {
   }
 }
 
-// เช็คว่าอีเมลนี้มีในระบบแล้วหรือยัง
+async function getAllMembers() {
+  try {
+    const sheets = await getSheets();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Members!A:J',
+    });
+    const rows = res.data.values || [];
+    return rows.slice(1).map((row, i) => ({ ...rowToMember(row), rowIndex: i + 2 }));
+  } catch (err) {
+    console.error('getAllMembers error:', err.message);
+    return [];
+  }
+}
+
 async function checkEmailExists(email) {
   try {
     const sheets = await getSheets();
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: 'Members!A:I',
+      range: 'Members!A:J',
     });
     const rows = res.data.values || [];
-    const found = rows.find(r => r[5] && r[5].toLowerCase() === email.toLowerCase());
-    return found ? true : false;
+    return rows.some(r => r[5] && r[5].toLowerCase() === email.toLowerCase());
   } catch (err) {
     console.error('checkEmailExists error:', err.message);
     return false;
@@ -79,22 +93,21 @@ async function addMember(data) {
     const expireDate = calculateExpireDate(data.packageType);
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
-      range: 'Members!A:I',
+      range: 'Members!A:J',
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [[
-  data.lineUserId,        // A: line_user_id
-  data.displayName || '', // B: display_name
-  data.packageType,       // C: package
-  expireDate,             // D: expire_date
-  'active',               // E: status
-  data.memberEmail || '', // F: member_email
-  '',                     // G: house_password (ว่าง)
-  data.slipUrl ? 'มีสลิป ✓' : '', // H: slip_url
-  '',                     // I: house_id (แอดมินใส่เอง)
-  'pending',              // J: invite_status
-  dayjs().format('YYYY-MM-DD HH:mm:ss'), // K: created_at
-]],
+          data.lineUserId,                              // A: line_user_id
+          data.displayName || '',                       // B: display_name
+          data.packageType,                             // C: package
+          expireDate,                                   // D: expire_date
+          'active',                                     // E: status
+          data.memberEmail || '',                       // F: member_email
+          data.slipUrl ? 'มีสลิป ✓' : '',             // G: slip_url
+          dayjs().format('YYYY-MM-DD HH:mm:ss'),       // H: created_at
+          '',                                           // I: house_id
+          'pending',                                    // J: invite_status
+        ]],
       },
     });
     return { success: true, expireDate };
@@ -109,11 +122,10 @@ async function renewMember(lineUserId, packageType, slipUrl, memberEmail) {
     const sheets = await getSheets();
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: 'Members!A:I',
+      range: 'Members!A:J',
     });
     const rows = res.data.values || [];
 
-    // ค้นหาแถวจาก email ที่เลือก ถ้าไม่มีให้ใช้แถวแรกของ LINE ID
     let rowIndex = -1;
     if (memberEmail) {
       rowIndex = rows.findIndex(r => r[0] === lineUserId && r[5] && r[5].toLowerCase() === memberEmail.toLowerCase());
@@ -124,15 +136,41 @@ async function renewMember(lineUserId, packageType, slipUrl, memberEmail) {
     if (rowIndex === -1) return { success: false, error: 'ไม่พบสมาชิก' };
 
     const newExpire = calculateExpireDate(packageType, rows[rowIndex][3]);
+
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
       range: `Members!C${rowIndex + 1}:H${rowIndex + 1}`,
       valueInputOption: 'USER_ENTERED',
-      requestBody: { values: [[packageType, newExpire, 'active', memberEmail || rows[rowIndex][5] || '', slipUrl ? 'มีสลิป ✓' : '', '']] },
+      requestBody: {
+        values: [[
+          packageType,                          // C: package
+          newExpire,                            // D: expire_date
+          'active',                             // E: status
+          memberEmail || rows[rowIndex][5] || '', // F: member_email
+          slipUrl ? 'มีสลิป ✓' : '',           // G: slip_url
+          dayjs().format('YYYY-MM-DD HH:mm:ss'), // H: created_at (updated)
+        ]],
+      },
     });
     return { success: true, expireDate: newExpire };
   } catch (err) {
     console.error('renewMember error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+async function updateInviteStatus(rowIndex, houseId, status) {
+  try {
+    const sheets = await getSheets();
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `Members!I${rowIndex}:J${rowIndex}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[houseId, status]] },
+    });
+    return { success: true };
+  } catch (err) {
+    console.error('updateInviteStatus error:', err.message);
     return { success: false, error: err.message };
   }
 }
@@ -142,7 +180,7 @@ async function getMembersExpiringIn(days) {
     const sheets = await getSheets();
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: 'Members!A:I',
+      range: 'Members!A:J',
     });
     const rows = res.data.values || [];
     const targetDate = dayjs().add(days, 'day').format('YYYY-MM-DD');
@@ -153,10 +191,42 @@ async function getMembersExpiringIn(days) {
   }
 }
 
+async function getHouses() {
+  try {
+    const sheets = await getSheets();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Houses!A:F',
+    });
+    const rows = res.data.values || [];
+    return rows.slice(1).map(row => ({
+      houseId:      row[0],
+      houseEmail:   row[1],
+      housePassword:row[2],
+      expireDate:   row[3],
+      maxMembers:   parseInt(row[4]) || 5,
+      status:       row[5],
+    }));
+  } catch (err) {
+    console.error('getHouses error:', err.message);
+    return [];
+  }
+}
+
 function calculateExpireDate(packageType, fromDate = null) {
   const base = fromDate && dayjs(fromDate).isAfter(dayjs()) ? dayjs(fromDate) : dayjs();
   const months = packageType === '1month' ? 1 : packageType === '2months' ? 2 : 3;
   return base.add(months, 'month').format('YYYY-MM-DD');
 }
 
-module.exports = { getMemberByLineId, getMembersByLineId, checkEmailExists, addMember, renewMember, getMembersExpiringIn };
+module.exports = {
+  getMemberByLineId,
+  getMembersByLineId,
+  getAllMembers,
+  checkEmailExists,
+  addMember,
+  renewMember,
+  updateInviteStatus,
+  getMembersExpiringIn,
+  getHouses,
+};
