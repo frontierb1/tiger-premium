@@ -105,8 +105,11 @@ router.post('/renew', upload.single('slip'), async (req, res) => {
       return res.status(400).json({ error: 'แพ็กเกจไม่ถูกต้อง' });
     }
 
-    const result = await renewMember(lineUserId, packageType,
-      `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`
+    const result = await renewMember(
+      lineUserId,
+      packageType,
+      `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`,
+      memberEmail
     );
 
     if (!result.success) return res.status(500).json({ error: result.error });
