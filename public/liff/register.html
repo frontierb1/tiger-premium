@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>สมัครสมาชิก - Tube Premium</title>
+  <title>สมัครสมาชิก - Tiger Premium</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -11,26 +11,37 @@
     .header { background: linear-gradient(135deg, #ff6b00, #ff9500); padding: 20px; display: flex; align-items: center; gap: 12px; }
     .header a { color: #fff; text-decoration: none; font-size: 20px; }
     .header h1 { font-size: 18px; font-weight: 700; }
-    .section { margin: 20px 16px 0; }
+    .section { margin: 16px 16px 0; }
     .section-title { font-size: 13px; color: #888; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
     .pkg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
     .pkg-card { background: #1a1a1a; border: 2px solid #2a2a2a; border-radius: 12px; padding: 14px 8px; text-align: center; cursor: pointer; transition: all 0.2s; }
     .pkg-card.selected { border-color: #ff6b00; background: #1f1200; }
+    .pkg-card.error-highlight { border-color: #ef4444; }
     .pkg-card .months { font-size: 11px; color: #888; }
     .pkg-card .price { font-size: 20px; font-weight: 700; color: #ff9500; margin: 4px 0; }
     .pkg-card .baht { font-size: 11px; color: #666; }
-    .upload-box { background: #1a1a1a; border: 2px dashed #333; border-radius: 12px; padding: 32px 20px; text-align: center; cursor: pointer; margin-top: 0; }
+    .input-wrap { position: relative; }
+    .input-box { background: #1a1a1a; border: 1.5px solid #2a2a2a; border-radius: 12px; padding: 14px 16px; font-size: 15px; color: #fff; width: 100%; outline: none; transition: border 0.2s; }
+    .input-box:focus { border-color: #ff6b00; }
+    .input-box.input-error { border-color: #ef4444; }
+    .input-box.input-ok { border-color: #22c55e; }
+    .input-box::placeholder { color: #555; }
+    .field-msg { font-size: 12px; margin-top: 6px; padding-left: 4px; }
+    .field-msg.error { color: #ef4444; }
+    .field-msg.success { color: #22c55e; }
+    .upload-box { background: #1a1a1a; border: 2px dashed #333; border-radius: 12px; padding: 32px 20px; text-align: center; cursor: pointer; transition: border 0.2s; }
     .upload-box.has-image { border-color: #22c55e; border-style: solid; }
+    .upload-box.error-highlight { border-color: #ef4444; }
     .upload-box img { max-width: 100%; border-radius: 8px; max-height: 200px; object-fit: contain; }
     .upload-icon { font-size: 36px; margin-bottom: 8px; }
     .upload-text { font-size: 14px; color: #888; }
     input[type=file] { display: none; }
     .btn { width: 100%; background: #ff6b00; color: #fff; border: none; border-radius: 12px; padding: 16px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 16px; transition: opacity 0.2s; }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn.loading { opacity: 0.7; }
-    .alert { border-radius: 10px; padding: 12px 14px; margin-top: 12px; font-size: 14px; }
+    .alert { border-radius: 10px; padding: 12px 14px; margin-top: 12px; font-size: 14px; line-height: 1.5; }
     .alert.error { background: #2a0a0a; border: 1px solid #ef4444; color: #fca5a5; }
     .alert.success { background: #0a2a0a; border: 1px solid #22c55e; color: #86efac; }
+    .section-error { font-size: 12px; color: #ef4444; margin-top: 6px; padding-left: 2px; display: none; }
   </style>
 </head>
 <body>
@@ -41,7 +52,7 @@
 
   <div class="section">
     <div class="section-title">เลือกแพ็กเกจ</div>
-    <div class="pkg-grid">
+    <div class="pkg-grid" id="pkg-grid">
       <div class="pkg-card" data-pkg="1month" onclick="selectPkg(this)">
         <div class="months">1 เดือน</div>
         <div class="price">79</div>
@@ -58,14 +69,25 @@
         <div class="baht">บาท</div>
       </div>
     </div>
+    <div class="section-error" id="pkg-error">⚠️ กรุณาเลือกแพ็กเกจก่อนครับ</div>
   </div>
 
-  <div class="section" style="margin-top:16px">
+  <div class="section">
     <div class="section-title">อีเมลที่ใช้สมัคร YouTube</div>
-    <input type="email" class="input-box" id="member-email" placeholder="example@gmail.com" oninput="checkReady()" style="background:#1a1a1a;border:1.5px solid #2a2a2a;border-radius:12px;padding:14px 16px;font-size:15px;color:#fff;width:100%;outline:none;"/>
+    <div class="input-wrap">
+      <input
+        type="email"
+        class="input-box"
+        id="member-email"
+        placeholder="example@gmail.com"
+        oninput="validateEmail()"
+        onblur="validateEmailStrict()"
+      />
+    </div>
+    <div class="field-msg" id="email-msg"></div>
   </div>
 
-  <div class="section" style="margin-top:16px">
+  <div class="section">
     <div class="section-title">แนบสลิปโอนเงิน</div>
     <div class="upload-box" id="upload-box" onclick="document.getElementById('slip-input').click()">
       <div id="upload-placeholder">
@@ -74,12 +96,13 @@
       </div>
       <img id="slip-preview" style="display:none"/>
     </div>
+    <div class="section-error" id="slip-error">⚠️ กรุณาแนบสลิปโอนเงินครับ</div>
     <input type="file" id="slip-input" accept="image/*" onchange="previewSlip(this)"/>
   </div>
 
   <div class="section">
     <div id="alert-box"></div>
-    <button class="btn" id="submit-btn" onclick="submit()" disabled>ยืนยันสมัครสมาชิก</button>
+    <button class="btn" id="submit-btn" onclick="submit()">ยืนยันสมัครสมาชิก</button>
   </div>
 
   <script>
@@ -95,10 +118,46 @@
     });
 
     function selectPkg(el) {
-      document.querySelectorAll('.pkg-card').forEach(c => c.classList.remove('selected'));
+      document.querySelectorAll('.pkg-card').forEach(c => c.classList.remove('selected', 'error-highlight'));
       el.classList.add('selected');
       selectedPkg = el.dataset.pkg;
-      checkReady();
+      document.getElementById('pkg-error').style.display = 'none';
+    }
+
+    function validateEmail() {
+      const email = document.getElementById('member-email').value.trim();
+      const input = document.getElementById('member-email');
+      const msg = document.getElementById('email-msg');
+
+      if (email === '') {
+        input.className = 'input-box';
+        msg.textContent = '';
+        msg.className = 'field-msg';
+        return false;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        input.className = 'input-box input-error';
+        msg.textContent = '⚠️ รูปแบบอีเมลไม่ถูกต้อง เช่น example@gmail.com';
+        msg.className = 'field-msg error';
+        return false;
+      }
+
+      input.className = 'input-box input-ok';
+      msg.textContent = '✓ อีเมลถูกต้อง';
+      msg.className = 'field-msg success';
+      return true;
+    }
+
+    function validateEmailStrict() {
+      const email = document.getElementById('member-email').value.trim();
+      const msg = document.getElementById('email-msg');
+      if (email === '') {
+        document.getElementById('member-email').className = 'input-box input-error';
+        msg.textContent = '⚠️ กรุณากรอกอีเมลครับ';
+        msg.className = 'field-msg error';
+      }
     }
 
     function previewSlip(input) {
@@ -110,22 +169,42 @@
         document.getElementById('slip-preview').style.display = 'block';
         document.getElementById('upload-placeholder').style.display = 'none';
         document.getElementById('upload-box').classList.add('has-image');
+        document.getElementById('upload-box').classList.remove('error-highlight');
+        document.getElementById('slip-error').style.display = 'none';
       };
       reader.readAsDataURL(slipFile);
-      checkReady();
-    }
-
-    function checkReady() {
-      const email = document.getElementById('member-email').value.trim();
-      const emailValid = email.includes('@') && email.includes('.');
-      document.getElementById('submit-btn').disabled = !(selectedPkg && slipFile && emailValid);
     }
 
     function showAlert(msg, type) {
       document.getElementById('alert-box').innerHTML = `<div class="alert ${type}">${msg}</div>`;
     }
 
+    function validate() {
+      let valid = true;
+
+      if (!selectedPkg) {
+        document.querySelectorAll('.pkg-card').forEach(c => c.classList.add('error-highlight'));
+        document.getElementById('pkg-error').style.display = 'block';
+        valid = false;
+      }
+
+      if (!validateEmail()) {
+        validateEmailStrict();
+        valid = false;
+      }
+
+      if (!slipFile) {
+        document.getElementById('upload-box').classList.add('error-highlight');
+        document.getElementById('slip-error').style.display = 'block';
+        valid = false;
+      }
+
+      return valid;
+    }
+
     async function submit() {
+      if (!validate()) return;
+
       const btn = document.getElementById('submit-btn');
       const email = document.getElementById('member-email').value.trim();
       btn.disabled = true;
@@ -146,7 +225,7 @@
         const data = await res.json();
 
         if (data.success) {
-          showAlert(`✅ สมัครสำเร็จ! หมดอายุ ${data.expireDate}<br>แอดมินจะส่งข้อมูลเข้าบ้านให้ภายใน 24 ชม.`, 'success');
+          showAlert(`✅ สมัครสำเร็จ!<br>📧 ${email}<br>📅 หมดอายุ ${data.expireDate}<br><br>แอดมินจะส่งข้อมูลเข้าบ้านภายใน 24 ชม. ครับ 🐯`, 'success');
           btn.textContent = 'สมัครสำเร็จแล้ว ✅';
         } else {
           showAlert(`❌ ${data.error}`, 'error');
@@ -154,7 +233,7 @@
           btn.textContent = 'ยืนยันสมัครสมาชิก';
         }
       } catch (err) {
-        showAlert('เกิดข้อผิดพลาด กรุณาลองใหม่', 'error');
+        showAlert('เกิดข้อผิดพลาด กรุณาลองใหม่ครับ', 'error');
         btn.disabled = false;
         btn.textContent = 'ยืนยันสมัครสมาชิก';
       }
