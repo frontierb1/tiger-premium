@@ -478,6 +478,35 @@ function toggleBulkPanel() {
 
 let currentAdmin = { username: '', password: '', displayName: '' };
 
+// Auto-restore session จาก localStorage
+(function restoreSession() {
+  try {
+    const saved = localStorage.getItem('tiger_admin');
+    if (saved) {
+      const admin = JSON.parse(saved);
+      if (admin.username && admin.password) {
+        currentAdmin = admin;
+        document.getElementById('login-page').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'block';
+        document.getElementById('admin-display-name').textContent = `👤 ${admin.displayName}`;
+        // verify session ยังใช้ได้ไหม
+        fetch(`${BASE_URL}/api/admin/members`, {
+          headers: { 'x-admin-user': admin.username, 'x-admin-pass': admin.password }
+        }).then(r => {
+          if (r.status === 401) {
+            localStorage.removeItem('tiger_admin');
+            currentAdmin = { username: '', password: '', displayName: '' };
+            document.getElementById('login-page').style.display = 'flex';
+            document.getElementById('dashboard').style.display = 'none';
+          } else {
+            loadAll();
+          }
+        }).catch(() => loadAll());
+      }
+    }
+  } catch(e) {}
+})();
+
 async function login() {
   const username = document.getElementById('admin-user').value.trim();
   const password = document.getElementById('admin-pass').value;
@@ -491,6 +520,7 @@ async function login() {
     const data = await res.json();
     if (data.success) {
       currentAdmin = { username, password, displayName: data.displayName };
+      localStorage.setItem('tiger_admin', JSON.stringify(currentAdmin));
       document.getElementById('login-page').style.display = 'none';
       document.getElementById('dashboard').style.display = 'block';
       document.getElementById('admin-display-name').textContent = `👤 ${data.displayName}`;
