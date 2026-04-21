@@ -1,5 +1,5 @@
 const express = require('express');
-const { getAllMembers, getHouses, updateInviteStatus, getMemberByLineId, addHouse, addHouses, removeMemberFromHouse, moveMemberToHouse, updateMemberEmail, getAdmins, writeLog } = require('./sheets');
+const { getAllMembers, getHouses, updateInviteStatus, getMemberByLineId, addHouse, addHouses, removeMemberFromHouse, moveMemberToHouse, updateMemberEmail, updateMemberExpire, updateHousePassword, getAdmins, writeLog } = require('./sheets');
 const dayjs = require('dayjs');
 const router = express.Router();
 
@@ -136,14 +136,39 @@ router.post('/member/move', authCheck, async (req, res) => {
   }
 });
 
-// แก้ไขอีเมลสมาชิกในบ้าน
+// แก้ไขข้อมูลสมาชิก (อีเมล + วันหมดอายุ)
 router.post('/member/edit', authCheck, async (req, res) => {
   try {
-    const { rowIndex, oldEmail, newEmail } = req.body;
-    if (!rowIndex || !newEmail) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
-    const result = await updateMemberEmail(rowIndex, newEmail);
+    const { rowIndex, oldEmail, newEmail, newExpire } = req.body;
+    if (!rowIndex) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
+    const logs = [];
+    if (newEmail && newEmail !== oldEmail) {
+      const r = await updateMemberEmail(rowIndex, newEmail);
+      if (!r.success) return res.status(500).json({ error: r.error });
+      logs.push(`อีเมล: ${oldEmail} → ${newEmail}`);
+    }
+    if (newExpire) {
+      const r = await updateMemberExpire(rowIndex, newExpire);
+      if (!r.success) return res.status(500).json({ error: r.error });
+      logs.push(`หมดอายุ: ${newExpire}`);
+    }
+    if (logs.length > 0) {
+      await writeLog(req.adminUser, req.adminName, 'แก้ไขสมาชิก', logs.join(', '));
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// แก้ไข password บ้าน
+router.post('/house/password', authCheck, async (req, res) => {
+  try {
+    const { houseId, newPassword } = req.body;
+    if (!houseId || !newPassword) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
+    const result = await updateHousePassword(houseId, newPassword);
     if (!result.success) return res.status(500).json({ error: result.error });
-    await writeLog(req.adminUser, req.adminName, 'แก้ไขอีเมลสมาชิก', `${oldEmail} → ${newEmail}`);
+    await writeLog(req.adminUser, req.adminName, 'แก้ไข password บ้าน', `${houseId}`);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
