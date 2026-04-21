@@ -87,6 +87,8 @@
     .tab-content { display: none; }
     .tab-content.active { display: block; }
     .overflow-warn { color: #ef4444; font-size: 11px; font-weight: 600; margin-left: 4px; }
+    .sortable { cursor: pointer; user-select: none; }
+    .sortable:hover { color: #fff; background: #1a2a40; }
   </style>
 </head>
 <body>
@@ -175,9 +177,9 @@
             <tr>
               <th><input type="checkbox" id="select-all" onchange="toggleSelectAll(this)"/></th>
               <th>อีเมลลูกค้า</th>
-              <th>แพ็กเกจ</th>
-              <th>วันสมัคร</th>
-              <th>หมดอายุ</th>
+              <th class="sortable" onclick="sortTable('pending','package')">แพ็กเกจ <span id="sort-pending-package">↕</span></th>
+              <th class="sortable" onclick="sortTable('pending','created')">วันสมัคร <span id="sort-pending-created">↕</span></th>
+              <th class="sortable" onclick="sortTable('pending','expire')">หมดอายุ <span id="sort-pending-expire">↕</span></th>
               <th>ส่งเชิญทีละคน</th>
             </tr>
           </thead>
@@ -199,9 +201,9 @@
           <thead>
             <tr>
               <th>อีเมลลูกค้า</th>
-              <th>แพ็กเกจ</th>
-              <th>บ้าน</th>
-              <th>หมดอายุ</th>
+              <th class="sortable" onclick="sortTable('inviting','package')">แพ็กเกจ <span id="sort-inviting-package">↕</span></th>
+              <th class="sortable" onclick="sortTable('inviting','house')">บ้าน <span id="sort-inviting-house">↕</span></th>
+              <th class="sortable" onclick="sortTable('inviting','expire')">หมดอายุ <span id="sort-inviting-expire">↕</span></th>
               <th>สถานะ</th>
               <th>การดำเนินการ</th>
             </tr>
@@ -218,7 +220,14 @@
         <div class="table-header"><h3>ใกล้หมดอายุภายใน 7 วัน</h3></div>
         <div id="expiring-loading" class="loading">กำลังโหลด...</div>
         <table id="expiring-table" style="display:none">
-          <thead><tr><th>อีเมลลูกค้า</th><th>แพ็กเกจ</th><th>วันหมดอายุ</th><th>เหลือ</th><th>บ้าน</th><th>ส่งแจ้งเตือน</th></tr></thead>
+          <thead><tr>
+            <th>อีเมลลูกค้า</th>
+            <th class="sortable" onclick="sortTable('expiring','package')">แพ็กเกจ <span id="sort-expiring-package">↕</span></th>
+            <th class="sortable" onclick="sortTable('expiring','expire')">วันหมดอายุ <span id="sort-expiring-expire">↕</span></th>
+            <th class="sortable" onclick="sortTable('expiring','days')">เหลือ <span id="sort-expiring-days">↕</span></th>
+            <th class="sortable" onclick="sortTable('expiring','house')">บ้าน <span id="sort-expiring-house">↕</span></th>
+            <th>ส่งแจ้งเตือน</th>
+          </tr></thead>
           <tbody id="expiring-body"></tbody>
         </table>
         <div id="expiring-empty" class="empty" style="display:none">✅ ไม่มีสมาชิกใกล้หมดอายุ</div>
@@ -234,7 +243,15 @@
         </div>
         <div id="houses-loading" class="loading">กำลังโหลด...</div>
         <table id="houses-table" style="display:none">
-          <thead><tr><th>บ้าน</th><th>อีเมลหัวบ้าน</th><th>วันหมดอายุ</th><th>สมาชิก / ที่นั่ง</th><th>ที่ว่าง</th><th>สถานะ</th><th>Copy เมลสมาชิก</th></tr></thead>
+          <thead><tr>
+            <th class="sortable" onclick="sortHouses('name')" id="th-name">บ้าน <span id="sort-name">↕</span></th>
+            <th>อีเมลหัวบ้าน</th>
+            <th class="sortable" onclick="sortHouses('expire')" id="th-expire">วันหมดอายุ <span id="sort-expire">↕</span></th>
+            <th class="sortable" onclick="sortHouses('members')" id="th-members">สมาชิก / ที่นั่ง <span id="sort-members">↕</span></th>
+            <th class="sortable" onclick="sortHouses('slot')" id="th-slot">ที่ว่าง <span id="sort-slot">↕</span></th>
+            <th class="sortable" onclick="sortHouses('status')" id="th-status">สถานะ <span id="sort-status">↕</span></th>
+            <th>Copy เมลสมาชิก</th>
+          </tr></thead>
           <tbody id="houses-body"></tbody>
         </table>
         <div id="houses-empty" class="empty" style="display:none">ยังไม่มีข้อมูลบ้าน</div>
@@ -250,7 +267,14 @@
         </div>
         <div id="all-loading" class="loading">กำลังโหลด...</div>
         <table id="all-table" style="display:none">
-          <thead><tr><th>อีเมลลูกค้า</th><th>แพ็กเกจ</th><th>วันหมดอายุ</th><th>เหลือ</th><th>บ้าน</th><th>สถานะ</th></tr></thead>
+          <thead><tr>
+            <th>อีเมลลูกค้า</th>
+            <th class="sortable" onclick="sortTable('all','package')">แพ็กเกจ <span id="sort-all-package">↕</span></th>
+            <th class="sortable" onclick="sortTable('all','expire')">วันหมดอายุ <span id="sort-all-expire">↕</span></th>
+            <th class="sortable" onclick="sortTable('all','days')">เหลือ <span id="sort-all-days">↕</span></th>
+            <th class="sortable" onclick="sortTable('all','house')">บ้าน <span id="sort-all-house">↕</span></th>
+            <th class="sortable" onclick="sortTable('all','status')">สถานะ <span id="sort-all-status">↕</span></th>
+          </tr></thead>
           <tbody id="all-body"></tbody>
         </table>
       </div>
@@ -264,6 +288,99 @@ const ADMIN_PASSWORD = 'tiger2026admin';
 let allMembers = [], allHouses = [];
 let selectedRows = new Set();
 let currentMaxSlot = 0;
+
+let tableSortState = {};
+
+function sortTable(tableId, key) {
+  if (!tableSortState[tableId]) tableSortState[tableId] = { key: null, dir: 1 };
+  const state = tableSortState[tableId];
+  if (state.key === key) state.dir *= -1;
+  else { state.key = key; state.dir = 1; }
+
+  // update indicators
+  const prefix = `sort-${tableId}-`;
+  document.querySelectorAll(`[id^="${prefix}"]`).forEach(el => el.textContent = '↕');
+  const ind = document.getElementById(`${prefix}${key}`);
+  if (ind) ind.textContent = state.dir === 1 ? '↑' : '↓';
+
+  // get tbody rows and sort
+  const tbody = document.getElementById(`${tableId}-body`);
+  if (!tbody) return;
+  const rows = [...tbody.querySelectorAll('tr')];
+  const pkgOrder = { '1month': 1, '2months': 2, '3months': 3 };
+
+  rows.sort((a, b) => {
+    const getCellText = (row, col) => row.querySelectorAll('td')[col]?.textContent.trim() || '';
+    let valA = '', valB = '';
+
+    if (key === 'package') {
+      const colIdx = tableId === 'pending' ? 2 : 1;
+      valA = pkgOrder[getCellText(a, colIdx).replace(' เดือน','month').replace('1 เดือน','1month').replace('2 เดือน','2months').replace('3 เดือน','3months')] || 0;
+      valB = pkgOrder[getCellText(b, colIdx).replace(' เดือน','month').replace('1 เดือน','1month').replace('2 เดือน','2months').replace('3 เดือน','3months')] || 0;
+      return state.dir * (valA - valB);
+    }
+    if (key === 'created') { valA = getCellText(a, 3); valB = getCellText(b, 3); return state.dir * valA.localeCompare(valB); }
+    if (key === 'expire') {
+      const col = tableId === 'pending' ? 4 : tableId === 'inviting' ? 3 : tableId === 'expiring' ? 2 : 2;
+      valA = getCellText(a, col); valB = getCellText(b, col);
+      return state.dir * valA.localeCompare(valB);
+    }
+    if (key === 'days') {
+      const col = tableId === 'expiring' ? 3 : 3;
+      valA = parseInt(getCellText(a, col)) || 0;
+      valB = parseInt(getCellText(b, col)) || 0;
+      return state.dir * (valA - valB);
+    }
+    if (key === 'house') {
+      const col = tableId === 'inviting' ? 2 : tableId === 'expiring' ? 4 : 4;
+      valA = getCellText(a, col); valB = getCellText(b, col);
+      return state.dir * valA.localeCompare(valB);
+    }
+    if (key === 'status') { valA = getCellText(a, 5); valB = getCellText(b, 5); return state.dir * valA.localeCompare(valB); }
+    return 0;
+  });
+
+  rows.forEach(r => tbody.appendChild(r));
+}
+
+let houseSortKey = 'overflow';
+let houseSortDir = 1;
+
+function sortHouses(key) {
+  if (houseSortKey === key) houseSortDir *= -1;
+  else { houseSortKey = key; houseSortDir = 1; }
+  // update header indicators
+  ['name','expire','members','slot','status'].forEach(k => {
+    const el = document.getElementById(`sort-${k}`);
+    if (el) el.textContent = k === key ? (houseSortDir === 1 ? '↑' : '↓') : '↕';
+  });
+  renderHouses();
+}
+
+function getSortedHouses() {
+  const arr = [...allHouses];
+  arr.sort((a, b) => {
+    const usedA = getHouseUsed(a.houseId), usedB = getHouseUsed(b.houseId);
+    const slotA = getHouseSlot(a.houseId), slotB = getHouseSlot(b.houseId);
+    const overA = usedA > a.maxMembers, overB = usedB > b.maxMembers;
+
+    if (houseSortKey === 'overflow') {
+      // default: overflow → ว่างน้อย→มาก → เต็ม
+      if (overA !== overB) return overB ? 1 : -1;
+      if (slotA === 0 && slotB === 0) return a.houseId.localeCompare(b.houseId);
+      if (slotA === 0) return 1;
+      if (slotB === 0) return -1;
+      return slotA - slotB;
+    }
+    if (houseSortKey === 'name') return houseSortDir * a.houseId.localeCompare(b.houseId);
+    if (houseSortKey === 'expire') return houseSortDir * a.expireDate.localeCompare(b.expireDate);
+    if (houseSortKey === 'members') return houseSortDir * (usedA - usedB);
+    if (houseSortKey === 'slot') return houseSortDir * (slotA - slotB);
+    if (houseSortKey === 'status') return houseSortDir * a.status.localeCompare(b.status);
+    return 0;
+  });
+  return arr;
+}
 
 function toggleBulkPanel() {
   const panel = document.getElementById('bulk-panel');
@@ -535,9 +652,7 @@ function renderHouses() {
   }
   document.getElementById('houses-table').style.display = 'table';
 
-  // เรียงบ้านว่างขึ้นก่อน
-  const sorted = [...allHouses].sort((a,b) => getHouseSlot(b.houseId) - getHouseSlot(a.houseId));
-
+  const sorted = getSortedHouses();
   document.getElementById('houses-body').innerHTML = sorted.map(h => {
     const members = allMembers.filter(m => m.houseId === h.houseId && m.inviteStatus !== 'invited');
     const used = getHouseUsed(h.houseId);
