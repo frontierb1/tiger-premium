@@ -134,8 +134,19 @@
 
     <!-- Tab: รอเชิญ -->
     <div id="tab-pending" class="tab-content active">
-      <div class="bulk-panel">
-        <div class="bulk-panel-title">🏠 ส่งเชิญหมู่ — เลือกบ้านแล้วติ๊กสมาชิก</div>
+      <!-- Action bar หลัก -->
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;background:#0d1f3c;border:1px solid #1e3a5f;border-radius:10px;padding:12px 14px;">
+        <span style="font-size:13px;color:#85B7EB">เลือกแล้ว: <strong id="selected-count-text" style="color:#fff">0</strong> คน</span>
+        <button class="btn-sm btn-gray" id="btn-copy-selected" onclick="copySelectedEmails()" disabled>📋 Copy เมล</button>
+        <button class="btn-sm btn-gray" onclick="clearSelection()">ยกเลิก</button>
+        <div style="margin-left:auto">
+          <button class="btn-sm btn-gray" onclick="toggleBulkPanel()" id="btn-toggle-bulk">🏠 เลือกบ้านแล้วส่งหมู่</button>
+        </div>
+      </div>
+
+      <!-- Bulk panel ซ่อนไว้ก่อน -->
+      <div class="bulk-panel" id="bulk-panel" style="display:none;margin-bottom:10px">
+        <div class="bulk-panel-title">🏠 ส่งเชิญหมู่ — เลือกบ้านก่อน จากนั้นติ๊กสมาชิก</div>
         <div class="bulk-row">
           <label>เลือกบ้าน:</label>
           <select class="house-sel-main" id="main-house-select" onchange="onHouseChange()">
@@ -145,13 +156,11 @@
         </div>
         <div class="bulk-row" id="bulk-hint" style="display:none">
           <label>เลือกแล้ว:</label>
-          <span id="selected-count-text" style="font-size:13px;font-weight:700;color:#fff">0</span>
+          <span id="bulk-selected-count" style="font-size:13px;font-weight:700;color:#fff">0</span>
           <span id="max-slot-text" style="font-size:11px;color:#85B7EB"></span>
         </div>
         <div class="bulk-actions">
-          <button class="btn-sm btn-gray" id="btn-copy-selected" onclick="copySelectedEmails()" disabled>📋 Copy เมลที่เลือก</button>
           <button class="btn-sm btn-blue" id="btn-bulk-invite" onclick="bulkInvite()" disabled>📨 ส่งเชิญทั้งที่เลือก</button>
-          <button class="btn-sm btn-gray" onclick="clearSelection()">ยกเลิก</button>
         </div>
       </div>
 
@@ -256,6 +265,21 @@ let allMembers = [], allHouses = [];
 let selectedRows = new Set();
 let currentMaxSlot = 0;
 
+function toggleBulkPanel() {
+  const panel = document.getElementById('bulk-panel');
+  const btn = document.getElementById('btn-toggle-bulk');
+  const isHidden = panel.style.display === 'none';
+  panel.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '🔼 ซ่อนการส่งเชิญหมู่' : '🏠 เลือกบ้านแล้วส่งหมู่';
+  if (!isHidden) {
+    document.getElementById('main-house-select').value = '';
+    document.getElementById('slot-info').textContent = '-';
+    document.getElementById('slot-info').className = 'slot-badge';
+    document.getElementById('bulk-hint').style.display = 'none';
+    currentMaxSlot = 0;
+  }
+}
+
 function login() {
   const pass = document.getElementById('admin-pass').value;
   if (pass === ADMIN_PASSWORD) {
@@ -300,11 +324,11 @@ function pkgLabel(p) { return p === '1month' ? '1 เดือน' : p === '2mon
 
 function getHouseUsed(houseId) {
   const h = allHouses.find(x => x.houseId === houseId);
-  return h ? h.currentMembers : 0;
+  return h ? (h.currentMembers || 0) : 0;
 }
 function getHouseSlot(houseId) {
   const h = allHouses.find(x => x.houseId === houseId);
-  return h ? Math.max(0, h.slotsLeft) : 0;
+  return h ? Math.max(0, h.slotsLeft !== undefined ? h.slotsLeft : (h.maxMembers - getHouseUsed(houseId))) : 0;
 }
 
 function checkOverflow() {
@@ -373,7 +397,6 @@ function populateHouseSelect() {
 
 function onHouseChange() {
   const houseId = document.getElementById('main-house-select').value;
-  clearSelection();
   if (!houseId) {
     document.getElementById('slot-info').textContent = '-';
     document.getElementById('slot-info').className = 'slot-badge';
@@ -527,14 +550,19 @@ function renderAllMembers(members) {
 
 // Checkbox logic
 function onCheckChange(el) {
+  const bulkVisible = document.getElementById('bulk-panel').style.display !== 'none';
   const houseId = document.getElementById('main-house-select').value;
-  if (!houseId) { el.checked = false; showNotif('กรุณาเลือกบ้านในกล่องด้านบนก่อนครับ', 'info'); return; }
-  if (el.checked) {
-    if (selectedRows.size >= currentMaxSlot) {
+
+  if (bulkVisible && houseId) {
+    // โหมดหมู่ + เลือกบ้านแล้ว → เช็คที่ว่าง
+    if (el.checked && selectedRows.size >= currentMaxSlot) {
       el.checked = false;
       showNotif(`บ้านนี้ว่างแค่ ${currentMaxSlot} ที่ครับ`, 'info');
       return;
     }
+  }
+
+  if (el.checked) {
     selectedRows.add(el.dataset.row);
   } else {
     selectedRows.delete(el.dataset.row);
@@ -544,15 +572,13 @@ function onCheckChange(el) {
 }
 
 function toggleSelectAll(el) {
-  const houseId = document.getElementById('main-house-select').value;
-  if (!houseId) { el.checked = false; showNotif('กรุณาเลือกบ้านก่อนครับ', 'info'); return; }
   selectedRows.clear();
   document.querySelectorAll('#pending-body tr').forEach(r => r.classList.remove('selected-row'));
   if (el.checked) {
-    let count = 0;
     document.querySelectorAll('.row-check').forEach(c => {
-      if (count < currentMaxSlot) { c.checked = true; selectedRows.add(c.dataset.row); document.getElementById('row-'+c.dataset.row).classList.add('selected-row'); count++; }
-      else c.checked = false;
+      c.checked = true;
+      selectedRows.add(c.dataset.row);
+      document.getElementById('row-'+c.dataset.row).classList.add('selected-row');
     });
   } else {
     document.querySelectorAll('.row-check').forEach(c => c.checked = false);
@@ -573,8 +599,27 @@ function updateBulkActions() {
   const count = selectedRows.size;
   const hasHouse = !!document.getElementById('main-house-select').value;
   document.getElementById('selected-count-text').textContent = count;
+  const bulkCount = document.getElementById('bulk-selected-count');
+  if (bulkCount) bulkCount.textContent = count;
   document.getElementById('btn-copy-selected').disabled = count === 0;
   document.getElementById('btn-bulk-invite').disabled = count === 0 || !hasHouse;
+
+  // ถ้าเลือกบ้านแล้วและมีคนเกิน slot → ตัดออกอัตโนมัติ
+  if (hasHouse && currentMaxSlot > 0 && count > currentMaxSlot) {
+    let removed = 0;
+    const toRemove = [...selectedRows].slice(currentMaxSlot);
+    toRemove.forEach(row => {
+      selectedRows.delete(row);
+      const cb = document.querySelector(`.row-check[data-row="${row}"]`);
+      if (cb) cb.checked = false;
+      const tr = document.getElementById('row-' + row);
+      if (tr) tr.classList.remove('selected-row');
+      removed++;
+    });
+    if (removed > 0) showNotif(`ตัด ${removed} คนออก เพราะเกินที่ว่างของบ้านครับ`, 'info');
+    document.getElementById('selected-count-text').textContent = selectedRows.size;
+    if (bulkCount) bulkCount.textContent = selectedRows.size;
+  }
 }
 
 function copySelectedEmails() {
