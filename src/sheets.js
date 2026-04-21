@@ -206,6 +206,8 @@ async function getHouses() {
       expireDate:   row[3],
       maxMembers:   parseInt(row[4]) || 5,
       status:       row[5],
+      currentMembers: parseInt(row[6]) || 0,
+      slotsLeft:      parseInt(row[7]) || 0,
     }));
   } catch (err) {
     console.error('getHouses error:', err.message);
