@@ -476,7 +476,7 @@ function toggleBulkPanel() {
   }
 }
 
-let currentAdmin = { username: '', displayName: '' };
+let currentAdmin = { username: '', password: '', displayName: '' };
 
 async function login() {
   const username = document.getElementById('admin-user').value.trim();
@@ -490,7 +490,7 @@ async function login() {
     });
     const data = await res.json();
     if (data.success) {
-      currentAdmin = { username, displayName: data.displayName };
+      currentAdmin = { username, password, displayName: data.displayName };
       document.getElementById('login-page').style.display = 'none';
       document.getElementById('dashboard').style.display = 'block';
       document.getElementById('admin-display-name').textContent = `👤 ${data.displayName}`;
@@ -509,6 +509,7 @@ function logout() {
   document.getElementById('dashboard').style.display = 'none';
   document.getElementById('admin-user').value = '';
   document.getElementById('admin-pass').value = '';
+  currentAdmin.password = '';
 }
 function switchTab(tab, el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -520,8 +521,8 @@ function switchTab(tab, el) {
 async function loadAll() {
   try {
     const [mRes, hRes] = await Promise.all([
-      fetch(`${BASE_URL}/api/admin/members`, { headers: { 'x-admin-user': currentAdmin.username, 'x-admin-pass': document.getElementById('admin-pass')?.value || '' } }),
-      fetch(`${BASE_URL}/api/admin/houses`, { headers: { 'x-admin-user': currentAdmin.username, 'x-admin-pass': document.getElementById('admin-pass')?.value || '' } }),
+      fetch(`${BASE_URL}/api/admin/members`, { headers: { 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password } }),
+      fetch(`${BASE_URL}/api/admin/houses`, { headers: { 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password } }),
     ]);
     allMembers = (await mRes.json()).members || [];
     allHouses = (await hRes.json()).houses || [];
@@ -892,7 +893,7 @@ async function bulkInvite() {
     try {
       const res = await fetch(`${BASE_URL}/api/admin/inviting`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': document.getElementById('admin-pass')?.value || '' },
+        headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password },
         body: JSON.stringify({ rowIndex: parseInt(c.dataset.row), lineUserId: c.dataset.uid, houseId }),
       });
       if ((await res.json()).success) success++;
@@ -914,7 +915,7 @@ async function singleInvite(rowIndex, lineUserId, email, btn) {
   try {
     const res = await fetch(`${BASE_URL}/api/admin/inviting`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': document.getElementById('admin-pass')?.value || '' },
+      headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password },
       body: JSON.stringify({ rowIndex, lineUserId, houseId }),
     });
     const data = await res.json();
@@ -928,7 +929,7 @@ async function markInvited(rowIndex, lineUserId, email, btn) {
   try {
     const res = await fetch(`${BASE_URL}/api/admin/invite`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': document.getElementById('admin-pass')?.value || '' },
+      headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password },
       body: JSON.stringify({ rowIndex, lineUserId }),
     });
     const data = await res.json();
@@ -942,7 +943,7 @@ async function sendReminder(lineUserId, email, btn) {
   try {
     const res = await fetch(`${BASE_URL}/api/admin/remind`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': document.getElementById('admin-pass')?.value || '' },
+      headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password },
       body: JSON.stringify({ lineUserId }),
     });
     const data = await res.json();
@@ -990,7 +991,7 @@ async function addSingleHouse() {
   try {
     const res = await fetch(`${BASE_URL}/api/admin/house`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': document.getElementById('admin-pass')?.value || '' },
+      headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password },
       body: JSON.stringify({ houseId, houseEmail, housePassword, expireDate, maxMembers }),
     });
     const data = await res.json();
@@ -1031,7 +1032,7 @@ async function addBulkHouses() {
   try {
     const res = await fetch(`${BASE_URL}/api/admin/houses/bulk`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': document.getElementById('admin-pass')?.value || '' },
+      headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password },
       body: JSON.stringify({ text, expireDate, maxMembers }),
     });
     const data = await res.json();
@@ -1051,7 +1052,7 @@ async function addBulkHouses() {
 async function loadLogs() {
   try {
     const res = await fetch(`${BASE_URL}/api/admin/logs`, {
-      headers: { 'x-admin-user': currentAdmin.username, 'x-admin-pass': document.getElementById('admin-pass')?.value || '' },
+      headers: { 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password },
     });
     const data = await res.json();
     const logs = data.logs || [];
