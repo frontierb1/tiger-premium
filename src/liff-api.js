@@ -213,7 +213,7 @@ router.post('/renew', upload.single('slip'), async (req, res) => {
     if (!result.success) return res.status(500).json({ error: result.error });
 
     await sendLineMessage(lineUserId,
-      `✅ ต่ออายุสำเร็จ!\n\n📦 แพ็กเกจ: ${PACKAGES[packageType].label}\n📧 อีเมล: ${memberEmail || ''}\n💰 ยอดโอน: ${slipResult.amount} บาท\n💳 โอนจาก: ${slipResult.senderName}\n🏦 ธนาคารรับ: ${slipResult.receiverBank}\n📅 หมดอายุใหม่: ${result.expireDate}\n\nขอบคุณที่ใช้บริการ Tiger Premium 🐯`
+      `✅ ต่ออายุสำเร็จ!\n\n📦 แพ็กเกจ: ${PACKAGES[packageType].label}\n📧 อีเมล: ${memberEmail || ''}\n💰 ยอดโอน: ${slipResult.amount} บาท\n📅 หมดอายุใหม่: ${result.expireDate}\n\nขอบคุณที่ใช้บริการ  Premium 🐯`
     );
 
     res.json({ success: true, expireDate: result.expireDate });
