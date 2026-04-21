@@ -276,12 +276,12 @@ async function addHouses(housesArray) {
 async function removeMemberFromHouse(rowIndex) {
   try {
     const sheets = await getSheets();
-    // รีเซ็ต house_id (I) = '' และ invite_status (J) = 'pending'
+    // house_id (I) = '' และ invite_status (J) = 'removed'
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
       range: `Members!I${rowIndex}:J${rowIndex}`,
       valueInputOption: 'USER_ENTERED',
-      requestBody: { values: [['', 'pending']] },
+      requestBody: { values: [['', 'removed']] },
     });
     return { success: true };
   } catch (err) {
@@ -302,6 +302,22 @@ async function moveMemberToHouse(rowIndex, houseId) {
     return { success: true };
   } catch (err) {
     console.error('moveMemberToHouse error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+async function updateMemberEmail(rowIndex, newEmail) {
+  try {
+    const sheets = await getSheets();
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `Members!F${rowIndex}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[newEmail]] },
+    });
+    return { success: true };
+  } catch (err) {
+    console.error('updateMemberEmail error:', err.message);
     return { success: false, error: err.message };
   }
 }
@@ -383,6 +399,7 @@ module.exports = {
   addHouses,
   removeMemberFromHouse,
   moveMemberToHouse,
+  updateMemberEmail,
   getAdmins,
   writeLog,
   getLogs,
