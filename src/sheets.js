@@ -322,6 +322,45 @@ async function updateMemberEmail(rowIndex, newEmail) {
   }
 }
 
+async function updateMemberExpire(rowIndex, newExpire) {
+  try {
+    const sheets = await getSheets();
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `Members!D${rowIndex}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[newExpire]] },
+    });
+    return { success: true };
+  } catch (err) {
+    console.error('updateMemberExpire error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+async function updateHousePassword(houseId, newPassword) {
+  try {
+    const sheets = await getSheets();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Houses!A:A',
+    });
+    const rows = res.data.values || [];
+    const rowIndex = rows.findIndex(r => r[0] === houseId);
+    if (rowIndex === -1) return { success: false, error: 'ไม่พบบ้าน' };
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `Houses!C${rowIndex + 1}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[newPassword]] },
+    });
+    return { success: true };
+  } catch (err) {
+    console.error('updateHousePassword error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
 // ===== Admins =====
 async function getAdmins() {
   try {
@@ -400,6 +439,8 @@ module.exports = {
   removeMemberFromHouse,
   moveMemberToHouse,
   updateMemberEmail,
+  updateMemberExpire,
+  updateHousePassword,
   getAdmins,
   writeLog,
   getLogs,
