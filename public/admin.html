@@ -271,10 +271,6 @@
           <div class="table-header"><h3>➕ เพิ่มบ้านเดียว</h3></div>
           <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
             <div>
-              <div style="font-size:11px;color:#85B7EB;margin-bottom:4px">House ID (ไม่ใส่ระบบ auto)</div>
-              <input class="search-bar" id="single-house-id" placeholder="house_05" style="width:100%"/>
-            </div>
-            <div>
               <div style="font-size:11px;color:#85B7EB;margin-bottom:4px">อีเมลหัวบ้าน *</div>
               <input class="search-bar" id="single-house-email" placeholder="house@gmail.com" style="width:100%"/>
             </div>
@@ -1006,7 +1002,7 @@ function showNotif(msg, type = 'success') {
 
 // ===== เพิ่มบ้านเดียว =====
 async function addSingleHouse() {
-  const houseId = document.getElementById('single-house-id').value.trim();
+  const houseId = '';
   const houseEmail = document.getElementById('single-house-email').value.trim();
   const housePassword = document.getElementById('single-house-pass').value.trim();
   let expireDate = document.getElementById('single-house-expire').value;
