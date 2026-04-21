@@ -64,6 +64,7 @@
     .badge.pending { background: #2a1a00; color: #f59e0b; border: 1px solid #f59e0b; }
     .badge.inviting { background: #0a1a2a; color: #378ADD; border: 1px solid #378ADD; }
     .badge.invited { background: #0a2a0a; color: #22c55e; border: 1px solid #22c55e; }
+    .badge.removed { background: #1a1a1a; color: #555; border: 1px solid #333; }
     .badge.red { background: #2a0a0a; color: #ef4444; border: 1px solid #ef4444; }
     .badge.yellow { background: #2a1a00; color: #f59e0b; border: 1px solid #f59e0b; }
     .badge.green { background: #0a2a0a; color: #22c55e; border: 1px solid #22c55e; }
@@ -170,7 +171,7 @@
         <div class="bulk-row">
           <label>เลือกบ้าน:</label>
           <select class="house-sel-main" id="main-house-select" onchange="onHouseChange()">
-            <option value="">-- เลือกบ้าน (เฉพาะที่ว่าง) --</option>
+            <option value="">-- เลือกบ้าน --</option>
           </select>
           <span class="slot-badge" id="slot-info">-</span>
         </div>
@@ -266,7 +267,6 @@
             <th class="sortable" onclick="sortHouses('name')" id="th-name">บ้าน <span id="sort-name">↕</span></th>
             <th>อีเมลหัวบ้าน</th>
             <th class="sortable" onclick="sortHouses('expire')" id="th-expire">วันหมดอายุ <span id="sort-expire">↕</span></th>
-            <th class="sortable" onclick="sortHouses('members')" id="th-members">สมาชิก / ที่นั่ง <span id="sort-members">↕</span></th>
             <th class="sortable" onclick="sortHouses('slot')" id="th-slot">ที่ว่าง <span id="sort-slot">↕</span></th>
             <th class="sortable" onclick="sortHouses('status')" id="th-status">สถานะ <span id="sort-status">↕</span></th>
             <th>Copy เมลสมาชิก</th>
@@ -383,18 +383,18 @@
   </div>
 </div>
 
-<!-- Move Member Modal -->
-<div id="modal-move" class="modal-overlay" style="display:none">
+<!-- Edit Member Modal -->
+<div id="modal-edit" class="modal-overlay" style="display:none">
   <div class="modal-box">
-    <div class="modal-icon">🏠</div>
-    <div class="modal-title">ย้ายสมาชิกไปบ้านใหม่</div>
-    <div class="modal-desc" id="move-modal-email"></div>
-    <select class="modal-select" id="move-house-select">
-      <option value="">-- เลือกบ้านปลายทาง --</option>
-    </select>
+    <div class="modal-icon">✏️</div>
+    <div class="modal-title">แก้ไขอีเมลสมาชิก</div>
+    <div class="modal-desc" id="edit-modal-house" style="margin-bottom:10px"></div>
+    <div style="font-size:11px;color:#85B7EB;margin-bottom:6px">อีเมลใหม่</div>
+    <input class="modal-select" type="email" id="edit-email-input" placeholder="newemail@gmail.com" style="margin-bottom:14px"/>
+    <div id="edit-modal-error" style="color:#ef4444;font-size:12px;margin-bottom:10px;display:none"></div>
     <div class="modal-actions">
-      <button class="modal-btn-cancel" onclick="document.getElementById('modal-move').style.display='none'">ยกเลิก</button>
-      <button class="modal-btn-primary" onclick="confirmMove()">ย้ายเลย 🚀</button>
+      <button class="modal-btn-cancel" onclick="document.getElementById('modal-edit').style.display='none'">ยกเลิก</button>
+      <button class="modal-btn-primary" onclick="confirmEdit()">บันทึก ✅</button>
     </div>
   </div>
 </div>
@@ -465,8 +465,7 @@ let houseSortDir = 1;
 function sortHouses(key) {
   if (houseSortKey === key) houseSortDir *= -1;
   else { houseSortKey = key; houseSortDir = 1; }
-  // update header indicators
-  ['name','expire','members','slot','status'].forEach(k => {
+  ['name','expire','slot','status'].forEach(k => {
     const el = document.getElementById(`sort-${k}`);
     if (el) el.textContent = k === key ? (houseSortDir === 1 ? '↑' : '↓') : '↕';
   });
@@ -638,10 +637,15 @@ function checkOverflow() {
 function renderAll() {
   const pending = allMembers.filter(m => m.inviteStatus === 'pending');
   const inviting = allMembers.filter(m => m.inviteStatus === 'inviting');
-  const expiring = allMembers.filter(m => { const d = daysLeft(m.expireDate); return d >= 0 && d <= 7 && m.status === 'active'; });
-  const visible = allMembers.filter(m => m.inviteStatus !== 'invited');
+  const expiring = allMembers.filter(m => {
+    if (m.inviteStatus === 'removed') return false;
+    const d = daysLeft(m.expireDate);
+    return d >= 0 && d <= 7 && m.status === 'active';
+  });
+  // visible = ทุกคนยกเว้น invited และ removed
+  const visible = allMembers.filter(m => m.inviteStatus !== 'invited' && m.inviteStatus !== 'removed');
 
-  document.getElementById('stat-total').textContent = allMembers.length;
+  document.getElementById('stat-total').textContent = allMembers.filter(m => m.inviteStatus !== 'removed').length;
   document.getElementById('stat-pending').textContent = pending.length;
   document.getElementById('stat-inviting').textContent = inviting.length;
   document.getElementById('stat-expiring').textContent = expiring.length;
@@ -660,21 +664,16 @@ function renderAll() {
 function populateHouseSelect() {
   const sel = document.getElementById('main-house-select');
   const cur = sel.value;
-  sel.innerHTML = '<option value="">-- เลือกบ้าน (เฉพาะที่ว่าง) --</option>';
+  sel.innerHTML = '<option value="">-- เลือกบ้าน --</option>';
 
-  // เรียงบ้านที่ว่างขึ้นก่อน
-  const sorted = [...allHouses].sort((a, b) => {
-    const slotA = getHouseSlot(a.houseId);
-    const slotB = getHouseSlot(b.houseId);
-    return slotB - slotA;
-  });
+  const sorted = [...allHouses].sort((a, b) => getHouseSlot(b.houseId) - getHouseSlot(a.houseId));
 
   sorted.forEach(h => {
     const slot = getHouseSlot(h.houseId);
-    if (slot <= 0) return; // บ้านเต็มไม่แสดง
+    if (slot <= 0) return;
     const opt = document.createElement('option');
     opt.value = h.houseId;
-    opt.textContent = `${h.houseId} — ว่าง ${slot}/${h.maxMembers} ที่`;
+    opt.textContent = `${h.houseId}  —  ว่าง ${slot} ที่`;
     sel.appendChild(opt);
   });
 
@@ -683,20 +682,19 @@ function populateHouseSelect() {
 
 function refreshHouseDropdown() {
   const count = selectedRows.size;
-  const minSlot = count === 0 ? 5 : count; // ไม่ติ๊ก = ต้องว่าง ≥ 5, ติ๊ก N = ต้องว่าง ≥ N
+  const minSlot = count === 0 ? 5 : count;
   const sel = document.getElementById('main-house-select');
   const cur = sel.value;
-  sel.innerHTML = `<option value="">-- เลือกบ้าน (ว่าง ≥ ${minSlot}) --</option>`;
+  sel.innerHTML = `<option value="">-- เลือกบ้าน (ว่าง ≥ ${minSlot} ที่) --</option>`;
   const sorted = [...allHouses].sort((a,b) => getHouseSlot(b.houseId) - getHouseSlot(a.houseId));
   sorted.forEach(h => {
     const slot = getHouseSlot(h.houseId);
     if (slot < minSlot) return;
     const opt = document.createElement('option');
     opt.value = h.houseId;
-    opt.textContent = `${h.houseId} — ว่าง ${slot}/${h.maxMembers} ที่`;
+    opt.textContent = `${h.houseId}  —  ว่าง ${slot} ที่`;
     sel.appendChild(opt);
   });
-  // restore หรือ reset
   if (cur) {
     const found = [...sel.options].find(o => o.value === cur);
     if (found) { sel.value = cur; }
@@ -749,7 +747,7 @@ function renderPending(members) {
   const houseOpts = allHouses
     .filter(h => getHouseSlot(h.houseId) > 0)
     .sort((a,b) => getHouseSlot(b.houseId) - getHouseSlot(a.houseId))
-    .map(h => `<option value="${h.houseId}">${h.houseId} (ว่าง ${getHouseSlot(h.houseId)})</option>`)
+    .map(h => `<option value="${h.houseId}">${h.houseId}  —  ว่าง ${getHouseSlot(h.houseId)} ที่</option>`)
     .join('');
 
   document.getElementById('pending-body').innerHTML = members.map(m => `
@@ -836,8 +834,8 @@ function renderHouses() {
       `<button class="btn-sm btn-gray" style="margin:2px" onclick="event.stopPropagation();copyText('${chunk.join(', ')}',this)">Copy ${i*5+1}-${Math.min(i*5+5,emails.length)}</button>`
     ).join('');
 
-    const statusMap = { pending: 'รอเชิญ', inviting: 'กำลังเชิญ', invited: 'เชิญแล้ว' };
-    const badgeMap = { pending: 'pending', inviting: 'inviting', invited: 'invited' };
+    const statusMap = { pending: 'รอเชิญ', inviting: 'กำลังเชิญ', invited: 'เชิญแล้ว', removed: 'ถูกลบ' };
+    const badgeMap = { pending: 'pending', inviting: 'inviting', invited: 'invited', removed: 'removed' };
 
     const memberRows = houseMembers.length > 0 ? houseMembers.map(m => {
       const dl = daysLeft(m.expireDate);
@@ -848,7 +846,7 @@ function renderHouses() {
         <td style="font-size:12px">${pkgLabel(m.package)}</td>
         <td><span class="badge ${badgeMap[m.inviteStatus]||'pending'}">${statusMap[m.inviteStatus]||'รอเชิญ'}</span></td>
         <td colspan="2" style="display:flex;gap:6px;flex-wrap:wrap;padding:6px 12px">
-          <button class="btn-sm btn-gray" style="font-size:11px" onclick="event.stopPropagation();openMoveModal(${m.rowIndex},'${m.lineUserId}','${m.houseEmail}')">✏️ ย้ายบ้าน</button>
+          <button class="btn-sm btn-gray" style="font-size:11px" onclick="event.stopPropagation();openEditModal(${m.rowIndex},'${m.lineUserId}','${m.houseEmail}','${h.houseId}')">✏️ แก้ไข</button>
           <button class="btn-sm" style="font-size:11px;background:#2a0a0a;color:#ef4444;border:1px solid #ef4444" onclick="event.stopPropagation();removeMember(${m.rowIndex},'${m.lineUserId}','${m.houseEmail}',this)">🗑 ลบ</button>
         </td>
       </tr>`;
@@ -860,13 +858,12 @@ function renderHouses() {
         <td><strong>${h.houseId}</strong>${isOverflow ? '<span class="overflow-warn">⚠️ เกิน!</span>' : ''}</td>
         <td>${h.houseEmail}</td>
         <td>${h.expireDate} ${daysBadge(days)}</td>
-        <td>${used} / ${h.maxMembers}${isOverflow ? ' <span class="overflow-warn">เกิน!</span>' : ''}</td>
-        <td><span class="badge ${slot > 0 ? 'green' : 'red'}">${slot > 0 ? 'ว่าง ' + slot : 'เต็ม'}</span></td>
+        <td><span class="badge ${slot > 0 ? 'green' : 'red'}">${slot > 0 ? 'ว่าง ' + slot + ' ที่' : 'เต็ม'}${isOverflow ? ' <span class="overflow-warn">เกิน!</span>' : ''}</span></td>
         <td><span class="badge ${h.status === 'active' ? 'invited' : 'red'}">${h.status}</span></td>
         <td onclick="event.stopPropagation()">${copyBtns || '-'}</td>
       </tr>
       <tr id="members-${h.houseId}" style="display:none">
-        <td colspan="8" style="padding:0">
+        <td colspan="7" style="padding:0">
           <table style="width:100%;border-collapse:collapse">${memberRows}</table>
         </td>
       </tr>`;
@@ -876,8 +873,8 @@ function renderHouses() {
 function renderAllMembers(members) {
   document.getElementById('all-loading').style.display = 'none';
   document.getElementById('all-table').style.display = 'table';
-  const statusMap = { pending: 'รอเชิญ', inviting: 'กำลังเชิญ', invited: 'เชิญแล้ว' };
-  const badgeMap = { pending: 'pending', inviting: 'inviting', invited: 'invited' };
+  const statusMap = { pending: 'รอเชิญ', inviting: 'กำลังเชิญ', invited: 'เชิญแล้ว', removed: 'ถูกลบ' };
+  const badgeMap = { pending: 'pending', inviting: 'inviting', invited: 'invited', removed: 'removed' };
   document.getElementById('all-body').innerHTML = members.map(m => `
     <tr>
       <td>${m.houseEmail || '-'}</td>
@@ -1298,39 +1295,37 @@ function modalConfirm() {
   _modalCallback = null;
 }
 
-// ===== Move Member =====
-let _moveData = null;
+// ===== Edit Member Email =====
+let _editData = null;
 
-function openMoveModal(rowIndex, lineUserId, email) {
-  _moveData = { rowIndex, lineUserId, email };
-  document.getElementById('move-modal-email').textContent = `📧 ${email}`;
-  const sel = document.getElementById('move-house-select');
-  sel.innerHTML = '<option value="">-- เลือกบ้านปลายทาง --</option>';
-  allHouses
-    .filter(h => getHouseSlot(h.houseId) > 0)
-    .sort((a,b) => getHouseSlot(b.houseId) - getHouseSlot(a.houseId))
-    .forEach(h => {
-      const opt = document.createElement('option');
-      opt.value = h.houseId;
-      opt.textContent = `${h.houseId} — ว่าง ${getHouseSlot(h.houseId)}/${h.maxMembers} ที่`;
-      sel.appendChild(opt);
-    });
-  document.getElementById('modal-move').style.display = 'flex';
+function openEditModal(rowIndex, lineUserId, email, houseId) {
+  _editData = { rowIndex, lineUserId, email, houseId };
+  document.getElementById('edit-modal-house').textContent = `บ้าน: ${houseId}  |  อีเมลเดิม: ${email}`;
+  document.getElementById('edit-email-input').value = email;
+  document.getElementById('edit-modal-error').style.display = 'none';
+  document.getElementById('modal-edit').style.display = 'flex';
+  setTimeout(() => document.getElementById('edit-email-input').focus(), 100);
 }
 
-async function confirmMove() {
-  const houseId = document.getElementById('move-house-select').value;
-  if (!houseId) { showNotif('กรุณาเลือกบ้านปลายทางครับ', 'info'); return; }
-  document.getElementById('modal-move').style.display = 'none';
+async function confirmEdit() {
+  const newEmail = document.getElementById('edit-email-input').value.trim();
+  const errEl = document.getElementById('edit-modal-error');
+  if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+    errEl.textContent = '⚠️ กรุณากรอกอีเมลให้ถูกต้อง';
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+  document.getElementById('modal-edit').style.display = 'none';
   try {
-    const res = await fetch(`${BASE_URL}/api/admin/member/move`, {
+    const res = await fetch(`${BASE_URL}/api/admin/member/edit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password },
-      body: JSON.stringify({ rowIndex: _moveData.rowIndex, lineUserId: _moveData.lineUserId, memberEmail: _moveData.email, houseId }),
+      body: JSON.stringify({ rowIndex: _editData.rowIndex, oldEmail: _editData.email, newEmail }),
     });
     const data = await res.json();
     if (data.success) {
-      showNotif(`✅ ย้าย ${_moveData.email} ไป ${houseId} แล้ว`, 'success');
+      showNotif(`✅ แก้ไขอีเมลเป็น ${newEmail} แล้ว`, 'success');
       await loadAll();
     } else {
       showNotif(`❌ ${data.error}`, 'error');
