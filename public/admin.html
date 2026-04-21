@@ -486,6 +486,7 @@ let currentAdmin = { username: '', password: '', displayName: '' };
         document.getElementById('login-page').style.display = 'none';
         document.getElementById('dashboard').style.display = 'block';
         document.getElementById('admin-display-name').textContent = `👤 ${admin.displayName}`;
+        setDefaultDates();
         // verify session ยังใช้ได้ไหม
         fetch(`${BASE_URL}/api/admin/members`, {
           headers: { 'x-admin-user': admin.username, 'x-admin-pass': admin.password }
@@ -521,6 +522,7 @@ async function login() {
       document.getElementById('login-page').style.display = 'none';
       document.getElementById('dashboard').style.display = 'block';
       document.getElementById('admin-display-name').textContent = `👤 ${data.displayName}`;
+      setDefaultDates();
       loadAll();
     } else {
       document.getElementById('login-error').textContent = `❌ ${data.error}`;
@@ -1062,6 +1064,14 @@ function parseBulkHouses(text) {
     return { error: `อีเมล ${pendingEmails.join(', ')} ยังไม่มีรหัสผ่าน` };
   }
   return { houses };
+}
+
+function setDefaultDates() {
+  const def = getDefaultExpire();
+  const s = document.getElementById('single-house-expire');
+  const b = document.getElementById('bulk-house-expire');
+  if (s && !s.value) s.value = def;
+  if (b && !b.value) b.value = def;
 }
 
 function getDefaultExpire() {
