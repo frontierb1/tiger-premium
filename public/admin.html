@@ -248,6 +248,7 @@
         <div id="houses-loading" class="loading">กำลังโหลด...</div>
         <table id="houses-table" style="display:none">
           <thead><tr>
+            <th style="width:32px"></th>
             <th class="sortable" onclick="sortHouses('name')" id="th-name">บ้าน <span id="sort-name">↕</span></th>
             <th>อีเมลหัวบ้าน</th>
             <th class="sortable" onclick="sortHouses('expire')" id="th-expire">วันหมดอายุ <span id="sort-expire">↕</span></th>
@@ -1164,6 +1165,38 @@ async function loadLogs() {
 }
 
 
+
+function toggleHouseMembers(houseId) {
+  const row = document.getElementById(`members-${houseId}`);
+  const arrow = document.getElementById(`arrow-${houseId}`);
+  if (!row) return;
+  const isOpen = row.style.display !== 'none';
+  row.style.display = isOpen ? 'none' : 'table-row';
+  arrow.textContent = isOpen ? '▶' : '▼';
+}
+
+async function removeMember(rowIndex, lineUserId, email, btn) {
+  if (!confirm(`ลบ ${email} ออกจากบ้านใช่ไหมครับ?`)) return;
+  btn.disabled = true; btn.textContent = 'กำลังลบ...';
+  try {
+    const res = await fetch(`${BASE_URL}/api/admin/member/remove`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password },
+      body: JSON.stringify({ rowIndex, lineUserId, memberEmail: email }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      showNotif(`✅ ลบ ${email} ออกจากบ้านแล้ว`, 'success');
+      await loadAll();
+    } else {
+      showNotif(`❌ ${data.error}`, 'error');
+      btn.disabled = false; btn.textContent = '🗑 ลบออกจากบ้าน';
+    }
+  } catch {
+    showNotif('❌ เกิดข้อผิดพลาด', 'error');
+    btn.disabled = false; btn.textContent = '🗑 ลบออกจากบ้าน';
+  }
+}
 
 setInterval(loadAll, 60000);
 </script>
