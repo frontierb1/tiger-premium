@@ -266,6 +266,7 @@
             <th style="width:32px"></th>
             <th class="sortable" onclick="sortHouses('name')" id="th-name">บ้าน <span id="sort-name">↕</span></th>
             <th>อีเมลหัวบ้าน</th>
+            <th>Password 🔑</th>
             <th class="sortable" onclick="sortHouses('expire')" id="th-expire">วันหมดอายุ <span id="sort-expire">↕</span></th>
             <th class="sortable" onclick="sortHouses('slot')" id="th-slot">ที่ว่าง <span id="sort-slot">↕</span></th>
             <th class="sortable" onclick="sortHouses('status')" id="th-status">สถานะ <span id="sort-status">↕</span></th>
@@ -387,14 +388,32 @@
 <div id="modal-edit" class="modal-overlay" style="display:none">
   <div class="modal-box">
     <div class="modal-icon">✏️</div>
-    <div class="modal-title">แก้ไขอีเมลสมาชิก</div>
-    <div class="modal-desc" id="edit-modal-house" style="margin-bottom:10px"></div>
-    <div style="font-size:11px;color:#85B7EB;margin-bottom:6px">อีเมลใหม่</div>
-    <input class="modal-select" type="email" id="edit-email-input" placeholder="newemail@gmail.com" style="margin-bottom:14px"/>
+    <div class="modal-title">แก้ไขข้อมูลสมาชิก</div>
+    <div class="modal-desc" id="edit-modal-house" style="margin-bottom:14px"></div>
+    <div style="font-size:11px;color:#85B7EB;margin-bottom:5px">อีเมลใหม่</div>
+    <input class="modal-select" type="email" id="edit-email-input" placeholder="email@gmail.com" style="margin-bottom:12px"/>
+    <div style="font-size:11px;color:#85B7EB;margin-bottom:5px">วันหมดอายุใหม่</div>
+    <input class="modal-select" type="date" id="edit-expire-input" style="margin-bottom:14px"/>
     <div id="edit-modal-error" style="color:#ef4444;font-size:12px;margin-bottom:10px;display:none"></div>
     <div class="modal-actions">
       <button class="modal-btn-cancel" onclick="document.getElementById('modal-edit').style.display='none'">ยกเลิก</button>
       <button class="modal-btn-primary" onclick="confirmEdit()">บันทึก ✅</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit House Password Modal -->
+<div id="modal-house-pass" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-icon">🔑</div>
+    <div class="modal-title">แก้ไข Password บ้าน</div>
+    <div class="modal-desc" id="house-pass-modal-id" style="margin-bottom:14px"></div>
+    <div style="font-size:11px;color:#85B7EB;margin-bottom:5px">Password ใหม่</div>
+    <input class="modal-select" type="text" id="house-pass-input" placeholder="new_password" style="margin-bottom:14px"/>
+    <div id="house-pass-error" style="color:#ef4444;font-size:12px;margin-bottom:10px;display:none"></div>
+    <div class="modal-actions">
+      <button class="modal-btn-cancel" onclick="document.getElementById('modal-house-pass').style.display='none'">ยกเลิก</button>
+      <button class="modal-btn-primary" onclick="confirmHousePass()">บันทึก ✅</button>
     </div>
   </div>
 </div>
@@ -843,27 +862,31 @@ function renderHouses() {
         <td></td>
         <td colspan="2" style="padding-left:24px;font-size:12px"><span style="color:#85B7EB">📧</span> ${m.houseEmail || '-'}</td>
         <td style="font-size:12px">${m.expireDate} ${daysBadge(dl)}</td>
-        <td style="font-size:12px">${pkgLabel(m.package)}</td>
         <td><span class="badge ${badgeMap[m.inviteStatus]||'pending'}">${statusMap[m.inviteStatus]||'รอเชิญ'}</span></td>
         <td colspan="2" style="display:flex;gap:6px;flex-wrap:wrap;padding:6px 12px">
-          <button class="btn-sm btn-gray" style="font-size:11px" onclick="event.stopPropagation();openEditModal(${m.rowIndex},'${m.lineUserId}','${m.houseEmail}','${h.houseId}')">✏️ แก้ไข</button>
+          <button class="btn-sm btn-gray" style="font-size:11px" onclick="event.stopPropagation();openEditModal(${m.rowIndex},'${m.lineUserId}','${m.houseEmail}','${h.houseId}','${m.expireDate}')">✏️ แก้ไข</button>
           <button class="btn-sm" style="font-size:11px;background:#2a0a0a;color:#ef4444;border:1px solid #ef4444" onclick="event.stopPropagation();removeMember(${m.rowIndex},'${m.lineUserId}','${m.houseEmail}',this)">🗑 ลบ</button>
         </td>
       </tr>`;
-    }).join('') : `<tr style="background:#060f1e"><td></td><td colspan="7" style="font-size:12px;color:#555;padding-left:24px">ไม่มีสมาชิก</td></tr>`;
+    }).join('') : `<tr style="background:#060f1e"><td></td><td colspan="6" style="font-size:12px;color:#555;padding-left:24px">ไม่มีสมาชิก</td></tr>`;
 
     return `
       <tr class="${isOverflow ? 'overflow-row' : ''}" style="cursor:pointer" onclick="toggleHouseMembers('${h.houseId}')">
         <td style="text-align:center;font-size:12px;color:#85B7EB" id="arrow-${h.houseId}">▶</td>
         <td><strong>${h.houseId}</strong>${isOverflow ? '<span class="overflow-warn">⚠️ เกิน!</span>' : ''}</td>
         <td>${h.houseEmail}</td>
+        <td style="font-size:12px">
+          <span style="color:#85B7EB">🔑</span>
+          <span id="pass-text-${h.houseId}" style="font-family:monospace;color:#f59e0b">${h.housePassword || '-'}</span>
+          <button class="btn-sm btn-gray" style="font-size:10px;margin-left:6px;padding:3px 8px" onclick="event.stopPropagation();openHousePassModal('${h.houseId}','${h.housePassword||''}')">✏️</button>
+        </td>
         <td>${h.expireDate} ${daysBadge(days)}</td>
         <td><span class="badge ${slot > 0 ? 'green' : 'red'}">${slot > 0 ? 'ว่าง ' + slot + ' ที่' : 'เต็ม'}${isOverflow ? ' <span class="overflow-warn">เกิน!</span>' : ''}</span></td>
         <td><span class="badge ${h.status === 'active' ? 'invited' : 'red'}">${h.status}</span></td>
         <td onclick="event.stopPropagation()">${copyBtns || '-'}</td>
       </tr>
       <tr id="members-${h.houseId}" style="display:none">
-        <td colspan="7" style="padding:0">
+        <td colspan="8" style="padding:0">
           <table style="width:100%;border-collapse:collapse">${memberRows}</table>
         </td>
       </tr>`;
@@ -1295,13 +1318,14 @@ function modalConfirm() {
   _modalCallback = null;
 }
 
-// ===== Edit Member Email =====
+// ===== Edit Member =====
 let _editData = null;
 
-function openEditModal(rowIndex, lineUserId, email, houseId) {
-  _editData = { rowIndex, lineUserId, email, houseId };
-  document.getElementById('edit-modal-house').textContent = `บ้าน: ${houseId}  |  อีเมลเดิม: ${email}`;
-  document.getElementById('edit-email-input').value = email;
+function openEditModal(rowIndex, lineUserId, email, houseId, expireDate) {
+  _editData = { rowIndex, lineUserId, email, houseId, expireDate };
+  document.getElementById('edit-modal-house').textContent = `บ้าน: ${houseId}`;
+  document.getElementById('edit-email-input').value = email || '';
+  document.getElementById('edit-expire-input').value = expireDate || '';
   document.getElementById('edit-modal-error').style.display = 'none';
   document.getElementById('modal-edit').style.display = 'flex';
   setTimeout(() => document.getElementById('edit-email-input').focus(), 100);
@@ -1309,23 +1333,76 @@ function openEditModal(rowIndex, lineUserId, email, houseId) {
 
 async function confirmEdit() {
   const newEmail = document.getElementById('edit-email-input').value.trim();
+  const newExpire = document.getElementById('edit-expire-input').value;
   const errEl = document.getElementById('edit-modal-error');
-  if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
-    errEl.textContent = '⚠️ กรุณากรอกอีเมลให้ถูกต้อง';
+
+  if (newEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+    errEl.textContent = '⚠️ รูปแบบอีเมลไม่ถูกต้อง';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (!newEmail && !newExpire) {
+    errEl.textContent = '⚠️ กรุณากรอกข้อมูลที่ต้องการแก้ไขอย่างน้อย 1 อย่าง';
     errEl.style.display = 'block';
     return;
   }
   errEl.style.display = 'none';
   document.getElementById('modal-edit').style.display = 'none';
+
   try {
     const res = await fetch(`${BASE_URL}/api/admin/member/edit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password },
-      body: JSON.stringify({ rowIndex: _editData.rowIndex, oldEmail: _editData.email, newEmail }),
+      body: JSON.stringify({
+        rowIndex: _editData.rowIndex,
+        oldEmail: _editData.email,
+        newEmail: newEmail || _editData.email,
+        newExpire: newExpire || null,
+      }),
     });
     const data = await res.json();
     if (data.success) {
-      showNotif(`✅ แก้ไขอีเมลเป็น ${newEmail} แล้ว`, 'success');
+      showNotif(`✅ แก้ไขข้อมูลสำเร็จ`, 'success');
+      await loadAll();
+    } else {
+      showNotif(`❌ ${data.error}`, 'error');
+    }
+  } catch {
+    showNotif('❌ เกิดข้อผิดพลาด', 'error');
+  }
+}
+
+// ===== Edit House Password =====
+let _housePassData = null;
+
+function openHousePassModal(houseId, currentPass) {
+  _housePassData = { houseId };
+  document.getElementById('house-pass-modal-id').textContent = `บ้าน: ${houseId}  |  Password ปัจจุบัน: ${currentPass}`;
+  document.getElementById('house-pass-input').value = currentPass || '';
+  document.getElementById('house-pass-error').style.display = 'none';
+  document.getElementById('modal-house-pass').style.display = 'flex';
+  setTimeout(() => document.getElementById('house-pass-input').focus(), 100);
+}
+
+async function confirmHousePass() {
+  const newPass = document.getElementById('house-pass-input').value.trim();
+  const errEl = document.getElementById('house-pass-error');
+  if (!newPass) {
+    errEl.textContent = '⚠️ กรุณากรอก Password';
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+  document.getElementById('modal-house-pass').style.display = 'none';
+  try {
+    const res = await fetch(`${BASE_URL}/api/admin/house/password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password },
+      body: JSON.stringify({ houseId: _housePassData.houseId, newPassword: newPass }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      showNotif(`✅ แก้ไข password ${_housePassData.houseId} แล้ว`, 'success');
       await loadAll();
     } else {
       showNotif(`❌ ${data.error}`, 'error');
