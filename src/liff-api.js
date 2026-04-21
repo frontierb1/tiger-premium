@@ -168,7 +168,7 @@ router.post('/register', upload.single('slip'), async (req, res) => {
     if (!result.success) return res.status(500).json({ error: result.error });
 
     await sendLineMessage(lineUserId,
-      `✅ สมัครสมาชิก Tiger Premium สำเร็จ!\n\n📦 แพ็กเกจ: ${PACKAGES[packageType].label}\n📧 อีเมล: ${memberEmail}\n💰 ยอดโอน: ${slipResult.amount} บาท\n💳 โอนจาก: ${slipResult.senderName}\n🏦 ธนาคารรับ: ${slipResult.receiverBank}\n📅 หมดอายุ: ${result.expireDate}\n\nแอดมินจะส่งข้อมูลเข้าบ้านให้ภายใน 24 ชม. ครับ 🐯`
+      `✅ ได้รับข้อมูลการสมัครแล้วครับ!\n\n📦 แพ็กเกจ: ${PACKAGES[packageType].label}\n📧 อีเมล: ${memberEmail}\n💰 ยอดโอน: ${slipResult.amount} บาท\n💳 โอนจาก: ${slipResult.senderName}\n🏦 ธนาคารรับ: ${slipResult.receiverBank}\n📅 วันหมดอายุ: ${result.expireDate}\n\n⏳ กรุณารอแอดมินส่งคำเชิญเข้า YouTube Premium\nภายใน 24 ชม. ครับ 🐯`
     );
 
     res.json({ success: true, expireDate: result.expireDate });
