@@ -768,7 +768,7 @@ function renderExpiring(members) {
       <td>${m.expireDate}</td>
       <td>${daysBadge(daysLeft(m.expireDate))}</td>
       <td>${m.houseId || '-'}</td>
-      <td><button class="btn-sm btn-orange" onclick="sendReminder('${m.lineUserId}','${m.houseEmail}',this)">🔔 แจ้งเตือน</button></td>
+      <td><button class="btn-sm btn-orange" onclick="sendReminder('${m.lineUserId}','${m.houseEmail}',${m.rowIndex},this)">🔔 แจ้งเตือน</button></td>
     </tr>
   `).join('');
 }
@@ -969,13 +969,13 @@ async function markInvited(rowIndex, lineUserId, email, btn) {
   } catch { showNotif('❌ เกิดข้อผิดพลาด', 'error'); btn.disabled = false; btn.textContent = '✅ กดรับแล้ว'; }
 }
 
-async function sendReminder(lineUserId, email, btn) {
+async function sendReminder(lineUserId, email, rowIndex, btn) {
   btn.disabled = true; btn.textContent = 'กำลังส่ง...';
   try {
     const res = await fetch(`${BASE_URL}/api/admin/remind`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password },
-      body: JSON.stringify({ lineUserId }),
+      body: JSON.stringify({ lineUserId, rowIndex: parseInt(rowIndex) }),
     });
     const data = await res.json();
     if (data.success) { showNotif(`✅ ส่งแจ้งเตือน ${email} แล้ว`, 'success'); btn.textContent = 'ส่งแล้ว ✓'; }
