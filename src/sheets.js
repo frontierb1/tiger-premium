@@ -196,7 +196,7 @@ async function getHouses() {
     const sheets = await getSheets();
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: 'Houses!A:F',
+      range: 'Houses!A:H',
     });
     const rows = res.data.values || [];
     return rows.slice(1).map(row => ({
