@@ -89,6 +89,20 @@
     .overflow-warn { color: #ef4444; font-size: 11px; font-weight: 600; margin-left: 4px; }
     .sortable { cursor: pointer; user-select: none; }
     .sortable:hover { color: #fff; background: #1a2a40; }
+
+    /* ===== Custom Modal ===== */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+    .modal-box { background: #0d1f3c; border: 1px solid #1e3a5f; border-radius: 16px; padding: 28px 24px; width: 340px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+    .modal-icon { font-size: 40px; text-align: center; margin-bottom: 12px; }
+    .modal-title { font-size: 16px; font-weight: 700; text-align: center; margin-bottom: 6px; }
+    .modal-desc { font-size: 13px; color: #85B7EB; text-align: center; margin-bottom: 20px; line-height: 1.6; word-break: break-all; }
+    .modal-actions { display: flex; gap: 10px; }
+    .modal-actions button { flex: 1; padding: 11px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; }
+    .modal-btn-cancel { background: #0a1628; color: #85B7EB; border: 1px solid #1e3a5f !important; }
+    .modal-btn-danger { background: #7f1d1d; color: #fca5a5; }
+    .modal-btn-primary { background: #185FA5; color: #fff; }
+    .modal-select { width: 100%; background: #0a1628; border: 1.5px solid #1e3a5f; border-radius: 10px; padding: 10px 12px; font-size: 13px; color: #fff; outline: none; margin-bottom: 14px; }
+    .modal-select:focus { border-color: #378ADD; }
   </style>
 </head>
 <body>
@@ -353,6 +367,35 @@
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- Custom Confirm Modal -->
+<div id="modal-confirm" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-icon" id="modal-icon">🗑</div>
+    <div class="modal-title" id="modal-title">ยืนยันการลบ</div>
+    <div class="modal-desc" id="modal-desc"></div>
+    <div class="modal-actions">
+      <button class="modal-btn-cancel" onclick="modalClose()">ยกเลิก</button>
+      <button id="modal-ok-btn" class="modal-btn-danger" onclick="modalConfirm()">ยืนยัน</button>
+    </div>
+  </div>
+</div>
+
+<!-- Move Member Modal -->
+<div id="modal-move" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-icon">🏠</div>
+    <div class="modal-title">ย้ายสมาชิกไปบ้านใหม่</div>
+    <div class="modal-desc" id="move-modal-email"></div>
+    <select class="modal-select" id="move-house-select">
+      <option value="">-- เลือกบ้านปลายทาง --</option>
+    </select>
+    <div class="modal-actions">
+      <button class="modal-btn-cancel" onclick="document.getElementById('modal-move').style.display='none'">ยกเลิก</button>
+      <button class="modal-btn-primary" onclick="confirmMove()">ย้ายเลย 🚀</button>
+    </div>
   </div>
 </div>
 
@@ -804,7 +847,10 @@ function renderHouses() {
         <td style="font-size:12px">${m.expireDate} ${daysBadge(dl)}</td>
         <td style="font-size:12px">${pkgLabel(m.package)}</td>
         <td><span class="badge ${badgeMap[m.inviteStatus]||'pending'}">${statusMap[m.inviteStatus]||'รอเชิญ'}</span></td>
-        <td colspan="2"><button class="btn-sm btn-gray" style="font-size:11px" onclick="event.stopPropagation();removeMember(${m.rowIndex},'${m.lineUserId}','${m.houseEmail}',this)">🗑 ลบออกจากบ้าน</button></td>
+        <td colspan="2" style="display:flex;gap:6px;flex-wrap:wrap;padding:6px 12px">
+          <button class="btn-sm btn-gray" style="font-size:11px" onclick="event.stopPropagation();openMoveModal(${m.rowIndex},'${m.lineUserId}','${m.houseEmail}')">✏️ ย้ายบ้าน</button>
+          <button class="btn-sm" style="font-size:11px;background:#2a0a0a;color:#ef4444;border:1px solid #ef4444" onclick="event.stopPropagation();removeMember(${m.rowIndex},'${m.lineUserId}','${m.houseEmail}',this)">🗑 ลบ</button>
+        </td>
       </tr>`;
     }).join('') : `<tr style="background:#060f1e"><td></td><td colspan="7" style="font-size:12px;color:#555;padding-left:24px">ไม่มีสมาชิก</td></tr>`;
 
@@ -1197,25 +1243,100 @@ function toggleHouseMembers(houseId) {
 }
 
 async function removeMember(rowIndex, lineUserId, email, btn) {
-  if (!confirm(`ลบ ${email} ออกจากบ้านใช่ไหมครับ?`)) return;
-  btn.disabled = true; btn.textContent = 'กำลังลบ...';
+  showConfirmModal({
+    icon: '🗑',
+    title: 'ลบออกจากบ้าน',
+    desc: `ลบ ${email} ออกจากบ้านใช่ไหมครับ?\nสมาชิกจะกลับไปสถานะ "รอเชิญ"`,
+    btnText: 'ลบเลย',
+    btnClass: 'modal-btn-danger',
+    onConfirm: async () => {
+      btn.disabled = true; btn.textContent = 'กำลังลบ...';
+      try {
+        const res = await fetch(`${BASE_URL}/api/admin/member/remove`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password },
+          body: JSON.stringify({ rowIndex, lineUserId, memberEmail: email }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showNotif(`✅ ลบ ${email} ออกจากบ้านแล้ว`, 'success');
+          await loadAll();
+        } else {
+          showNotif(`❌ ${data.error}`, 'error');
+          btn.disabled = false; btn.textContent = '🗑 ลบ';
+        }
+      } catch {
+        showNotif('❌ เกิดข้อผิดพลาด', 'error');
+        btn.disabled = false; btn.textContent = '🗑 ลบ';
+      }
+    }
+  });
+}
+
+// ===== Custom Modal =====
+let _modalCallback = null;
+
+function showConfirmModal({ icon = '🗑', title, desc, btnText = 'ยืนยัน', btnClass = 'modal-btn-danger', onConfirm }) {
+  document.getElementById('modal-icon').textContent = icon;
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-desc').textContent = desc;
+  const btn = document.getElementById('modal-ok-btn');
+  btn.textContent = btnText;
+  btn.className = btnClass;
+  _modalCallback = onConfirm;
+  document.getElementById('modal-confirm').style.display = 'flex';
+}
+
+function modalClose() {
+  document.getElementById('modal-confirm').style.display = 'none';
+  _modalCallback = null;
+}
+
+function modalConfirm() {
+  document.getElementById('modal-confirm').style.display = 'none';
+  if (_modalCallback) _modalCallback();
+  _modalCallback = null;
+}
+
+// ===== Move Member =====
+let _moveData = null;
+
+function openMoveModal(rowIndex, lineUserId, email) {
+  _moveData = { rowIndex, lineUserId, email };
+  document.getElementById('move-modal-email').textContent = `📧 ${email}`;
+  const sel = document.getElementById('move-house-select');
+  sel.innerHTML = '<option value="">-- เลือกบ้านปลายทาง --</option>';
+  allHouses
+    .filter(h => getHouseSlot(h.houseId) > 0)
+    .sort((a,b) => getHouseSlot(b.houseId) - getHouseSlot(a.houseId))
+    .forEach(h => {
+      const opt = document.createElement('option');
+      opt.value = h.houseId;
+      opt.textContent = `${h.houseId} — ว่าง ${getHouseSlot(h.houseId)}/${h.maxMembers} ที่`;
+      sel.appendChild(opt);
+    });
+  document.getElementById('modal-move').style.display = 'flex';
+}
+
+async function confirmMove() {
+  const houseId = document.getElementById('move-house-select').value;
+  if (!houseId) { showNotif('กรุณาเลือกบ้านปลายทางครับ', 'info'); return; }
+  document.getElementById('modal-move').style.display = 'none';
   try {
-    const res = await fetch(`${BASE_URL}/api/admin/member/remove`, {
+    const res = await fetch(`${BASE_URL}/api/admin/member/move`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password },
-      body: JSON.stringify({ rowIndex, lineUserId, memberEmail: email }),
+      body: JSON.stringify({ rowIndex: _moveData.rowIndex, lineUserId: _moveData.lineUserId, memberEmail: _moveData.email, houseId }),
     });
     const data = await res.json();
     if (data.success) {
-      showNotif(`✅ ลบ ${email} ออกจากบ้านแล้ว`, 'success');
+      showNotif(`✅ ย้าย ${_moveData.email} ไป ${houseId} แล้ว`, 'success');
       await loadAll();
     } else {
       showNotif(`❌ ${data.error}`, 'error');
-      btn.disabled = false; btn.textContent = '🗑 ลบออกจากบ้าน';
     }
   } catch {
     showNotif('❌ เกิดข้อผิดพลาด', 'error');
-    btn.disabled = false; btn.textContent = '🗑 ลบออกจากบ้าน';
   }
 }
 
