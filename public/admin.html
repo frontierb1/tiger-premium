@@ -97,7 +97,8 @@
   <div class="login-card">
     <h2>🐯 Tiger Admin</h2>
     <p>เข้าสู่ระบบแอดมิน Dashboard</p>
-    <input type="password" id="admin-pass" placeholder="รหัสผ่านแอดมิน" onkeydown="if(event.key==='Enter')login()"/>
+    <input type="text" id="admin-user" placeholder="Username" onkeydown="if(event.key==='Enter')login()"/>
+    <input type="password" id="admin-pass" placeholder="Password" onkeydown="if(event.key==='Enter')login()"/>
     <button class="btn-login" onclick="login()">เข้าสู่ระบบ</button>
     <div class="login-error" id="login-error"></div>
   </div>
@@ -108,6 +109,7 @@
     <h1>🐯 Tiger Premium — Admin</h1>
     <div class="header-right">
       <span class="last-update" id="last-update">กำลังโหลด...</span>
+      <span style="font-size:12px;color:#85B7EB" id="admin-display-name"></span>
       <button class="logout-btn" onclick="logout()">ออกจากระบบ</button>
     </div>
   </div>
@@ -123,7 +125,9 @@
     <button class="tab" onclick="switchTab('inviting',this)">📨 กำลังเชิญ <span id="badge-inviting"></span></button>
     <button class="tab" onclick="switchTab('expiring',this)">⚠️ ใกล้หมดอายุ</button>
     <button class="tab" onclick="switchTab('houses',this)">🏠 จัดการบ้าน</button>
+    <button class="tab" onclick="switchTab('addhouse',this)">➕ เพิ่มบ้าน</button>
     <button class="tab" onclick="switchTab('all',this)">👥 สมาชิกทั้งหมด</button>
+    <button class="tab" onclick="switchTab('logs',this)">📋 Logs</button>
   </div>
 
   <div class="content">
@@ -258,6 +262,66 @@
       </div>
     </div>
 
+    <!-- Tab: เพิ่มบ้าน -->
+    <div id="tab-addhouse" class="tab-content">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+        <!-- เพิ่มบ้านเดียว -->
+        <div class="table-wrap">
+          <div class="table-header"><h3>➕ เพิ่มบ้านเดียว</h3></div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+            <div>
+              <div style="font-size:11px;color:#85B7EB;margin-bottom:4px">House ID (ไม่ใส่ระบบ auto)</div>
+              <input class="search-bar" id="single-house-id" placeholder="house_05" style="width:100%"/>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#85B7EB;margin-bottom:4px">อีเมลหัวบ้าน *</div>
+              <input class="search-bar" id="single-house-email" placeholder="house@gmail.com" style="width:100%"/>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#85B7EB;margin-bottom:4px">รหัสผ่าน *</div>
+              <input class="search-bar" id="single-house-pass" placeholder="password" style="width:100%"/>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#85B7EB;margin-bottom:4px">วันหมดอายุ *</div>
+              <input class="search-bar" type="date" id="single-house-expire" style="width:100%"/>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#85B7EB;margin-bottom:4px">จำนวนที่นั่ง (default 5)</div>
+              <input class="search-bar" type="number" id="single-house-max" placeholder="5" style="width:100%"/>
+            </div>
+            <button class="btn-sm btn-blue" style="padding:10px" onclick="addSingleHouse()">➕ เพิ่มบ้าน</button>
+            <div id="single-house-result"></div>
+          </div>
+        </div>
+
+        <!-- เพิ่มหลายบ้าน -->
+        <div class="table-wrap">
+          <div class="table-header"><h3>📋 เพิ่มหลายบ้านพร้อมกัน</h3></div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:12px;color:#85B7EB;background:#0a1628;border-radius:8px;padding:10px;line-height:1.8">
+              วางข้อมูลแบบนี้:<br/>
+              <span style="color:#fff">house01@gmail.com</span><br/>
+              <span style="color:#fff">password123</span><br/>
+              <span style="color:#fff">house02@gmail.com</span><br/>
+              <span style="color:#fff">password456</span>
+            </div>
+            <textarea id="bulk-house-text" style="background:#0a1628;border:1px solid #1e3a5f;border-radius:8px;padding:10px;color:#fff;font-size:12px;width:100%;height:160px;outline:none;resize:vertical" placeholder="house01@gmail.com&#10;password123&#10;house02@gmail.com&#10;password456"></textarea>
+            <div>
+              <div style="font-size:11px;color:#85B7EB;margin-bottom:4px">วันหมดอายุ (ทุกบ้าน) *</div>
+              <input class="search-bar" type="date" id="bulk-house-expire" style="width:100%"/>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#85B7EB;margin-bottom:4px">จำนวนที่นั่ง (default 5)</div>
+              <input class="search-bar" type="number" id="bulk-house-max" placeholder="5" style="width:100%"/>
+            </div>
+            <button class="btn-sm btn-blue" style="padding:10px" onclick="addBulkHouses()">📋 เพิ่มทั้งหมด</button>
+            <div id="bulk-house-result"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Tab: สมาชิกทั้งหมด -->
     <div id="tab-all" class="tab-content">
       <div class="table-wrap">
@@ -279,12 +343,27 @@
         </table>
       </div>
     </div>
+    <!-- Tab: Logs -->
+    <div id="tab-logs" class="tab-content">
+      <div class="table-wrap">
+        <div class="table-header">
+          <h3>📋 ประวัติการทำงาน</h3>
+          <input class="search-bar" placeholder="ค้นหา..." oninput="filterTable('logs-body',this.value)"/>
+        </div>
+        <div id="logs-loading" class="loading">กำลังโหลด...</div>
+        <table id="logs-table" style="display:none">
+          <thead><tr><th>เวลา</th><th>แอดมิน</th><th>การกระทำ</th><th>รายละเอียด</th></tr></thead>
+          <tbody id="logs-body"></tbody>
+        </table>
+        <div id="logs-empty" class="empty" style="display:none">ยังไม่มี Log</div>
+      </div>
+    </div>
+
   </div>
 </div>
 
 <script>
 const BASE_URL = window.location.origin;
-const ADMIN_PASSWORD = 'tiger2026admin';
 let allMembers = [], allHouses = [];
 let selectedRows = new Set();
 let currentMaxSlot = 0;
@@ -397,19 +476,38 @@ function toggleBulkPanel() {
   }
 }
 
-function login() {
-  const pass = document.getElementById('admin-pass').value;
-  if (pass === ADMIN_PASSWORD) {
-    document.getElementById('login-page').style.display = 'none';
-    document.getElementById('dashboard').style.display = 'block';
-    loadAll();
-  } else {
-    document.getElementById('login-error').textContent = '❌ รหัสผ่านไม่ถูกต้อง';
+let currentAdmin = { username: '', displayName: '' };
+
+async function login() {
+  const username = document.getElementById('admin-user').value.trim();
+  const password = document.getElementById('admin-pass').value;
+  if (!username || !password) { document.getElementById('login-error').textContent = '❌ กรุณากรอก username และ password'; return; }
+  try {
+    const res = await fetch(`${BASE_URL}/api/admin/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      currentAdmin = { username, displayName: data.displayName };
+      document.getElementById('login-page').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      document.getElementById('admin-display-name').textContent = `👤 ${data.displayName}`;
+      loadAll();
+    } else {
+      document.getElementById('login-error').textContent = `❌ ${data.error}`;
+    }
+  } catch (err) {
+    document.getElementById('login-error').textContent = '❌ เชื่อมต่อไม่ได้';
   }
 }
+
 function logout() {
+  currentAdmin = { username: '', displayName: '' };
   document.getElementById('login-page').style.display = 'flex';
   document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('admin-user').value = '';
   document.getElementById('admin-pass').value = '';
 }
 function switchTab(tab, el) {
@@ -422,8 +520,8 @@ function switchTab(tab, el) {
 async function loadAll() {
   try {
     const [mRes, hRes] = await Promise.all([
-      fetch(`${BASE_URL}/api/admin/members`, { headers: { 'x-admin-key': ADMIN_PASSWORD } }),
-      fetch(`${BASE_URL}/api/admin/houses`, { headers: { 'x-admin-key': ADMIN_PASSWORD } }),
+      fetch(`${BASE_URL}/api/admin/members`, { headers: { 'x-admin-user': currentAdmin.username, 'x-admin-pass': document.getElementById('admin-pass')?.value || '' } }),
+      fetch(`${BASE_URL}/api/admin/houses`, { headers: { 'x-admin-user': currentAdmin.username, 'x-admin-pass': document.getElementById('admin-pass')?.value || '' } }),
     ]);
     allMembers = (await mRes.json()).members || [];
     allHouses = (await hRes.json()).houses || [];
@@ -794,7 +892,7 @@ async function bulkInvite() {
     try {
       const res = await fetch(`${BASE_URL}/api/admin/inviting`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_PASSWORD },
+        headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': document.getElementById('admin-pass')?.value || '' },
         body: JSON.stringify({ rowIndex: parseInt(c.dataset.row), lineUserId: c.dataset.uid, houseId }),
       });
       if ((await res.json()).success) success++;
@@ -816,7 +914,7 @@ async function singleInvite(rowIndex, lineUserId, email, btn) {
   try {
     const res = await fetch(`${BASE_URL}/api/admin/inviting`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_PASSWORD },
+      headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': document.getElementById('admin-pass')?.value || '' },
       body: JSON.stringify({ rowIndex, lineUserId, houseId }),
     });
     const data = await res.json();
@@ -830,7 +928,7 @@ async function markInvited(rowIndex, lineUserId, email, btn) {
   try {
     const res = await fetch(`${BASE_URL}/api/admin/invite`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_PASSWORD },
+      headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': document.getElementById('admin-pass')?.value || '' },
       body: JSON.stringify({ rowIndex, lineUserId }),
     });
     const data = await res.json();
@@ -844,7 +942,7 @@ async function sendReminder(lineUserId, email, btn) {
   try {
     const res = await fetch(`${BASE_URL}/api/admin/remind`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_PASSWORD },
+      headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': document.getElementById('admin-pass')?.value || '' },
       body: JSON.stringify({ lineUserId }),
     });
     const data = await res.json();
@@ -873,6 +971,114 @@ function showNotif(msg, type = 'success') {
   el.textContent = msg;
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 3000);
+}
+
+// ===== เพิ่มบ้านเดียว =====
+async function addSingleHouse() {
+  const houseId = document.getElementById('single-house-id').value.trim();
+  const houseEmail = document.getElementById('single-house-email').value.trim();
+  const housePassword = document.getElementById('single-house-pass').value.trim();
+  const expireDate = document.getElementById('single-house-expire').value;
+  const maxMembers = document.getElementById('single-house-max').value || 5;
+  const resultEl = document.getElementById('single-house-result');
+
+  if (!houseEmail || !housePassword || !expireDate) {
+    resultEl.innerHTML = '<div style="color:#ef4444;font-size:12px;margin-top:8px">❌ กรุณากรอกข้อมูลให้ครบ</div>';
+    return;
+  }
+
+  try {
+    const res = await fetch(`${BASE_URL}/api/admin/house`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': document.getElementById('admin-pass')?.value || '' },
+      body: JSON.stringify({ houseId, houseEmail, housePassword, expireDate, maxMembers }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      resultEl.innerHTML = `<div style="color:#22c55e;font-size:12px;margin-top:8px">✅ เพิ่มบ้าน ${data.houseId} สำเร็จ</div>`;
+      document.getElementById('single-house-email').value = '';
+      document.getElementById('single-house-pass').value = '';
+      document.getElementById('single-house-id').value = '';
+      await loadAll();
+    } else {
+      resultEl.innerHTML = `<div style="color:#ef4444;font-size:12px;margin-top:8px">❌ ${data.error}</div>`;
+    }
+  } catch (err) {
+    resultEl.innerHTML = '<div style="color:#ef4444;font-size:12px;margin-top:8px">❌ เกิดข้อผิดพลาด</div>';
+  }
+}
+
+// ===== เพิ่มหลายบ้าน =====
+async function addBulkHouses() {
+  const text = document.getElementById('bulk-house-text').value.trim();
+  const expireDate = document.getElementById('bulk-house-expire').value;
+  const maxMembers = document.getElementById('bulk-house-max').value || 5;
+  const resultEl = document.getElementById('bulk-house-result');
+
+  if (!text || !expireDate) {
+    resultEl.innerHTML = '<div style="color:#ef4444;font-size:12px;margin-top:8px">❌ กรุณากรอกข้อมูลให้ครบ</div>';
+    return;
+  }
+
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length % 2 !== 0) {
+    resultEl.innerHTML = `<div style="color:#ef4444;font-size:12px;margin-top:8px">❌ ข้อมูลไม่ครบคู่ พบ ${lines.length} บรรทัด (ต้องเป็นจำนวนคู่)</div>`;
+    return;
+  }
+
+  resultEl.innerHTML = '<div style="color:#85B7EB;font-size:12px;margin-top:8px">กำลังเพิ่ม...</div>';
+
+  try {
+    const res = await fetch(`${BASE_URL}/api/admin/houses/bulk`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': document.getElementById('admin-pass')?.value || '' },
+      body: JSON.stringify({ text, expireDate, maxMembers }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      resultEl.innerHTML = `<div style="color:#22c55e;font-size:12px;margin-top:8px">✅ เพิ่ม ${data.count} บ้านสำเร็จ!<br>${data.houses.map(h => h.houseId + ': ' + h.houseEmail).join('<br>')}</div>`;
+      document.getElementById('bulk-house-text').value = '';
+      await loadAll();
+    } else {
+      resultEl.innerHTML = `<div style="color:#ef4444;font-size:12px;margin-top:8px">❌ ${data.error}</div>`;
+    }
+  } catch (err) {
+    resultEl.innerHTML = '<div style="color:#ef4444;font-size:12px;margin-top:8px">❌ เกิดข้อผิดพลาด</div>';
+  }
+}
+
+// ===== Logs =====
+async function loadLogs() {
+  try {
+    const res = await fetch(`${BASE_URL}/api/admin/logs`, {
+      headers: { 'x-admin-user': currentAdmin.username, 'x-admin-pass': document.getElementById('admin-pass')?.value || '' },
+    });
+    const data = await res.json();
+    const logs = data.logs || [];
+    document.getElementById('logs-loading').style.display = 'none';
+    if (logs.length === 0) {
+      document.getElementById('logs-empty').style.display = 'block';
+      return;
+    }
+    document.getElementById('logs-table').style.display = 'table';
+    document.getElementById('logs-body').innerHTML = logs.map(l => `
+      <tr>
+        <td style="white-space:nowrap">${l.timestamp}</td>
+        <td>${l.admin}</td>
+        <td><span class="badge inviting">${l.action}</span></td>
+        <td>${l.detail}</td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    console.error('loadLogs error:', err);
+  }
+}
+
+// โหลด logs เมื่อเปิดแท็บ
+const origSwitchTab = switchTab;
+function switchTab(tab, el) {
+  origSwitchTab(tab, el);
+  if (tab === 'logs') loadLogs();
 }
 
 setInterval(loadAll, 60000);
