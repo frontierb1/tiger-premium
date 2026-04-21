@@ -283,12 +283,8 @@
               <input class="search-bar" id="single-house-pass" placeholder="password" style="width:100%"/>
             </div>
             <div>
-              <div style="font-size:11px;color:#85B7EB;margin-bottom:4px">วันหมดอายุ *</div>
+              <div style="font-size:11px;color:#85B7EB;margin-bottom:4px">วันหมดอายุ (default 1 เดือน)</div>
               <input class="search-bar" type="date" id="single-house-expire" style="width:100%"/>
-            </div>
-            <div>
-              <div style="font-size:11px;color:#85B7EB;margin-bottom:4px">จำนวนที่นั่ง (default 5)</div>
-              <input class="search-bar" type="number" id="single-house-max" placeholder="5" style="width:100%"/>
             </div>
             <button class="btn-sm btn-blue" style="padding:10px" onclick="addSingleHouse()">➕ เพิ่มบ้าน</button>
             <div id="single-house-result"></div>
@@ -300,21 +296,22 @@
           <div class="table-header"><h3>📋 เพิ่มหลายบ้านพร้อมกัน</h3></div>
           <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
             <div style="font-size:12px;color:#85B7EB;background:#0a1628;border-radius:8px;padding:10px;line-height:1.8">
-              วางข้อมูลแบบนี้:<br/>
-              <span style="color:#fff">house01@gmail.com</span><br/>
-              <span style="color:#fff">password123</span><br/>
-              <span style="color:#fff">house02@gmail.com</span><br/>
-              <span style="color:#fff">password456</span>
+              รองรับหลาย format:<br/>
+              <span style="color:#aaa">① เมลสลับรหัส:</span><br/>
+              <span style="color:#fff">email1@gmail.com</span><br/>
+              <span style="color:#fff">password1</span><br/>
+              <span style="color:#aaa">② หลายเมลใช้รหัสเดียว:</span><br/>
+              <span style="color:#fff">email1@gmail.com</span><br/>
+              <span style="color:#fff">email2@gmail.com</span><br/>
+              <span style="color:#fff">sharedpassword</span>
             </div>
-            <textarea id="bulk-house-text" style="background:#0a1628;border:1px solid #1e3a5f;border-radius:8px;padding:10px;color:#fff;font-size:12px;width:100%;height:160px;outline:none;resize:vertical" placeholder="house01@gmail.com&#10;password123&#10;house02@gmail.com&#10;password456"></textarea>
+            <textarea id="bulk-house-text" style="background:#0a1628;border:1px solid #1e3a5f;border-radius:8px;padding:10px;color:#fff;font-size:12px;width:100%;height:180px;outline:none;resize:vertical" placeholder="email1@gmail.com&#10;password1&#10;email2@gmail.com&#10;email3@gmail.com&#10;sharedpass"></textarea>
             <div>
-              <div style="font-size:11px;color:#85B7EB;margin-bottom:4px">วันหมดอายุ (ทุกบ้าน) *</div>
+              <div style="font-size:11px;color:#85B7EB;margin-bottom:4px">วันหมดอายุ (ทุกบ้าน)</div>
               <input class="search-bar" type="date" id="bulk-house-expire" style="width:100%"/>
             </div>
-            <div>
-              <div style="font-size:11px;color:#85B7EB;margin-bottom:4px">จำนวนที่นั่ง (default 5)</div>
-              <input class="search-bar" type="number" id="bulk-house-max" placeholder="5" style="width:100%"/>
-            </div>
+            <div id="bulk-preview" style="font-size:11px;color:#85B7EB;background:#0a1628;border-radius:8px;padding:8px;display:none"></div>
+            <button class="btn-sm btn-gray" style="padding:8px" onclick="previewBulk()">👁 Preview ก่อนเพิ่ม</button>
             <button class="btn-sm btn-blue" style="padding:10px" onclick="addBulkHouses()">📋 เพิ่มทั้งหมด</button>
             <div id="bulk-house-result"></div>
           </div>
@@ -1010,20 +1007,21 @@ async function addSingleHouse() {
   const houseId = document.getElementById('single-house-id').value.trim();
   const houseEmail = document.getElementById('single-house-email').value.trim();
   const housePassword = document.getElementById('single-house-pass').value.trim();
-  const expireDate = document.getElementById('single-house-expire').value;
-  const maxMembers = document.getElementById('single-house-max').value || 5;
+  let expireDate = document.getElementById('single-house-expire').value;
   const resultEl = document.getElementById('single-house-result');
 
-  if (!houseEmail || !housePassword || !expireDate) {
-    resultEl.innerHTML = '<div style="color:#ef4444;font-size:12px;margin-top:8px">❌ กรุณากรอกข้อมูลให้ครบ</div>';
+  if (!houseEmail || !housePassword) {
+    resultEl.innerHTML = '<div style="color:#ef4444;font-size:12px;margin-top:8px">❌ กรุณากรอกอีเมลและรหัสผ่าน</div>';
     return;
   }
+
+  if (!expireDate) expireDate = getDefaultExpire();
 
   try {
     const res = await fetch(`${BASE_URL}/api/admin/house`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password },
-      body: JSON.stringify({ houseId, houseEmail, housePassword, expireDate, maxMembers }),
+      body: JSON.stringify({ houseId, houseEmail, housePassword, expireDate, maxMembers: 5 }),
     });
     const data = await res.json();
     if (data.success) {
@@ -1040,36 +1038,92 @@ async function addSingleHouse() {
   }
 }
 
+// ===== Parse bulk text =====
+function parseBulkHouses(text) {
+  const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
+  const houses = [];
+  let pendingEmails = [];
+
+  for (const line of lines) {
+    if (line.includes('@')) {
+      pendingEmails.push(line);
+    } else {
+      // บรรทัดนี้คือรหัสผ่าน → assign ให้ทุกเมลที่รอ
+      if (pendingEmails.length > 0) {
+        for (const email of pendingEmails) {
+          houses.push({ email, password: line });
+        }
+        pendingEmails = [];
+      }
+    }
+  }
+  // ถ้ายังมีเมลที่ไม่มีรหัส
+  if (pendingEmails.length > 0) {
+    return { error: `อีเมล ${pendingEmails.join(', ')} ยังไม่มีรหัสผ่าน` };
+  }
+  return { houses };
+}
+
+function getDefaultExpire() {
+  const d = new Date();
+  d.setMonth(d.getMonth() + 1);
+  return d.toISOString().split('T')[0];
+}
+
+function previewBulk() {
+  const text = document.getElementById('bulk-house-text').value.trim();
+  const previewEl = document.getElementById('bulk-preview');
+  if (!text) { previewEl.style.display = 'none'; return; }
+  const result = parseBulkHouses(text);
+  if (result.error) {
+    previewEl.style.display = 'block';
+    previewEl.innerHTML = `<span style="color:#ef4444">❌ ${result.error}</span>`;
+    return;
+  }
+  previewEl.style.display = 'block';
+  previewEl.innerHTML = `<span style="color:#22c55e">✅ พบ ${result.houses.length} บ้าน:</span><br>` +
+    result.houses.map((h,i) => `${i+1}. ${h.email} / ${h.password}`).join('<br>');
+}
+
 // ===== เพิ่มหลายบ้าน =====
 async function addBulkHouses() {
   const text = document.getElementById('bulk-house-text').value.trim();
-  const expireDate = document.getElementById('bulk-house-expire').value;
-  const maxMembers = document.getElementById('bulk-house-max').value || 5;
+  let expireDate = document.getElementById('bulk-house-expire').value;
   const resultEl = document.getElementById('bulk-house-result');
 
-  if (!text || !expireDate) {
-    resultEl.innerHTML = '<div style="color:#ef4444;font-size:12px;margin-top:8px">❌ กรุณากรอกข้อมูลให้ครบ</div>';
+  if (!text) {
+    resultEl.innerHTML = '<div style="color:#ef4444;font-size:12px;margin-top:8px">❌ กรุณาวางข้อมูล</div>';
     return;
   }
 
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-  if (lines.length % 2 !== 0) {
-    resultEl.innerHTML = `<div style="color:#ef4444;font-size:12px;margin-top:8px">❌ ข้อมูลไม่ครบคู่ พบ ${lines.length} บรรทัด (ต้องเป็นจำนวนคู่)</div>`;
+  // ถ้าไม่ได้เลือกวันหมดอายุ ใช้ default 1 เดือน
+  if (!expireDate) expireDate = getDefaultExpire();
+
+  const parsed = parseBulkHouses(text);
+  if (parsed.error) {
+    resultEl.innerHTML = `<div style="color:#ef4444;font-size:12px;margin-top:8px">❌ ${parsed.error}</div>`;
     return;
   }
 
-  resultEl.innerHTML = '<div style="color:#85B7EB;font-size:12px;margin-top:8px">กำลังเพิ่ม...</div>';
+  resultEl.innerHTML = `<div style="color:#85B7EB;font-size:12px;margin-top:8px">กำลังเพิ่ม ${parsed.houses.length} บ้าน...</div>`;
+
+  // แปลงเป็น text format ที่ server เข้าใจ (email
+password
+email
+password)
+  const bulkText = parsed.houses.map(h => `${h.email}\n${h.password}`).join('\n');
 
   try {
     const res = await fetch(`${BASE_URL}/api/admin/houses/bulk`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password },
-      body: JSON.stringify({ text, expireDate, maxMembers }),
+      body: JSON.stringify({ text: bulkText, expireDate, maxMembers: 5 }),
     });
     const data = await res.json();
     if (data.success) {
       resultEl.innerHTML = `<div style="color:#22c55e;font-size:12px;margin-top:8px">✅ เพิ่ม ${data.count} บ้านสำเร็จ!<br>${data.houses.map(h => h.houseId + ': ' + h.houseEmail).join('<br>')}</div>`;
       document.getElementById('bulk-house-text').value = '';
+      document.getElementById('bulk-preview').style.display = 'none';
       await loadAll();
     } else {
       resultEl.innerHTML = `<div style="color:#ef4444;font-size:12px;margin-top:8px">❌ ${data.error}</div>`;
