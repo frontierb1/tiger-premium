@@ -18,44 +18,74 @@ async function sendLineMessage(userId, text) {
   }
 }
 
+function buildMessage(lineUserId, items) {
+  // items = [{ email, expireDate, daysLeft, type }]
+  // type = 'expired' | 'soon3' | 'soon7'
+
+  const emojiMap = { expired: '❌', soon3: '🔴', soon7: '⚠️' };
+  const titleMap = {
+    expired: 'สมาชิกของคุณหมดอายุแล้ว',
+    soon3: 'สมาชิกของคุณจะหมดอายุใน 3 วัน!',
+    soon7: 'สมาชิกของคุณจะหมดอายุใน 7 วัน',
+  };
+
+  // ถ้ามีแค่เมลเดียว
+  if (items.length === 1) {
+    const item = items[0];
+    const emoji = emojiMap[item.type];
+    const title = titleMap[item.type];
+    return `${emoji} แจ้งเตือน Tiger Premium\n\n${title}\n\n📧 ${item.email}\n📅 หมดอายุ: ${item.expireDate} (เหลืออีก ${item.daysLeft} วัน)\n\nกด "ต่ออายุ" ในเมนูด้านล่างได้เลยครับ `;
+  }
+
+  // ถ้ามีหลายเมล → group รวม
+  const lines = items.map(item => {
+    const emoji = emojiMap[item.type];
+    return `${emoji} ${item.email}\n   📅 หมดอายุ: ${item.expireDate} (เหลืออีก ${item.daysLeft} วัน)`;
+  }).join('\n\n');
+
+  return `⚠️ แจ้งเตือน Tiger Premium\n\nสมาชิกของคุณมีที่ใกล้หมดอายุ:\n\n${lines}\n\nกด "ต่ออายุ" ในเมนูด้านล่างได้เลยครับ `;
+}
+
 async function runNotifications() {
   console.log(`🔔 เริ่มส่งแจ้งเตือน ${dayjs().format('YYYY-MM-DD HH:mm:ss')}`);
 
-  const expiring7 = await getMembersExpiringIn(7);
-  const expiring3 = await getMembersExpiringIn(3);
-  const expiring0 = await getMembersExpiringIn(0);
+  const [rows7, rows3, rows0] = await Promise.all([
+    getMembersExpiringIn(7),
+    getMembersExpiringIn(3),
+    getMembersExpiringIn(0),
+  ]);
 
-  // รวม unique user IDs เพื่อไม่ส่งซ้ำ
-  const sent = new Set();
+  // Group by LINE ID
+  const grouped = {};
 
-  for (const member of expiring0) {
-    if (sent.has(member[0])) continue;
-    sent.add(member[0]);
-    await sendLineMessage(member[0],
-      `❌ สมาชิก Tiger Premium หมดอายุแล้ว\n\n📅 หมดอายุ: ${member[3]}\n\nกด "ต่ออายุ" ในเมนูด้านล่างเพื่อใช้งานต่อได้เลยครับ 🐯`
-    );
+  const addItem = (rows, type, daysLeft) => {
+    rows.forEach(row => {
+      const lineUserId = row[0];
+      const email = row[5] || '-';
+      const expireDate = row[3];
+      if (!grouped[lineUserId]) grouped[lineUserId] = [];
+      // ไม่เพิ่มซ้ำถ้า email+expireDate เหมือนกัน
+      const exists = grouped[lineUserId].find(i => i.email === email && i.expireDate === expireDate);
+      if (!exists) grouped[lineUserId].push({ email, expireDate, daysLeft, type });
+    });
+  };
+
+  addItem(rows0, 'expired', 0);
+  addItem(rows3, 'soon3', 3);
+  addItem(rows7, 'soon7', 7);
+
+  const userIds = Object.keys(grouped);
+  let sent = 0;
+
+  for (const lineUserId of userIds) {
+    const items = grouped[lineUserId];
+    const msg = buildMessage(lineUserId, items);
+    await sendLineMessage(lineUserId, msg);
+    sent++;
     await sleep(1000);
   }
 
-  for (const member of expiring3) {
-    if (sent.has(member[0])) continue;
-    sent.add(member[0]);
-    await sendLineMessage(member[0],
-      `🔴 แจ้งเตือนด่วน Tiger Premium\n\nสมาชิกของคุณจะหมดอายุใน 3 วัน!\n📅 วันหมดอายุ: ${member[3]}\n\nอย่าลืมต่ออายุนะครับ กด "ต่ออายุ" ในเมนูได้เลย 🐯`
-    );
-    await sleep(1000);
-  }
-
-  for (const member of expiring7) {
-    if (sent.has(member[0])) continue;
-    sent.add(member[0]);
-    await sendLineMessage(member[0],
-      `⚠️ แจ้งเตือน Tiger Premium\n\nสมาชิกของคุณจะหมดอายุใน 7 วัน\n📅 วันหมดอายุ: ${member[3]}\n\nกด "ต่ออายุ" ในเมนูด้านล่างเพื่อต่ออายุได้เลยครับ 🐯`
-    );
-    await sleep(1000);
-  }
-
-  console.log(`✅ ส่งแจ้งเตือนเสร็จสิ้น (7วัน:${expiring7.length} | 3วัน:${expiring3.length} | หมด:${expiring0.length})`);
+  console.log(`✅ ส่งแจ้งเตือนเสร็จสิ้น — ส่งทั้งหมด ${sent} คน (7วัน:${rows7.length} | 3วัน:${rows3.length} | หมด:${rows0.length})`);
 }
 
 module.exports = { runNotifications };
