@@ -18,11 +18,11 @@ function rowToMember(row) {
     package:       row[2],
     expireDate:    row[3],
     status:        row[4],
-   houseEmail: row[5],  // F: member_email
+    houseEmail:    row[5],
     slipUrl:       row[6],
     createdAt:     row[7],
- houseId:      row[8],  // I: house_id
-inviteStatus: row[9],  // J: invite_status
+    houseId:       row[8],
+    inviteStatus:  row[9],
   };
 }
 
@@ -105,8 +105,8 @@ async function addMember(data) {
           data.memberEmail || '',                       // F: member_email
           data.slipUrl ? 'มีสลิป ✓' : '',             // G: slip_url
           dayjs().format('YYYY-MM-DD HH:mm:ss'),       // H: created_at
-          'pending', // I: invite_status
-                    '',        // J: house_id         
+          '',                                           // I: house_id
+          'pending',                                    // J: invite_status
         ]],
       },
     });
@@ -200,12 +200,12 @@ async function getHouses() {
     });
     const rows = res.data.values || [];
     return rows.slice(1).map(row => ({
-      houseId:      row[0],
-      houseEmail:   row[1],
-      housePassword:row[2],
-      expireDate:   row[3],
-      maxMembers:   parseInt(row[4]) || 5,
-      status:       row[5],
+      houseId:        row[0],
+      houseEmail:     row[1],
+      housePassword:  row[2],
+      expireDate:     row[3],
+      maxMembers:     parseInt(row[4]) || 5,
+      status:         row[5],
       currentMembers: parseInt(row[6]) || 0,
       slotsLeft:      parseInt(row[7]) || 0,
     }));
