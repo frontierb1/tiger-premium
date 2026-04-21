@@ -516,6 +516,7 @@ function switchTab(tab, el) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   document.getElementById(`tab-${tab}`).classList.add('active');
+  if (tab === 'logs') loadLogs();
 }
 
 async function loadAll() {
@@ -1075,12 +1076,7 @@ async function loadLogs() {
   }
 }
 
-// โหลด logs เมื่อเปิดแท็บ
-const origSwitchTab = switchTab;
-function switchTab(tab, el) {
-  origSwitchTab(tab, el);
-  if (tab === 'logs') loadLogs();
-}
+
 
 setInterval(loadAll, 60000);
 </script>
