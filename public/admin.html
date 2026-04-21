@@ -1107,10 +1107,7 @@ async function addBulkHouses() {
 
   resultEl.innerHTML = `<div style="color:#85B7EB;font-size:12px;margin-top:8px">กำลังเพิ่ม ${parsed.houses.length} บ้าน...</div>`;
 
-  // แปลงเป็น text format ที่ server เข้าใจ (email
-password
-email
-password)
+  // แปลงเป็น text format email+password สลับกัน
   const bulkText = parsed.houses.map(h => `${h.email}\n${h.password}`).join('\n');
 
   try {
