@@ -1,5 +1,5 @@
 const express = require('express');
-const { getAllMembers, getHouses, updateInviteStatus, getMemberByLineId, addHouse, addHouses, removeMemberFromHouse, moveMemberToHouse, getAdmins, writeLog } = require('./sheets');
+const { getAllMembers, getHouses, updateInviteStatus, getMemberByLineId, addHouse, addHouses, removeMemberFromHouse, moveMemberToHouse, updateMemberEmail, getAdmins, writeLog } = require('./sheets');
 const dayjs = require('dayjs');
 const router = express.Router();
 
@@ -125,12 +125,25 @@ router.post('/member/move', authCheck, async (req, res) => {
     const result = await moveMemberToHouse(rowIndex, houseId);
     if (!result.success) return res.status(500).json({ error: result.error });
     await writeLog(req.adminUser, req.adminName, 'ย้ายสมาชิก', `${memberEmail || lineUserId} → ${houseId}`);
-    // แจ้ง LINE
     if (lineUserId) {
       await sendLineMessage(lineUserId,
         `📨 Tiger Premium — ส่งคำเชิญใหม่!\n\nแอดมินย้ายคุณไปบ้านใหม่แล้วครับ\n\n✅ กรุณาตรวจสอบอีเมลที่ใช้สมัคร\nแล้วกด "ยอมรับคำเชิญ" ครับ 🐯`
       );
     }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// แก้ไขอีเมลสมาชิกในบ้าน
+router.post('/member/edit', authCheck, async (req, res) => {
+  try {
+    const { rowIndex, oldEmail, newEmail } = req.body;
+    if (!rowIndex || !newEmail) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
+    const result = await updateMemberEmail(rowIndex, newEmail);
+    if (!result.success) return res.status(500).json({ error: result.error });
+    await writeLog(req.adminUser, req.adminName, 'แก้ไขอีเมลสมาชิก', `${oldEmail} → ${newEmail}`);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
