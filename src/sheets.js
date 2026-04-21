@@ -276,16 +276,32 @@ async function addHouses(housesArray) {
 async function removeMemberFromHouse(rowIndex) {
   try {
     const sheets = await getSheets();
-    // รีเซ็ต house_id และ invite_status ของแถวนั้น
+    // รีเซ็ต house_id (I) = '' และ invite_status (J) = 'pending'
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
       range: `Members!I${rowIndex}:J${rowIndex}`,
       valueInputOption: 'USER_ENTERED',
-      requestBody: { values: [['pending', '']] },
+      requestBody: { values: [['', 'pending']] },
     });
     return { success: true };
   } catch (err) {
     console.error('removeMemberFromHouse error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+async function moveMemberToHouse(rowIndex, houseId) {
+  try {
+    const sheets = await getSheets();
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `Members!I${rowIndex}:J${rowIndex}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[houseId, 'inviting']] },
+    });
+    return { success: true };
+  } catch (err) {
+    console.error('moveMemberToHouse error:', err.message);
     return { success: false, error: err.message };
   }
 }
@@ -366,6 +382,7 @@ module.exports = {
   addHouse,
   addHouses,
   removeMemberFromHouse,
+  moveMemberToHouse,
   getAdmins,
   writeLog,
   getLogs,
