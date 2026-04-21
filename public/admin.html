@@ -780,29 +780,50 @@ function renderHouses() {
 
   const sorted = getSortedHouses();
   document.getElementById('houses-body').innerHTML = sorted.map(h => {
-    const members = allMembers.filter(m => m.houseId === h.houseId && m.inviteStatus !== 'invited');
+    const houseMembers = allMembers.filter(m => m.houseId === h.houseId);
+    const visibleMembers = houseMembers.filter(m => m.inviteStatus !== 'invited');
     const used = getHouseUsed(h.houseId);
     const slot = getHouseSlot(h.houseId);
     const isOverflow = used > h.maxMembers;
     const days = daysLeft(h.expireDate);
-    const emails = members.map(m => m.houseEmail).filter(Boolean);
+    const emails = visibleMembers.map(m => m.houseEmail).filter(Boolean);
     const chunks = [];
     for (let i = 0; i < emails.length; i += 5) chunks.push(emails.slice(i, i+5));
     const copyBtns = chunks.map((chunk, i) =>
-      `<button class="btn-sm btn-gray" style="margin:2px" onclick="copyText('${chunk.join(', ')}',this)">Copy ${i*5+1}-${Math.min(i*5+5,emails.length)}</button>`
+      `<button class="btn-sm btn-gray" style="margin:2px" onclick="event.stopPropagation();copyText('${chunk.join(', ')}',this)">Copy ${i*5+1}-${Math.min(i*5+5,emails.length)}</button>`
     ).join('');
 
+    const statusMap = { pending: 'รอเชิญ', inviting: 'กำลังเชิญ', invited: 'เชิญแล้ว' };
+    const badgeMap = { pending: 'pending', inviting: 'inviting', invited: 'invited' };
+
+    const memberRows = houseMembers.length > 0 ? houseMembers.map(m => {
+      const dl = daysLeft(m.expireDate);
+      return `<tr style="background:#060f1e">
+        <td></td>
+        <td colspan="2" style="padding-left:24px;font-size:12px"><span style="color:#85B7EB">📧</span> ${m.houseEmail || '-'}</td>
+        <td style="font-size:12px">${m.expireDate} ${daysBadge(dl)}</td>
+        <td style="font-size:12px">${pkgLabel(m.package)}</td>
+        <td><span class="badge ${badgeMap[m.inviteStatus]||'pending'}">${statusMap[m.inviteStatus]||'รอเชิญ'}</span></td>
+        <td colspan="2"><button class="btn-sm btn-gray" style="font-size:11px" onclick="event.stopPropagation();removeMember(${m.rowIndex},'${m.lineUserId}','${m.houseEmail}',this)">🗑 ลบออกจากบ้าน</button></td>
+      </tr>`;
+    }).join('') : `<tr style="background:#060f1e"><td></td><td colspan="7" style="font-size:12px;color:#555;padding-left:24px">ไม่มีสมาชิก</td></tr>`;
+
     return `
-      <tr class="${isOverflow ? 'overflow-row' : ''}">
+      <tr class="${isOverflow ? 'overflow-row' : ''}" style="cursor:pointer" onclick="toggleHouseMembers('${h.houseId}')">
+        <td style="text-align:center;font-size:12px;color:#85B7EB" id="arrow-${h.houseId}">▶</td>
         <td><strong>${h.houseId}</strong>${isOverflow ? '<span class="overflow-warn">⚠️ เกิน!</span>' : ''}</td>
         <td>${h.houseEmail}</td>
         <td>${h.expireDate} ${daysBadge(days)}</td>
         <td>${used} / ${h.maxMembers}${isOverflow ? ' <span class="overflow-warn">เกิน!</span>' : ''}</td>
         <td><span class="badge ${slot > 0 ? 'green' : 'red'}">${slot > 0 ? 'ว่าง ' + slot : 'เต็ม'}</span></td>
         <td><span class="badge ${h.status === 'active' ? 'invited' : 'red'}">${h.status}</span></td>
-        <td>${copyBtns || '-'}</td>
+        <td onclick="event.stopPropagation()">${copyBtns || '-'}</td>
       </tr>
-    `;
+      <tr id="members-${h.houseId}" style="display:none">
+        <td colspan="8" style="padding:0">
+          <table style="width:100%;border-collapse:collapse">${memberRows}</table>
+        </td>
+      </tr>`;
   }).join('');
 }
 
