@@ -397,35 +397,24 @@ function populateHouseSelect() {
 
 function refreshHouseDropdown() {
   const count = selectedRows.size;
+  const minSlot = count === 0 ? 5 : count; // ไม่ติ๊ก = ต้องว่าง ≥ 5, ติ๊ก N = ต้องว่าง ≥ N
   const sel = document.getElementById('main-house-select');
   const cur = sel.value;
-  sel.innerHTML = '<option value="">-- เลือกบ้าน --</option>';
+  sel.innerHTML = `<option value="">-- เลือกบ้าน (ว่าง ≥ ${minSlot}) --</option>`;
   const sorted = [...allHouses].sort((a,b) => getHouseSlot(b.houseId) - getHouseSlot(a.houseId));
   sorted.forEach(h => {
     const slot = getHouseSlot(h.houseId);
-    if (slot < count) return; // ซ่อนบ้านที่ว่างไม่พอ
+    if (slot < minSlot) return;
     const opt = document.createElement('option');
     opt.value = h.houseId;
     opt.textContent = `${h.houseId} — ว่าง ${slot}/${h.maxMembers} ที่`;
     sel.appendChild(opt);
   });
-  if (count === 0) {
-    // ไม่ได้ติ๊กอะไร → แสดงทุกบ้านที่ว่าง ≥ 1
-    sel.innerHTML = '<option value="">-- เลือกบ้าน (เฉพาะที่ว่าง) --</option>';
-    sorted.forEach(h => {
-      const slot = getHouseSlot(h.houseId);
-      if (slot <= 0) return;
-      const opt = document.createElement('option');
-      opt.value = h.houseId;
-      opt.textContent = `${h.houseId} — ว่าง ${slot}/${h.maxMembers} ที่`;
-      sel.appendChild(opt);
-    });
-  }
-  // restore previous selection if still valid
+  // restore หรือ reset
   if (cur) {
     const found = [...sel.options].find(o => o.value === cur);
-    if (found) sel.value = cur;
-    else { sel.value = ''; currentMaxSlot = 0; }
+    if (found) { sel.value = cur; }
+    else { sel.value = ''; currentMaxSlot = 0; document.getElementById('slot-info').textContent = '-'; document.getElementById('slot-info').className = 'slot-badge'; document.getElementById('bulk-hint').style.display = 'none'; }
   }
 }
 
