@@ -395,6 +395,40 @@ function populateHouseSelect() {
   if (cur) { sel.value = cur; onHouseChange(); }
 }
 
+function refreshHouseDropdown() {
+  const count = selectedRows.size;
+  const sel = document.getElementById('main-house-select');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">-- เลือกบ้าน --</option>';
+  const sorted = [...allHouses].sort((a,b) => getHouseSlot(b.houseId) - getHouseSlot(a.houseId));
+  sorted.forEach(h => {
+    const slot = getHouseSlot(h.houseId);
+    if (slot < count) return; // ซ่อนบ้านที่ว่างไม่พอ
+    const opt = document.createElement('option');
+    opt.value = h.houseId;
+    opt.textContent = `${h.houseId} — ว่าง ${slot}/${h.maxMembers} ที่`;
+    sel.appendChild(opt);
+  });
+  if (count === 0) {
+    // ไม่ได้ติ๊กอะไร → แสดงทุกบ้านที่ว่าง ≥ 1
+    sel.innerHTML = '<option value="">-- เลือกบ้าน (เฉพาะที่ว่าง) --</option>';
+    sorted.forEach(h => {
+      const slot = getHouseSlot(h.houseId);
+      if (slot <= 0) return;
+      const opt = document.createElement('option');
+      opt.value = h.houseId;
+      opt.textContent = `${h.houseId} — ว่าง ${slot}/${h.maxMembers} ที่`;
+      sel.appendChild(opt);
+    });
+  }
+  // restore previous selection if still valid
+  if (cur) {
+    const found = [...sel.options].find(o => o.value === cur);
+    if (found) sel.value = cur;
+    else { sel.value = ''; currentMaxSlot = 0; }
+  }
+}
+
 function syncHouseToSelected() {
   const houseId = document.getElementById('main-house-select').value;
   if (!houseId) return;
@@ -560,11 +594,19 @@ function renderAllMembers(members) {
 }
 
 // Checkbox logic
+function getMaxSelect() {
+  const houseId = document.getElementById('main-house-select').value;
+  if (houseId && currentMaxSlot > 0) return currentMaxSlot;
+  return 5;
+}
+
 function onCheckChange(el) {
   if (el.checked) {
-    if (selectedRows.size >= 5) {
+    const max = getMaxSelect();
+    if (selectedRows.size >= max) {
       el.checked = false;
-      showNotif('เลือกได้สูงสุด 5 คนครับ', 'info');
+      const houseId = document.getElementById('main-house-select').value;
+      showNotif(houseId ? `บ้านนี้ว่างแค่ ${max} ที่ครับ` : 'เลือกได้สูงสุด 5 คนครับ', 'info');
       return;
     }
     selectedRows.add(el.dataset.row);
@@ -573,6 +615,7 @@ function onCheckChange(el) {
   }
   document.getElementById('row-' + el.dataset.row).classList.toggle('selected-row', el.checked);
   syncHouseToSelected();
+  refreshHouseDropdown();
   updateBulkActions();
 }
 
@@ -580,9 +623,10 @@ function toggleSelectAll(el) {
   selectedRows.clear();
   document.querySelectorAll('#pending-body tr').forEach(r => r.classList.remove('selected-row'));
   if (el.checked) {
+    const max = getMaxSelect();
     let count = 0;
     document.querySelectorAll('.row-check').forEach(c => {
-      if (count < 5) {
+      if (count < max) {
         c.checked = true;
         selectedRows.add(c.dataset.row);
         document.getElementById('row-'+c.dataset.row).classList.add('selected-row');
@@ -595,6 +639,7 @@ function toggleSelectAll(el) {
     document.querySelectorAll('.row-check').forEach(c => c.checked = false);
   }
   syncHouseToSelected();
+  refreshHouseDropdown();
   updateBulkActions();
 }
 
@@ -604,6 +649,7 @@ function clearSelection() {
   document.querySelectorAll('#pending-body tr').forEach(r => r.classList.remove('selected-row'));
   const sa = document.getElementById('select-all');
   if (sa) sa.checked = false;
+  refreshHouseDropdown();
   updateBulkActions();
 }
 
