@@ -73,7 +73,7 @@ router.post('/invite', authCheck, async (req, res) => {
 
     await sendLineMessage(lineUserId,
       `✅ Tiger Premium — เข้าร่วมสำเร็จ!\n\nยืนยันว่าคุณได้กดรับคำเชิญ YouTube Premium Family เรียบร้อยแล้วครับ\n\n` +
-      `📧 อีเมลที่ใช้เข้าบ้าน: ${email}\n` +
+      `📧 อีเมล: ${email}\n` +
       `📦 แพ็กเกจ: ${pkg}\n` +
       `📅 วันหมดอายุ: ${expire} (เหลืออีก ${daysLeft} วัน)\n\n` +
       `หากมีปัญหาการเข้าใช้งาน กรุณาติดต่อแอดมินได้เลยครับ 🐯`
