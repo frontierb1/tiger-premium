@@ -138,7 +138,8 @@ router.post('/invite', authCheck, async (req, res) => {
   try {
     const { rowIndex, lineUserId } = req.body;
     if (!rowIndex || !lineUserId) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
-    const member = await getMemberByLineId(lineUserId);
+    const members = await getAllMembers();
+    const member = members.find(m => m.rowIndex === parseInt(rowIndex));
     const result = await updateInviteStatus(rowIndex, '', 'invited');
     if (!result.success) return res.status(500).json({ error: result.error });
     await writeLog(req.adminUser, req.adminName, 'ยืนยันกดรับ', `${member?.houseEmail || lineUserId}`);
@@ -158,8 +159,11 @@ router.post('/invite', authCheck, async (req, res) => {
 // ===== Remind =====
 router.post('/remind', authCheck, async (req, res) => {
   try {
-    const { lineUserId } = req.body;
-    const member = await getMemberByLineId(lineUserId);
+    const { lineUserId, rowIndex } = req.body;
+    const members = await getAllMembers();
+    const member = rowIndex
+      ? members.find(m => m.rowIndex === parseInt(rowIndex))
+      : await getMemberByLineId(lineUserId);
     if (!member) return res.status(404).json({ error: 'ไม่พบสมาชิก' });
     const days = dayjs(member.expireDate).diff(dayjs(), 'day');
     const emoji = days <= 0 ? '❌' : days <= 3 ? '🔴' : '⚠️';
