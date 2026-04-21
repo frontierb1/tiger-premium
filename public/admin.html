@@ -395,6 +395,16 @@ function populateHouseSelect() {
   if (cur) { sel.value = cur; onHouseChange(); }
 }
 
+function syncHouseToSelected() {
+  const houseId = document.getElementById('main-house-select').value;
+  if (!houseId) return;
+  // sync dropdown ทุกแถวที่ติ๊กให้เป็นบ้านที่เลือก
+  selectedRows.forEach(row => {
+    const sel = document.getElementById(`single-house-${row}`);
+    if (sel) sel.value = houseId;
+  });
+}
+
 function onHouseChange() {
   const houseId = document.getElementById('main-house-select').value;
   if (!houseId) {
@@ -412,6 +422,7 @@ function onHouseChange() {
   el.className = `slot-badge ${slot > 0 ? 'ok' : 'full'}`;
   document.getElementById('bulk-hint').style.display = 'flex';
   document.getElementById('max-slot-text').textContent = `(เลือกได้สูงสุด ${slot} คน)`;
+  syncHouseToSelected();
   updateBulkActions();
 }
 
@@ -550,24 +561,18 @@ function renderAllMembers(members) {
 
 // Checkbox logic
 function onCheckChange(el) {
-  const bulkVisible = document.getElementById('bulk-panel').style.display !== 'none';
-  const houseId = document.getElementById('main-house-select').value;
-
-  if (bulkVisible && houseId) {
-    // โหมดหมู่ + เลือกบ้านแล้ว → เช็คที่ว่าง
-    if (el.checked && selectedRows.size >= currentMaxSlot) {
+  if (el.checked) {
+    if (selectedRows.size >= 5) {
       el.checked = false;
-      showNotif(`บ้านนี้ว่างแค่ ${currentMaxSlot} ที่ครับ`, 'info');
+      showNotif('เลือกได้สูงสุด 5 คนครับ', 'info');
       return;
     }
-  }
-
-  if (el.checked) {
     selectedRows.add(el.dataset.row);
   } else {
     selectedRows.delete(el.dataset.row);
   }
   document.getElementById('row-' + el.dataset.row).classList.toggle('selected-row', el.checked);
+  syncHouseToSelected();
   updateBulkActions();
 }
 
@@ -575,14 +580,21 @@ function toggleSelectAll(el) {
   selectedRows.clear();
   document.querySelectorAll('#pending-body tr').forEach(r => r.classList.remove('selected-row'));
   if (el.checked) {
+    let count = 0;
     document.querySelectorAll('.row-check').forEach(c => {
-      c.checked = true;
-      selectedRows.add(c.dataset.row);
-      document.getElementById('row-'+c.dataset.row).classList.add('selected-row');
+      if (count < 5) {
+        c.checked = true;
+        selectedRows.add(c.dataset.row);
+        document.getElementById('row-'+c.dataset.row).classList.add('selected-row');
+        count++;
+      } else {
+        c.checked = false;
+      }
     });
   } else {
     document.querySelectorAll('.row-check').forEach(c => c.checked = false);
   }
+  syncHouseToSelected();
   updateBulkActions();
 }
 
@@ -604,21 +616,12 @@ function updateBulkActions() {
   document.getElementById('btn-copy-selected').disabled = count === 0;
   document.getElementById('btn-bulk-invite').disabled = count === 0 || !hasHouse;
 
-  // ถ้าเลือกบ้านแล้วและมีคนเกิน slot → ตัดออกอัตโนมัติ
+  // แสดง warning ถ้าเลือกเกินที่ว่างของบ้าน (ไม่ตัดออกอัตโนมัติ ให้แอดมินตัดเอง)
   if (hasHouse && currentMaxSlot > 0 && count > currentMaxSlot) {
-    let removed = 0;
-    const toRemove = [...selectedRows].slice(currentMaxSlot);
-    toRemove.forEach(row => {
-      selectedRows.delete(row);
-      const cb = document.querySelector(`.row-check[data-row="${row}"]`);
-      if (cb) cb.checked = false;
-      const tr = document.getElementById('row-' + row);
-      if (tr) tr.classList.remove('selected-row');
-      removed++;
-    });
-    if (removed > 0) showNotif(`ตัด ${removed} คนออก เพราะเกินที่ว่างของบ้านครับ`, 'info');
-    document.getElementById('selected-count-text').textContent = selectedRows.size;
-    if (bulkCount) bulkCount.textContent = selectedRows.size;
+    document.getElementById('btn-bulk-invite').disabled = true;
+    document.getElementById('btn-bulk-invite').textContent = `⚠️ เลือก ${count} แต่ว่างแค่ ${currentMaxSlot}`;
+  } else {
+    document.getElementById('btn-bulk-invite').textContent = '📨 ส่งเชิญทั้งที่เลือก';
   }
 }
 
