@@ -357,8 +357,13 @@
 
       <!-- บ้านใกล้หมดอายุ -->
       <div class="warn-box" style="margin-bottom:14px">
-        <h4>🏠 บ้านใกล้หมดอายุ (ภายใน 3 วัน)</h4>
-        <div id="warn-expiring-houses"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <h4 style="margin-bottom:0">🏠 บ้านใกล้หมดอายุ (ภายใน 3 วัน)</h4>
+          <button class="btn-sm btn-gray" style="font-size:11px;padding:3px 10px" onclick="toggleWarnBox('expiring-houses-body','btn-toggle-expiring',this)">ซ่อน</button>
+        </div>
+        <div id="expiring-houses-body">
+          <div id="warn-expiring-houses"></div>
+        </div>
       </div>
 
       <div class="table-wrap">
@@ -442,8 +447,13 @@
 
       <!-- สมาชิกหมดอายุยังอยู่ในบ้าน -->
       <div class="warn-box" style="margin-bottom:14px">
-        <h4>🔴 สมาชิกหมดอายุแล้ว ยังอยู่ในบ้าน</h4>
-        <div id="warn-expired-members"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <h4 style="margin-bottom:0">🔴 สมาชิกหมดอายุแล้ว ยังอยู่ในบ้าน</h4>
+          <button class="btn-sm btn-gray" style="font-size:11px;padding:3px 10px" onclick="toggleWarnBox('expired-members-body','btn-toggle-expired',this)">ซ่อน</button>
+        </div>
+        <div id="expired-members-body">
+          <div id="warn-expired-members"></div>
+        </div>
       </div>
 
       <div class="table-wrap">
@@ -1491,6 +1501,14 @@ async function sendReminder(lineUserId, email, rowIndex, btn) {
     if (data.success) { showNotif(`✅ ส่งแจ้งเตือน ${email} แล้ว`, 'success'); btn.textContent = 'ส่งแล้ว ✓'; }
     else { showNotif(`❌ ${data.error}`, 'error'); btn.disabled = false; btn.textContent = '🔔 แจ้งเตือน'; }
   } catch { showNotif('❌ เกิดข้อผิดพลาด', 'error'); btn.disabled = false; btn.textContent = '🔔 แจ้งเตือน'; }
+}
+
+function toggleWarnBox(bodyId, btnId, btn) {
+  const body = document.getElementById(bodyId);
+  if (!body) return;
+  const isHidden = body.style.display === 'none';
+  body.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? 'ซ่อน' : 'แสดง';
 }
 
 function copyText(text, btn) {
