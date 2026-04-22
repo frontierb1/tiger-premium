@@ -30,7 +30,7 @@ router.post('/login', async (req, res) => {
     const admins = await getAdmins();
     const admin = admins.find(a => a.username === username && a.password === password && a.status === 'active');
     if (!admin) return res.status(401).json({ error: 'username หรือ password ไม่ถูกต้อง' });
-    res.json({ success: true, displayName: admin.displayName || username, username });
+    res.json({ success: true, displayName: admin.displayName || username, username, role: admin.role || 'admin' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
