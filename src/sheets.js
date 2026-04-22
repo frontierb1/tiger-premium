@@ -364,25 +364,107 @@ async function updateHousePassword(houseId, newPassword) {
   }
 }
 
-// ===== Admins =====
+// ===== Admins — อ่านจาก ENV แทน Google Sheet =====
 async function getAdmins() {
+  const admins = [];
+
+  // parse ADMINS_JSON จาก env: [{"username":"x","password":"y","displayName":"z","role":"owner"}]
+  try {
+    if (process.env.ADMINS_JSON) {
+      const parsed = JSON.parse(process.env.ADMINS_JSON);
+      admins.push(...parsed);
+    }
+  } catch (e) {
+    console.error('ADMINS_JSON parse error:', e.message);
+  }
+
+  // fallback: OWNER_USER / OWNER_PASS / ADMIN_USER / ADMIN_PASS
+  if (admins.length === 0) {
+    if (process.env.OWNER_USER && process.env.OWNER_PASS) {
+      admins.push({
+        username: process.env.OWNER_USER,
+        password: process.env.OWNER_PASS,
+        displayName: process.env.OWNER_NAME || 'Owner',
+        status: 'active',
+        role: 'owner',
+      });
+    }
+    if (process.env.ADMIN_USER && process.env.ADMIN_PASS) {
+      admins.push({
+        username: process.env.ADMIN_USER,
+        password: process.env.ADMIN_PASS,
+        displayName: process.env.ADMIN_NAME || 'Admin',
+        status: 'active',
+        role: 'admin',
+      });
+    }
+  }
+
+  return admins;
+}
+
+// ===== House Management =====
+async function updateHouseStatus(houseId, newStatus) {
   try {
     const sheets = await getSheets();
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: 'Admins!A:E',
+      range: 'Houses!A:A',
     });
     const rows = res.data.values || [];
-    return rows.slice(1).map(row => ({
-      username:    row[0],
-      password:    row[1],
-      displayName: row[2],
-      status:      row[3] || 'active',
-      role:        row[4] || 'admin', // E: role — 'owner' หรือ 'admin'
-    }));
+    const rowIndex = rows.findIndex(r => r[0] === houseId);
+    if (rowIndex === -1) return { success: false, error: 'ไม่พบบ้าน' };
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `Houses!F${rowIndex + 1}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[newStatus]] },
+    });
+    return { success: true };
   } catch (err) {
-    console.error('getAdmins error:', err.message);
-    return [];
+    console.error('updateHouseStatus error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+async function deleteHouse(houseId) {
+  try {
+    const sheets = await getSheets();
+    // ดึง spreadsheet metadata เพื่อหา sheetId
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID });
+    const sheet = meta.data.sheets.find(s => s.properties.title === 'Houses');
+    if (!sheet) return { success: false, error: 'ไม่พบ sheet Houses' };
+    const sheetId = sheet.properties.sheetId;
+
+    // หา row index
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Houses!A:A',
+    });
+    const rows = res.data.values || [];
+    const rowIndex = rows.findIndex(r => r[0] === houseId);
+    if (rowIndex === -1) return { success: false, error: 'ไม่พบบ้าน' };
+
+    // ลบแถวนั้น
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SHEET_ID,
+      requestBody: {
+        requests: [{
+          deleteDimension: {
+            range: {
+              sheetId,
+              dimension: 'ROWS',
+              startIndex: rowIndex,
+              endIndex: rowIndex + 1,
+            },
+          },
+        }],
+      },
+    });
+    return { success: true };
+  } catch (err) {
+    console.error('deleteHouse error:', err.message);
+    return { success: false, error: err.message };
   }
 }
 
@@ -445,6 +527,8 @@ module.exports = {
   updateMemberEmail,
   updateMemberExpire,
   updateHousePassword,
+  updateHouseStatus,
+  deleteHouse,
   getAdmins,
   writeLog,
   getLogs,
