@@ -1,5 +1,5 @@
 const express = require('express');
-const { getAllMembers, getHouses, updateInviteStatus, getMemberByLineId, addHouse, addHouses, removeMemberFromHouse, moveMemberToHouse, updateMemberEmail, updateMemberExpire, updateHousePassword, updateHouseStatus, deleteHouse, getAdmins, writeLog } = require('./sheets');
+const { getAllMembers, getHouses, updateInviteStatus, getMemberByLineId, addHouse, addHouses, removeMemberFromHouse, moveMemberToHouse, updateMemberEmail, updateMemberExpire, updateHousePassword, updateHouseStatus, deleteHouse, addReport, getReports, updateReportStatus, getAdmins, writeLog } = require('./sheets');
 const dayjs = require('dayjs');
 const router = express.Router();
 
@@ -271,6 +271,54 @@ router.get('/logs', authCheck, async (req, res) => {
     const { getLogs } = require('./sheets');
     const logs = await getLogs();
     res.json({ success: true, logs });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ===== Reports =====
+router.get('/reports', authCheck, async (req, res) => {
+  try {
+    const reports = await getReports();
+    res.json({ success: true, reports });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/report/status', authCheck, async (req, res) => {
+  try {
+    const { rowIndex, status, lineUserId, memberEmail } = req.body;
+    if (!rowIndex || !status) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
+    const result = await updateReportStatus(rowIndex, status);
+    if (!result.success) return res.status(500).json({ error: result.error });
+    await writeLog(req.adminUser, req.adminName, 'อัปเดตสถานะปัญหา', `${memberEmail} → ${status}`);
+    // แจ้ง LINE ถ้าแก้ไขแล้ว
+    if (status === 'resolved' && lineUserId) {
+      await sendLineMessage(lineUserId,
+        `✅ Tiger Premium — แก้ไขปัญหาแล้ว!\n\n📧 อีเมล: ${memberEmail}\n\nแอดมินได้แก้ไขปัญหาที่คุณแจ้งเรียบร้อยแล้วครับ\nหากยังมีปัญหาอยู่ กรุณาแจ้งใหม่ได้เลยครับ 🐯`
+      );
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Public endpoint — ลูกค้าแจ้งปัญหา (ไม่ต้อง auth)
+router.post('/report', async (req, res) => {
+  try {
+    const { lineUserId, displayName, memberEmail, detail } = req.body;
+    if (!lineUserId || !memberEmail) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
+    const result = await addReport({ lineUserId, displayName, memberEmail, detail });
+    if (!result.success) return res.status(500).json({ error: result.error });
+    // แจ้ง LINE แอดมิน (ถ้ามี ADMIN_LINE_ID)
+    if (process.env.ADMIN_LINE_ID) {
+      await sendLineMessage(process.env.ADMIN_LINE_ID,
+        `🚨 แจ้งปัญหาใหม่!\n\n👤 ${displayName || lineUserId}\n📧 ${memberEmail}\n📝 ${detail || 'ไม่ระบุรายละเอียด'}\n\nกรุณาตรวจสอบใน Admin Dashboard ครับ`
+      );
+    }
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
