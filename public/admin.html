@@ -4,6 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Dashboard - Tiger Premium</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a1628; color: #fff; min-height: 100vh; }
@@ -91,6 +92,27 @@
     .sortable { cursor: pointer; user-select: none; }
     .sortable:hover { color: #fff; background: #1a2a40; }
 
+    /* ===== Dashboard ===== */
+    .dash-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 16px; }
+    .dash-card { background: #0d1f3c; border: 1px solid #1e3a5f; border-radius: 14px; padding: 18px 20px; }
+    .dash-card .d-label { font-size: 11px; color: #85B7EB; margin-bottom: 6px; letter-spacing: 0.5px; }
+    .dash-card .d-value { font-size: 28px; font-weight: 700; }
+    .dash-card .d-sub { font-size: 11px; color: #85B7EB; margin-top: 4px; }
+    .dash-card.green .d-value { color: #22c55e; }
+    .dash-card.blue .d-value { color: #378ADD; }
+    .dash-card.orange .d-value { color: #ff9500; }
+    .dash-card.yellow .d-value { color: #f59e0b; }
+    .dash-card.purple .d-value { color: #a78bfa; }
+    .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .chart-box { background: #0d1f3c; border: 1px solid #1e3a5f; border-radius: 14px; padding: 18px; }
+    .chart-box h4 { font-size: 13px; font-weight: 600; margin-bottom: 14px; color: #B5D4F4; }
+    .chart-box canvas { max-height: 220px; }
+    .warn-box { background: #0d1f3c; border: 1px solid #1e3a5f; border-radius: 14px; padding: 16px 18px; margin-bottom: 14px; }
+    .warn-box h4 { font-size: 13px; font-weight: 600; margin-bottom: 10px; color: #f59e0b; }
+    .warn-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1a2a40; font-size: 12px; }
+    .warn-item:last-child { border-bottom: none; }
+    .warn-empty { font-size: 12px; color: #555; text-align: center; padding: 12px 0; }
+
     /* ===== Custom Modal ===== */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
     .modal-box { background: #0d1f3c; border: 1px solid #1e3a5f; border-radius: 16px; padding: 28px 24px; width: 340px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
@@ -136,7 +158,8 @@
   </div>
 
   <div class="tabs">
-    <button class="tab active" onclick="switchTab('pending',this)">⏳ รอเชิญ <span id="badge-pending"></span></button>
+    <button class="tab active" onclick="switchTab('dashboard',this)">📊 Dashboard</button>
+    <button class="tab" onclick="switchTab('pending',this)">⏳ รอเชิญ <span id="badge-pending"></span></button>
     <button class="tab" onclick="switchTab('inviting',this)">📨 กำลังเชิญ <span id="badge-inviting"></span></button>
     <button class="tab" onclick="switchTab('expiring',this)">⚠️ ใกล้หมดอายุ</button>
     <button class="tab" onclick="switchTab('houses',this)">🏠 จัดการบ้าน</button>
@@ -153,8 +176,77 @@
       <div class="stat-card red"><div class="label">ใกล้หมด (7วัน)</div><div class="value" id="stat-expiring">-</div></div>
     </div>
 
+    <!-- Tab: Dashboard -->
+    <div id="tab-dashboard" class="tab-content active">
+
+      <!-- Revenue Stats -->
+      <div class="dash-grid">
+        <div class="dash-card green">
+          <div class="d-label">💰 รายได้วันนี้</div>
+          <div class="d-value" id="dash-today">฿0</div>
+          <div class="d-sub" id="dash-today-count">0 ออเดอร์</div>
+        </div>
+        <div class="dash-card blue">
+          <div class="d-label">📅 รายได้เดือนนี้</div>
+          <div class="d-value" id="dash-month">฿0</div>
+          <div class="d-sub" id="dash-month-count">0 ออเดอร์</div>
+        </div>
+        <div class="dash-card orange">
+          <div class="d-label">🏆 รายได้ทั้งหมด</div>
+          <div class="d-value" id="dash-total-rev">฿0</div>
+          <div class="d-sub" id="dash-total-count">0 ออเดอร์</div>
+        </div>
+        <div class="dash-card purple">
+          <div class="d-label">👥 สมาชิก Active</div>
+          <div class="d-value" id="dash-active">0</div>
+          <div class="d-sub" id="dash-house-count">0 บ้าน</div>
+        </div>
+      </div>
+
+      <!-- Warning Boxes -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+
+        <!-- สมาชิกหมดอายุยังอยู่ในบ้าน -->
+        <div class="warn-box">
+          <h4>🔴 สมาชิกหมดอายุแล้ว ยังอยู่ในบ้าน</h4>
+          <div id="warn-expired-members"></div>
+        </div>
+
+        <!-- บ้านใกล้หมดอายุ -->
+        <div class="warn-box">
+          <h4>🏠 บ้านใกล้หมดอายุ (ภายใน 14 วัน)</h4>
+          <div id="warn-expiring-houses"></div>
+        </div>
+
+      </div>
+
+      <!-- Charts -->
+      <div class="chart-grid">
+        <div class="chart-box">
+          <h4>📈 สมาชิกใหม่ 30 วันล่าสุด</h4>
+          <canvas id="chart-daily"></canvas>
+        </div>
+        <div class="chart-box">
+          <h4>💰 รายได้รายเดือน (6 เดือน)</h4>
+          <canvas id="chart-revenue"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-grid">
+        <div class="chart-box">
+          <h4>📦 สัดส่วนแพ็กเกจ</h4>
+          <canvas id="chart-package"></canvas>
+        </div>
+        <div class="chart-box">
+          <h4>🏠 สถานะบ้านทั้งหมด</h4>
+          <canvas id="chart-houses"></canvas>
+        </div>
+      </div>
+
+    </div>
+
     <!-- Tab: รอเชิญ -->
-    <div id="tab-pending" class="tab-content active">
+    <div id="tab-pending" class="tab-content">
       <!-- Action bar หลัก -->
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;background:#0d1f3c;border:1px solid #1e3a5f;border-radius:10px;padding:12px 14px;">
         <span style="font-size:13px;color:#85B7EB">เลือกแล้ว: <strong id="selected-count-text" style="color:#fff">0</strong> คน</span>
@@ -598,12 +690,255 @@ function logout() {
   document.getElementById('admin-pass').value = '';
   currentAdmin.password = '';
 }
+let chartDaily = null, chartRevenue = null, chartPackage = null, chartHouses = null;
+
+const PKG_PRICE = { '1month': 79, '2months': 155, '3months': 230 };
+
+function renderDashboard() {
+  const now = new Date();
+  const todayStr = localDateStr(now);
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+  const active = allMembers.filter(m => m.status === 'active' && m.inviteStatus !== 'removed');
+
+  // Revenue calc
+  let todayRev = 0, todayCount = 0;
+  let monthRev = 0, monthCount = 0;
+  let totalRev = 0, totalCount = 0;
+
+  allMembers.forEach(m => {
+    if (!m.createdAt || m.inviteStatus === 'removed') return;
+    const price = PKG_PRICE[m.package] || 0;
+    const dateStr = m.createdAt.split(' ')[0];
+    totalRev += price; totalCount++;
+    if (dateStr && dateStr.startsWith(thisMonth)) { monthRev += price; monthCount++; }
+    if (dateStr === todayStr) { todayRev += price; todayCount++; }
+  });
+
+  document.getElementById('dash-today').textContent = `฿${todayRev.toLocaleString()}`;
+  document.getElementById('dash-today-count').textContent = `${todayCount} ออเดอร์`;
+  document.getElementById('dash-month').textContent = `฿${monthRev.toLocaleString()}`;
+  document.getElementById('dash-month-count').textContent = `${monthCount} ออเดอร์`;
+  document.getElementById('dash-total-rev').textContent = `฿${totalRev.toLocaleString()}`;
+  document.getElementById('dash-total-count').textContent = `${totalCount} ออเดอร์`;
+  document.getElementById('dash-active').textContent = active.length;
+  document.getElementById('dash-house-count').textContent = `${allHouses.length} บ้าน`;
+
+  renderWarnExpiredMembers();
+  renderWarnExpiringHouses();
+  renderChartDaily();
+  renderChartRevenue();
+  renderChartPackage();
+  renderChartHouses();
+}
+
+function localDateStr(d) {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function renderWarnExpiredMembers() {
+  const el = document.getElementById('warn-expired-members');
+  const today = localDateStr(new Date());
+  // สมาชิกที่หมดอายุแล้ว แต่ยังอยู่ในบ้าน (inviteStatus = invited หรือ inviting)
+  const expired = allMembers.filter(m =>
+    m.expireDate < today &&
+    m.houseId &&
+    (m.inviteStatus === 'invited' || m.inviteStatus === 'inviting')
+  );
+  if (expired.length === 0) {
+    el.innerHTML = '<div class="warn-empty">✅ ไม่มีสมาชิกหมดอายุในบ้าน</div>';
+    return;
+  }
+  el.innerHTML = expired.map(m => {
+    const dl = daysLeft(m.expireDate);
+    return `<div class="warn-item">
+      <div>
+        <div style="color:#fca5a5;font-weight:600">${m.houseEmail || '-'}</div>
+        <div style="color:#555;font-size:11px">บ้าน: ${m.houseId} | หมดอายุ: ${m.expireDate}</div>
+      </div>
+      <span class="badge red">หมด ${Math.abs(dl)} วัน</span>
+    </div>`;
+  }).join('');
+}
+
+function renderWarnExpiringHouses() {
+  const el = document.getElementById('warn-expiring-houses');
+  const today = localDateStr(new Date());
+  const soon = allHouses.filter(h => {
+    const dl = daysLeft(h.expireDate);
+    return dl >= 0 && dl <= 14;
+  }).sort((a,b) => a.expireDate.localeCompare(b.expireDate));
+
+  if (soon.length === 0) {
+    el.innerHTML = '<div class="warn-empty">✅ ไม่มีบ้านใกล้หมดอายุ</div>';
+    return;
+  }
+  el.innerHTML = soon.map(h => {
+    const dl = daysLeft(h.expireDate);
+    const cls = dl <= 3 ? 'red' : dl <= 7 ? 'yellow' : 'pending';
+    return `<div class="warn-item">
+      <div>
+        <div style="font-weight:600">${h.houseId}</div>
+        <div style="color:#555;font-size:11px">${h.houseEmail} | หมด: ${h.expireDate}</div>
+      </div>
+      <span class="badge ${cls}">เหลือ ${dl} วัน</span>
+    </div>`;
+  }).join('');
+}
+
+function renderChartDaily() {
+  const days = [];
+  const counts = [];
+  const now = new Date();
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const ds = localDateStr(d);
+    days.push(ds.slice(5)); // MM-DD
+    const c = allMembers.filter(m => m.createdAt && m.createdAt.startsWith(ds)).length;
+    counts.push(c);
+  }
+
+  if (chartDaily) chartDaily.destroy();
+  const ctx = document.getElementById('chart-daily').getContext('2d');
+  chartDaily = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: days,
+      datasets: [{
+        label: 'สมาชิกใหม่',
+        data: counts,
+        backgroundColor: 'rgba(55,138,221,0.7)',
+        borderColor: '#378ADD',
+        borderWidth: 1,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#85B7EB', font: { size: 9 }, maxRotation: 45 }, grid: { color: '#1e3a5f' } },
+        y: { ticks: { color: '#85B7EB', stepSize: 1 }, grid: { color: '#1e3a5f' }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function renderChartRevenue() {
+  const months = [];
+  const revenues = [];
+  const now = new Date();
+
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const monthKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const label = `${d.getMonth()+1}/${String(d.getFullYear()).slice(2)}`;
+    months.push(label);
+    const rev = allMembers
+      .filter(m => m.createdAt && m.createdAt.startsWith(monthKey) && m.inviteStatus !== 'removed')
+      .reduce((sum, m) => sum + (PKG_PRICE[m.package] || 0), 0);
+    revenues.push(rev);
+  }
+
+  if (chartRevenue) chartRevenue.destroy();
+  const ctx = document.getElementById('chart-revenue').getContext('2d');
+  chartRevenue = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [{
+        label: 'รายได้ (บาท)',
+        data: revenues,
+        borderColor: '#22c55e',
+        backgroundColor: 'rgba(34,197,94,0.1)',
+        borderWidth: 2,
+        pointBackgroundColor: '#22c55e',
+        tension: 0.3,
+        fill: true,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#85B7EB' }, grid: { color: '#1e3a5f' } },
+        y: { ticks: { color: '#85B7EB', callback: v => `฿${v.toLocaleString()}` }, grid: { color: '#1e3a5f' }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function renderChartPackage() {
+  const counts = { '1month': 0, '2months': 0, '3months': 0 };
+  allMembers.filter(m => m.inviteStatus !== 'removed').forEach(m => {
+    if (counts[m.package] !== undefined) counts[m.package]++;
+  });
+
+  if (chartPackage) chartPackage.destroy();
+  const ctx = document.getElementById('chart-package').getContext('2d');
+  chartPackage = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['1 เดือน (฿79)', '2 เดือน (฿155)', '3 เดือน (฿230)'],
+      datasets: [{
+        data: [counts['1month'], counts['2months'], counts['3months']],
+        backgroundColor: ['#378ADD', '#22c55e', '#f59e0b'],
+        borderColor: '#0a1628',
+        borderWidth: 3,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#85B7EB', font: { size: 11 }, padding: 12 } }
+      }
+    }
+  });
+}
+
+function renderChartHouses() {
+  let full = 0, available = 0, empty = 0;
+  allHouses.forEach(h => {
+    const slot = getHouseSlot(h.houseId);
+    const used = getHouseUsed(h.houseId);
+    if (used === 0) empty++;
+    else if (slot <= 0) full++;
+    else available++;
+  });
+
+  if (chartHouses) chartHouses.destroy();
+  const ctx = document.getElementById('chart-houses').getContext('2d');
+  chartHouses = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['เต็ม', 'มีที่ว่าง', 'ว่างทั้งหมด'],
+      datasets: [{
+        data: [full, available, empty],
+        backgroundColor: ['#ef4444', '#378ADD', '#1e3a5f'],
+        borderColor: '#0a1628',
+        borderWidth: 3,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#85B7EB', font: { size: 11 }, padding: 12 } }
+      }
+    }
+  });
+}
+
 function switchTab(tab, el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   document.getElementById(`tab-${tab}`).classList.add('active');
   if (tab === 'logs') loadLogs();
+  if (tab === 'dashboard') renderDashboard();
 }
 
 async function loadAll() {
@@ -678,6 +1013,11 @@ function renderAll() {
   renderExpiring(expiring);
   renderHouses();
   renderAllMembers(visible);
+
+  // render dashboard ถ้าอยู่ที่ tab dashboard
+  if (document.getElementById('tab-dashboard').classList.contains('active')) {
+    renderDashboard();
+  }
 }
 
 function populateHouseSelect() {
