@@ -214,6 +214,7 @@
     <button class="tab" onclick="switchTab('addhouse',this)">➕ เพิ่มบ้าน</button>
     <button class="tab" onclick="switchTab('all',this)">👥 สมาชิกทั้งหมด</button>
     <button class="tab" onclick="switchTab('logs',this)">📋 Logs</button>
+    <button class="tab" onclick="switchTab('reports',this)">🚨 ปัญหา <span id="badge-reports"></span></button>
   </div>
 
   <div class="content">
@@ -536,6 +537,37 @@
           <tbody id="logs-body"></tbody>
         </table>
         <div id="logs-empty" class="empty" style="display:none">ยังไม่มี Log</div>
+      </div>
+    </div>
+
+    <!-- Tab: รายงานปัญหา -->
+    <div id="tab-reports" class="tab-content">
+      <div class="table-wrap">
+        <div class="table-header">
+          <h3>🚨 รายการแจ้งปัญหา</h3>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select class="search-bar" id="report-filter" onchange="loadReports()" style="width:120px">
+              <option value="all">ทั้งหมด</option>
+              <option value="pending">รอดำเนินการ</option>
+              <option value="in_progress">กำลังแก้ไข</option>
+              <option value="resolved">แก้ไขแล้ว</option>
+            </select>
+            <input class="search-bar" placeholder="ค้นหา..." oninput="filterTable('reports-body',this.value)"/>
+          </div>
+        </div>
+        <div id="reports-loading" class="loading">กำลังโหลด...</div>
+        <table id="reports-table" style="display:none">
+          <thead><tr>
+            <th>เวลา</th>
+            <th>ชื่อ</th>
+            <th>อีเมลที่มีปัญหา</th>
+            <th>รายละเอียด</th>
+            <th>สถานะ</th>
+            <th>การดำเนินการ</th>
+          </tr></thead>
+          <tbody id="reports-body"></tbody>
+        </table>
+        <div id="reports-empty" class="empty" style="display:none">✅ ไม่มีรายการแจ้งปัญหา</div>
       </div>
     </div>
 
@@ -1068,7 +1100,6 @@ function renderChartHouses() {
 }
 
 function switchTab(tab, el) {
-  // ป้องกัน admin ธรรมดาเข้า dashboard
   if (tab === 'dashboard' && currentAdmin.role !== 'owner') return;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -1078,6 +1109,81 @@ function switchTab(tab, el) {
   if (tab === 'dashboard') renderDashboard();
   if (tab === 'houses') renderWarnExpiringHouses();
   if (tab === 'all') renderWarnExpiredMembers();
+  if (tab === 'reports') loadReports();
+}
+
+let _allReports = [];
+
+async function loadReports() {
+  document.getElementById('reports-loading').style.display = 'block';
+  document.getElementById('reports-table').style.display = 'none';
+  document.getElementById('reports-empty').style.display = 'none';
+  try {
+    const res = await fetch(`${BASE_URL}/api/admin/reports`, {
+      headers: { 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password },
+    });
+    const data = await res.json();
+    _allReports = data.reports || [];
+
+    const filter = document.getElementById('report-filter').value;
+    const filtered = filter === 'all' ? _allReports : _allReports.filter(r => r.status === filter);
+
+    // badge
+    const pending = _allReports.filter(r => r.status === 'pending').length;
+    document.getElementById('badge-reports').textContent = pending > 0 ? `(${pending})` : '';
+
+    document.getElementById('reports-loading').style.display = 'none';
+
+    if (filtered.length === 0) {
+      document.getElementById('reports-empty').style.display = 'block';
+      return;
+    }
+
+    document.getElementById('reports-table').style.display = 'table';
+    const statusMap = { pending: 'รอดำเนินการ', in_progress: 'กำลังแก้ไข', resolved: 'แก้ไขแล้ว' };
+    const badgeCls = { pending: 'red', in_progress: 'yellow', resolved: 'green' };
+
+    document.getElementById('reports-body').innerHTML = filtered.map(r => `
+      <tr>
+        <td style="white-space:nowrap;font-size:11px">${r.timestamp}</td>
+        <td style="font-size:12px">${r.displayName || '-'}</td>
+        <td style="font-size:12px;color:#85B7EB">${r.memberEmail || '-'}</td>
+        <td style="font-size:12px;max-width:200px">${r.detail || '-'}</td>
+        <td><span class="badge ${badgeCls[r.status]||'pending'}">${statusMap[r.status]||r.status}</span></td>
+        <td>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${r.status !== 'in_progress' ? `<button class="btn-sm btn-orange" onclick="updateReport(${r.rowIndex},'in_progress','${r.lineUserId}','${r.memberEmail}',this)">🔧 กำลังแก้</button>` : ''}
+            ${r.status !== 'resolved' ? `<button class="btn-sm btn-green" onclick="updateReport(${r.rowIndex},'resolved','${r.lineUserId}','${r.memberEmail}',this)">✅ แก้แล้ว</button>` : ''}
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    console.error('loadReports error:', err);
+    document.getElementById('reports-loading').style.display = 'none';
+  }
+}
+
+async function updateReport(rowIndex, status, lineUserId, memberEmail, btn) {
+  btn.disabled = true;
+  try {
+    const res = await fetch(`${BASE_URL}/api/admin/report/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password },
+      body: JSON.stringify({ rowIndex, status, lineUserId, memberEmail }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      showNotif(status === 'resolved' ? `✅ แก้ไขปัญหา ${memberEmail} แล้ว` : `🔧 อัปเดตสถานะแล้ว`, 'success');
+      loadReports();
+    } else {
+      showNotif(`❌ ${data.error}`, 'error');
+      btn.disabled = false;
+    }
+  } catch {
+    showNotif('❌ เกิดข้อผิดพลาด', 'error');
+    btn.disabled = false;
+  }
 }
 
 let _isLoading = false;
