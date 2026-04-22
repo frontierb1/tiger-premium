@@ -364,7 +364,70 @@ async function updateHousePassword(houseId, newPassword) {
   }
 }
 
-// ===== Admins — อ่านจาก ENV แทน Google Sheet =====
+async function addReport(data) {
+  try {
+    const sheets = await getSheets();
+    const dayjs = require('dayjs');
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID,
+      range: 'Reports!A:F',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [[
+          dayjs().format('YYYY-MM-DD HH:mm:ss'), // A: timestamp
+          data.lineUserId,                         // B: line_user_id
+          data.displayName || '',                  // C: display_name
+          data.memberEmail || '',                  // D: email ที่มีปัญหา
+          data.detail || '',                       // E: รายละเอียด
+          'pending',                               // F: status
+        ]],
+      },
+    });
+    return { success: true };
+  } catch (err) {
+    console.error('addReport error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+async function getReports() {
+  try {
+    const sheets = await getSheets();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Reports!A:F',
+    });
+    const rows = res.data.values || [];
+    return rows.slice(1).reverse().map((row, i) => ({
+      timestamp:   row[0],
+      lineUserId:  row[1],
+      displayName: row[2],
+      memberEmail: row[3],
+      detail:      row[4],
+      status:      row[5] || 'pending',
+      rowIndex:    rows.length - i - 1 + 1,
+    }));
+  } catch (err) {
+    console.error('getReports error:', err.message);
+    return [];
+  }
+}
+
+async function updateReportStatus(rowIndex, status) {
+  try {
+    const sheets = await getSheets();
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `Reports!F${rowIndex}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[status]] },
+    });
+    return { success: true };
+  } catch (err) {
+    console.error('updateReportStatus error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
 async function getAdmins() {
   const admins = [];
 
@@ -529,6 +592,9 @@ module.exports = {
   updateHousePassword,
   updateHouseStatus,
   deleteHouse,
+  addReport,
+  getReports,
+  updateReportStatus,
   getAdmins,
   writeLog,
   getLogs,
