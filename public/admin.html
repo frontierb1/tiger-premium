@@ -871,11 +871,11 @@ function localDateStr(d) {
 function renderWarnExpiredMembers() {
   const el = document.getElementById('warn-expired-members');
   const today = localDateStr(new Date());
-  // สมาชิกที่หมดอายุแล้ว แต่ยังอยู่ในบ้าน (inviteStatus = invited หรือ inviting)
+  // สมาชิกที่หมดอายุแล้ว แต่ยังอยู่ในบ้าน (inviteStatus = active หรือ inviting)
   const expired = allMembers.filter(m =>
     m.expireDate < today &&
     m.houseId &&
-    (m.inviteStatus === 'invited' || m.inviteStatus === 'inviting')
+    (m.inviteStatus === 'active' || m.inviteStatus === 'inviting')
   );
   if (expired.length === 0) {
     el.innerHTML = '<div class="warn-empty">✅ ไม่มีสมาชิกหมดอายุในบ้าน</div>';
@@ -1341,7 +1341,7 @@ function renderHouses() {
   const sorted = getSortedHouses();
   document.getElementById('houses-body').innerHTML = sorted.map(h => {
     const houseMembers = allMembers.filter(m => m.houseId === h.houseId);
-    const visibleMembers = houseMembers.filter(m => m.inviteStatus !== 'invited');
+    const visibleMembers = houseMembers.filter(m => m.inviteStatus !== 'active');
     const used = getHouseUsed(h.houseId);
     const slot = getHouseSlot(h.houseId);
     const isOverflow = used > h.maxMembers;
@@ -1352,8 +1352,8 @@ function renderHouses() {
       ? `<button class="btn-sm btn-gray" style="margin:2px" data-emails='${JSON.stringify(allEmails).replace(/'/g,"&#39;")}' onclick="event.stopPropagation();copyEmailList(JSON.parse(this.dataset.emails),this)">📋 Copy ทั้งหมด (${allEmails.length})</button>`
       : '-';
 
-    const statusMap = { pending: 'รอเชิญ', inviting: 'กำลังเชิญ', invited: 'เชิญแล้ว', removed: 'ถูกลบ' };
-    const badgeMap = { pending: 'pending', inviting: 'inviting', invited: 'invited', removed: 'removed' };
+    const statusMap = { pending: 'รอเชิญ', inviting: 'กำลังเชิญ', active: 'Active ✅', removed: 'ถูกลบ' };
+    const badgeMap = { pending: 'pending', inviting: 'inviting', active: 'invited', removed: 'removed' };
 
     const memberRows = houseMembers.length > 0 ? houseMembers.map(m => {
       const dl = daysLeft(m.expireDate);
@@ -1401,8 +1401,8 @@ function renderHouses() {
 function renderAllMembers(members) {
   document.getElementById('all-loading').style.display = 'none';
   document.getElementById('all-table').style.display = 'table';
-  const statusMap = { pending: 'รอเชิญ', inviting: 'กำลังเชิญ', invited: 'เชิญแล้ว', removed: 'ถูกลบ' };
-  const badgeMap = { pending: 'pending', inviting: 'inviting', invited: 'invited', removed: 'removed' };
+  const statusMap = { pending: 'รอเชิญ', inviting: 'กำลังเชิญ', active: 'Active ✅', removed: 'ถูกลบ' };
+  const badgeMap = { pending: 'pending', inviting: 'inviting', active: 'invited', removed: 'removed' };
   document.getElementById('all-body').innerHTML = members.map(m => `
     <tr>
       <td>${m.houseEmail || '-'}</td>
