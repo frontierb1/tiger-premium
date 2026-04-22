@@ -1,339 +1,601 @@
-const express = require('express');
-const { getAllMembers, getHouses, updateInviteStatus, getMemberByLineId, addHouse, addHouses, removeMemberFromHouse, moveMemberToHouse, updateMemberEmail, updateMemberExpire, updateHousePassword, updateHouseStatus, deleteHouse, addReport, getReports, updateReportStatus, getAdmins, writeLog } = require('./sheets');
+const { google } = require('googleapis');
 const dayjs = require('dayjs');
-const router = express.Router();
 
-const PKG_LABEL = {
-  '1month': '1 เดือน (79 บาท)',
-  '2months': '2 เดือน (155 บาท)',
-  '3months': '3 เดือน (230 บาท)',
-};
+const SHEET_ID = process.env.SHEET_ID;
 
-// ===== Auth =====
-async function authCheck(req, res, next) {
-  const username = req.headers['x-admin-user'];
-  const password = req.headers['x-admin-pass'];
-  if (!username || !password) return res.status(401).json({ error: 'Unauthorized' });
-  const admins = await getAdmins();
-  const admin = admins.find(a => a.username === username && a.password === password && a.status === 'active');
-  if (!admin) return res.status(401).json({ error: 'Invalid credentials' });
-  req.adminName = admin.displayName || username;
-  req.adminUser = username;
-  next();
+async function getSheets() {
+  const auth = new google.auth.GoogleAuth({
+    credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS || '{}'),
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+  });
+  return google.sheets({ version: 'v4', auth });
 }
 
-// ===== Login =====
-router.post('/login', async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: 'กรุณากรอก username และ password' });
-    const admins = await getAdmins();
-    const admin = admins.find(a => a.username === username && a.password === password && a.status === 'active');
-    if (!admin) return res.status(401).json({ error: 'username หรือ password ไม่ถูกต้อง' });
-    res.json({ success: true, displayName: admin.displayName || username, username, role: admin.role || 'admin' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+function rowToMember(row) {
+  return {
+    lineUserId:    row[0],
+    displayName:   row[1],
+    package:       row[2],
+    expireDate:    row[3],
+    status:        row[4],
+    houseEmail:    row[5],
+    slipUrl:       row[6],
+    createdAt:     row[7],
+    houseId:       row[8],
+    inviteStatus:  row[9],
+    registeredAt:  row[10] || row[7], // K: registered_at (fallback to createdAt)
+  };
+}
 
-// ===== Members =====
-router.get('/members', authCheck, async (req, res) => {
+async function getMemberByLineId(lineUserId) {
   try {
-    const members = await getAllMembers();
-    res.json({ success: true, members });
+    const sheets = await getSheets();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Members!A:K',
+    });
+    const rows = res.data.values || [];
+    const row = rows.find(r => r[0] === lineUserId);
+    return row ? rowToMember(row) : null;
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('getMemberByLineId error:', err.message);
+    return null;
   }
-});
+}
 
-// ===== Houses =====
-router.get('/houses', authCheck, async (req, res) => {
+async function getMembersByLineId(lineUserId) {
   try {
-    const houses = await getHouses();
-    res.json({ success: true, houses });
+    const sheets = await getSheets();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Members!A:K',
+    });
+    const rows = res.data.values || [];
+    return rows.filter(r => r[0] === lineUserId).map(rowToMember);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('getMembersByLineId error:', err.message);
+    return [];
   }
-});
+}
 
-// เพิ่มบ้านเดียว
-router.post('/house', authCheck, async (req, res) => {
+async function getAllMembers() {
   try {
-    const { houseId, houseEmail, housePassword, expireDate, maxMembers } = req.body;
-    if (!houseId || !houseEmail || !housePassword || !expireDate) {
-      return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
+    const sheets = await getSheets();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Members!A:K',
+    });
+    const rows = res.data.values || [];
+    return rows.slice(1).map((row, i) => ({ ...rowToMember(row), rowIndex: i + 2 }));
+  } catch (err) {
+    console.error('getAllMembers error:', err.message);
+    return [];
+  }
+}
+
+async function checkEmailExists(email) {
+  try {
+    const sheets = await getSheets();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Members!A:K',
+    });
+    const rows = res.data.values || [];
+    return rows.some(r => r[5] && r[5].toLowerCase() === email.toLowerCase());
+  } catch (err) {
+    console.error('checkEmailExists error:', err.message);
+    return false;
+  }
+}
+
+async function addMember(data) {
+  try {
+    const sheets = await getSheets();
+    const expireDate = calculateExpireDate(data.packageType);
+    const now = dayjs().format('YYYY-MM-DD HH:mm:ss');
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID,
+      range: 'Members!A:K',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [[
+          data.lineUserId,                              // A: line_user_id
+          data.displayName || '',                       // B: display_name
+          data.packageType,                             // C: package
+          expireDate,                                   // D: expire_date
+          'active',                                     // E: status
+          data.memberEmail || '',                       // F: member_email
+          data.slipUrl ? 'มีสลิป ✓' : '',             // G: slip_url
+          now,                                          // H: created_at
+          '',                                           // I: house_id
+          'pending',                                    // J: invite_status
+          now,                                          // K: registered_at (ไม่เปลี่ยนตอน renew)
+        ]],
+      },
+    });
+    return { success: true, expireDate };
+  } catch (err) {
+    console.error('addMember error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+async function renewMember(lineUserId, packageType, slipUrl, memberEmail) {
+  try {
+    const sheets = await getSheets();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Members!A:K',
+    });
+    const rows = res.data.values || [];
+
+    let rowIndex = -1;
+    if (memberEmail) {
+      rowIndex = rows.findIndex(r => r[0] === lineUserId && r[5] && r[5].toLowerCase() === memberEmail.toLowerCase());
     }
-    const result = await addHouse({ houseId, houseEmail, housePassword, expireDate, maxMembers: maxMembers || 5 });
-    if (!result.success) return res.status(500).json({ error: result.error });
-    await writeLog(req.adminUser, req.adminName, 'เพิ่มบ้าน', `${houseId} (${houseEmail})`);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// เพิ่มหลายบ้านพร้อมกัน (paste email\npassword\nemail\npassword...)
-router.post('/houses/bulk', authCheck, async (req, res) => {
-  try {
-    const { text, expireDate, maxMembers } = req.body;
-    if (!text || !expireDate) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
-
-    const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
-    if (lines.length % 2 !== 0) {
-      return res.status(400).json({ error: `ข้อมูลไม่ครบคู่ — พบ ${lines.length} บรรทัด (ต้องเป็นจำนวนคู่: email/password)` });
+    if (rowIndex === -1) {
+      rowIndex = rows.findIndex(r => r[0] === lineUserId);
     }
+    if (rowIndex === -1) return { success: false, error: 'ไม่พบสมาชิก' };
 
-    const houses = [];
-    for (let i = 0; i < lines.length; i += 2) {
-      houses.push({
-        houseEmail: lines[i],
-        housePassword: lines[i + 1],
-        expireDate,
-        maxMembers: maxMembers || 5,
+    const newExpire = calculateExpireDate(packageType, rows[rowIndex][3]);
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `Members!C${rowIndex + 1}:H${rowIndex + 1}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [[
+          packageType,                          // C: package
+          newExpire,                            // D: expire_date
+          'active',                             // E: status
+          memberEmail || rows[rowIndex][5] || '', // F: member_email
+          slipUrl ? 'มีสลิป ✓' : '',           // G: slip_url
+          dayjs().format('YYYY-MM-DD HH:mm:ss'), // H: created_at (updated)
+        ]],
+      },
+    });
+    return { success: true, expireDate: newExpire };
+  } catch (err) {
+    console.error('renewMember error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+async function updateInviteStatus(rowIndex, houseId, status) {
+  try {
+    const sheets = await getSheets();
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `Members!I${rowIndex}:J${rowIndex}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[houseId, status]] },
+    });
+    return { success: true };
+  } catch (err) {
+    console.error('updateInviteStatus error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+async function getMembersExpiringIn(days) {
+  try {
+    const sheets = await getSheets();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Members!A:K',
+    });
+    const rows = res.data.values || [];
+    const targetDate = dayjs().add(days, 'day').format('YYYY-MM-DD');
+    return rows.filter(r => r[3] === targetDate && r[4] === 'active');
+  } catch (err) {
+    console.error('getMembersExpiringIn error:', err.message);
+    return [];
+  }
+}
+
+async function getHouses() {
+  try {
+    const sheets = await getSheets();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Houses!A:H',
+    });
+    const rows = res.data.values || [];
+    return rows.slice(1).map(row => ({
+      houseId:        row[0],
+      houseEmail:     row[1],
+      housePassword:  row[2],
+      expireDate:     row[3],
+      maxMembers:     parseInt(row[4]) || 5,
+      status:         row[5],
+      currentMembers: parseInt(row[6]) || 0,
+      slotsLeft:      parseInt(row[7]) || 0,
+    }));
+  } catch (err) {
+    console.error('getHouses error:', err.message);
+    return [];
+  }
+}
+
+function calculateExpireDate(packageType, fromDate = null) {
+  const base = fromDate && dayjs(fromDate).isAfter(dayjs()) ? dayjs(fromDate) : dayjs();
+  const months = packageType === '1month' ? 1 : packageType === '2months' ? 2 : 3;
+  return base.add(months, 'month').format('YYYY-MM-DD');
+}
+
+// ===== House Management =====
+async function addHouse(data) {
+  try {
+    const sheets = await getSheets();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID, range: 'Houses!A:A',
+    });
+    const rows = res.data.values || [];
+    const nextNum = rows.filter(r => r[0] && r[0].startsWith('house_')).length + 1;
+    const houseId = data.houseId || `house_${String(nextNum).padStart(2,'0')}`;
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID,
+      range: 'Houses!A:F',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[houseId, data.houseEmail, data.housePassword, data.expireDate, data.maxMembers || 5, 'active']] },
+    });
+    return { success: true, houseId };
+  } catch (err) {
+    console.error('addHouse error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+async function addHouses(housesArray) {
+  try {
+    const sheets = await getSheets();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID, range: 'Houses!A:A',
+    });
+    const rows = res.data.values || [];
+    const existingCount = rows.filter(r => r[0] && r[0].startsWith('house_')).length;
+
+    const values = housesArray.map((h, i) => {
+      const num = existingCount + i + 1;
+      const houseId = `house_${String(num).padStart(2,'0')}`;
+      h.houseId = houseId;
+      return [houseId, h.houseEmail, h.housePassword, h.expireDate, h.maxMembers || 5, 'active'];
+    });
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID,
+      range: 'Houses!A:F',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values },
+    });
+    return { success: true, houses: housesArray };
+  } catch (err) {
+    console.error('addHouses error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+async function removeMemberFromHouse(rowIndex) {
+  try {
+    const sheets = await getSheets();
+    // house_id (I) = '' และ invite_status (J) = 'removed'
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `Members!I${rowIndex}:J${rowIndex}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [['', 'removed']] },
+    });
+    return { success: true };
+  } catch (err) {
+    console.error('removeMemberFromHouse error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+async function moveMemberToHouse(rowIndex, houseId) {
+  try {
+    const sheets = await getSheets();
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `Members!I${rowIndex}:J${rowIndex}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[houseId, 'inviting']] },
+    });
+    return { success: true };
+  } catch (err) {
+    console.error('moveMemberToHouse error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+async function updateMemberEmail(rowIndex, newEmail) {
+  try {
+    const sheets = await getSheets();
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `Members!F${rowIndex}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[newEmail]] },
+    });
+    return { success: true };
+  } catch (err) {
+    console.error('updateMemberEmail error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+async function updateMemberExpire(rowIndex, newExpire) {
+  try {
+    const sheets = await getSheets();
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `Members!D${rowIndex}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[newExpire]] },
+    });
+    return { success: true };
+  } catch (err) {
+    console.error('updateMemberExpire error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+async function updateHousePassword(houseId, newPassword) {
+  try {
+    const sheets = await getSheets();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Houses!A:A',
+    });
+    const rows = res.data.values || [];
+    const rowIndex = rows.findIndex(r => r[0] === houseId);
+    if (rowIndex === -1) return { success: false, error: 'ไม่พบบ้าน' };
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `Houses!C${rowIndex + 1}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[newPassword]] },
+    });
+    return { success: true };
+  } catch (err) {
+    console.error('updateHousePassword error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+async function addReport(data) {
+  try {
+    const sheets = await getSheets();
+    const dayjs = require('dayjs');
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID,
+      range: 'Reports!A:F',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [[
+          dayjs().format('YYYY-MM-DD HH:mm:ss'), // A: timestamp
+          data.lineUserId,                         // B: line_user_id
+          data.displayName || '',                  // C: display_name
+          data.memberEmail || '',                  // D: email ที่มีปัญหา
+          data.detail || '',                       // E: รายละเอียด
+          'pending',                               // F: status
+        ]],
+      },
+    });
+    return { success: true };
+  } catch (err) {
+    console.error('addReport error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+async function getReports() {
+  try {
+    const sheets = await getSheets();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Reports!A:F',
+    });
+    const rows = res.data.values || [];
+    return rows.slice(1).reverse().map((row, i) => ({
+      timestamp:   row[0],
+      lineUserId:  row[1],
+      displayName: row[2],
+      memberEmail: row[3],
+      detail:      row[4],
+      status:      row[5] || 'pending',
+      rowIndex:    rows.length - i - 1 + 1,
+    }));
+  } catch (err) {
+    console.error('getReports error:', err.message);
+    return [];
+  }
+}
+
+async function updateReportStatus(rowIndex, status) {
+  try {
+    const sheets = await getSheets();
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `Reports!F${rowIndex}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[status]] },
+    });
+    return { success: true };
+  } catch (err) {
+    console.error('updateReportStatus error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+async function getAdmins() {
+  const admins = [];
+
+  // parse ADMINS_JSON จาก env: [{"username":"x","password":"y","displayName":"z","role":"owner"}]
+  try {
+    if (process.env.ADMINS_JSON) {
+      const parsed = JSON.parse(process.env.ADMINS_JSON);
+      admins.push(...parsed);
+    }
+  } catch (e) {
+    console.error('ADMINS_JSON parse error:', e.message);
+  }
+
+  // fallback: OWNER_USER / OWNER_PASS / ADMIN_USER / ADMIN_PASS
+  if (admins.length === 0) {
+    if (process.env.OWNER_USER && process.env.OWNER_PASS) {
+      admins.push({
+        username: process.env.OWNER_USER,
+        password: process.env.OWNER_PASS,
+        displayName: process.env.OWNER_NAME || 'Owner',
+        status: 'active',
+        role: 'owner',
       });
     }
-
-    const result = await addHouses(houses);
-    if (!result.success) return res.status(500).json({ error: result.error });
-
-    await writeLog(req.adminUser, req.adminName, 'เพิ่มบ้านหมู่', `${houses.length} บ้าน วันหมดอายุ ${expireDate}`);
-    res.json({ success: true, count: houses.length, houses: result.houses });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ลบสมาชิกออกจากบ้าน
-router.post('/member/remove', authCheck, async (req, res) => {
-  try {
-    const { rowIndex, lineUserId, memberEmail } = req.body;
-    if (!rowIndex) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
-    const result = await removeMemberFromHouse(rowIndex);
-    if (!result.success) return res.status(500).json({ error: result.error });
-    await writeLog(req.adminUser, req.adminName, 'ลบสมาชิกออกจากบ้าน', `${memberEmail || lineUserId}`);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ย้ายสมาชิกไปบ้านใหม่
-router.post('/member/move', authCheck, async (req, res) => {
-  try {
-    const { rowIndex, lineUserId, memberEmail, houseId } = req.body;
-    if (!rowIndex || !houseId) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
-    const result = await moveMemberToHouse(rowIndex, houseId);
-    if (!result.success) return res.status(500).json({ error: result.error });
-    await writeLog(req.adminUser, req.adminName, 'ย้ายสมาชิก', `${memberEmail || lineUserId} → ${houseId}`);
-    if (lineUserId) {
-      await sendLineMessage(lineUserId,
-        `📨 Tiger Premium — ส่งคำเชิญใหม่!\n\nแอดมินย้ายคุณไปบ้านใหม่แล้วครับ\n\n✅ กรุณาตรวจสอบอีเมลที่ใช้สมัคร\nแล้วกด "ยอมรับคำเชิญ" ครับ 🐯`
-      );
+    if (process.env.ADMIN_USER && process.env.ADMIN_PASS) {
+      admins.push({
+        username: process.env.ADMIN_USER,
+        password: process.env.ADMIN_PASS,
+        displayName: process.env.ADMIN_NAME || 'Admin',
+        status: 'active',
+        role: 'admin',
+      });
     }
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
-});
 
-// แก้ไขข้อมูลสมาชิก (อีเมล + วันหมดอายุ)
-router.post('/member/edit', authCheck, async (req, res) => {
-  try {
-    const { rowIndex, oldEmail, newEmail, newExpire } = req.body;
-    if (!rowIndex) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
-    const logs = [];
-    if (newEmail && newEmail !== oldEmail) {
-      const r = await updateMemberEmail(rowIndex, newEmail);
-      if (!r.success) return res.status(500).json({ error: r.error });
-      logs.push(`อีเมล: ${oldEmail} → ${newEmail}`);
-    }
-    if (newExpire) {
-      const r = await updateMemberExpire(rowIndex, newExpire);
-      if (!r.success) return res.status(500).json({ error: r.error });
-      logs.push(`หมดอายุ: ${newExpire}`);
-    }
-    if (logs.length > 0) {
-      await writeLog(req.adminUser, req.adminName, 'แก้ไขสมาชิก', logs.join(', '));
-    }
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+  return admins;
+}
 
-// แก้ไข password บ้าน
-router.post('/house/password', authCheck, async (req, res) => {
+// ===== House Management =====
+async function updateHouseStatus(houseId, newStatus) {
   try {
-    const { houseId, newPassword } = req.body;
-    if (!houseId || !newPassword) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
-    const result = await updateHousePassword(houseId, newPassword);
-    if (!result.success) return res.status(500).json({ error: result.error });
-    await writeLog(req.adminUser, req.adminName, 'แก้ไข password บ้าน', `${houseId}`);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// แก้สถานะบ้าน (active/inactive)
-router.post('/house/status', authCheck, async (req, res) => {
-  try {
-    const { houseId, status } = req.body;
-    if (!houseId || !status) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
-    const result = await updateHouseStatus(houseId, status);
-    if (!result.success) return res.status(500).json({ error: result.error });
-    await writeLog(req.adminUser, req.adminName, 'แก้สถานะบ้าน', `${houseId} → ${status}`);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ลบบ้าน
-router.post('/house/delete', authCheck, async (req, res) => {
-  try {
-    const { houseId } = req.body;
-    if (!houseId) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
-    const result = await deleteHouse(houseId);
-    if (!result.success) return res.status(500).json({ error: result.error });
-    await writeLog(req.adminUser, req.adminName, 'ลบบ้าน', `${houseId}`);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ===== Invite =====
-router.post('/inviting', authCheck, async (req, res) => {
-  try {
-    const { rowIndex, lineUserId, houseId } = req.body;
-    if (!rowIndex || !lineUserId) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
-    const result = await updateInviteStatus(rowIndex, houseId || '', 'inviting');
-    if (!result.success) return res.status(500).json({ error: result.error });
-    await writeLog(req.adminUser, req.adminName, 'ส่งเชิญ', `row ${rowIndex} → ${houseId}`);
-    await sendLineMessage(lineUserId,
-      `📨 Tiger Premium — ส่งคำเชิญแล้ว!\n\nแอดมินส่งคำเชิญเข้า YouTube Premium Family ให้คุณแล้วครับ\n\n✅ กรุณาตรวจสอบอีเมลที่ใช้สมัคร\nแล้วกด "ยอมรับคำเชิญ" ครับ 🐯`
-    );
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.post('/invite', authCheck, async (req, res) => {
-  try {
-    const { rowIndex, lineUserId } = req.body;
-    if (!rowIndex || !lineUserId) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
-    const members = await getAllMembers();
-    const member = members.find(m => m.rowIndex === parseInt(rowIndex));
-    // เก็บ houseId เดิมไว้ ไม่ล้างออก
-    const existingHouseId = member?.houseId || '';
-    const result = await updateInviteStatus(rowIndex, existingHouseId, 'active');
-    if (!result.success) return res.status(500).json({ error: result.error });
-    await writeLog(req.adminUser, req.adminName, 'ยืนยันกดรับ', `${member?.houseEmail || lineUserId}`);
-    const email = member?.houseEmail || '-';
-    const pkg = PKG_LABEL[member?.package] || member?.package || '-';
-    const expire = member?.expireDate || '-';
-    const daysLeft = expire !== '-' ? dayjs(expire).diff(dayjs(), 'day') : '-';
-    await sendLineMessage(lineUserId,
-      `✅ Tiger Premium — เข้าร่วมสำเร็จ!\n\nยืนยันว่าคุณได้กดรับคำเชิญ YouTube Premium Family เรียบร้อยแล้วครับ\n\n📧 อีเมลที่ใช้เข้าบ้าน: ${email}\n📦 แพ็กเกจ: ${pkg}\n📅 วันหมดอายุ: ${expire} (เหลืออีก ${daysLeft} วัน)\n\nหากมีปัญหาการเข้าใช้งาน กรุณาติดต่อแอดมินได้เลยครับ 🐯`
-    );
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ===== Remind =====
-router.post('/remind', authCheck, async (req, res) => {
-  try {
-    const { lineUserId, rowIndex } = req.body;
-    const members = await getAllMembers();
-    const member = rowIndex
-      ? members.find(m => m.rowIndex === parseInt(rowIndex))
-      : await getMemberByLineId(lineUserId);
-    if (!member) return res.status(404).json({ error: 'ไม่พบสมาชิก' });
-    const days = dayjs(member.expireDate).diff(dayjs(), 'day');
-    const emoji = days <= 0 ? '❌' : days <= 3 ? '🔴' : '⚠️';
-    await writeLog(req.adminUser, req.adminName, 'ส่งแจ้งเตือน', `${member.houseEmail}`);
-    await sendLineMessage(lineUserId,
-      `${emoji} แจ้งเตือนจากแอดมิน Tiger Premium\n\n📧 อีเมล: ${member.houseEmail || '-'}\n📦 แพ็กเกจ: ${PKG_LABEL[member.package] || '-'}\n📅 วันหมดอายุ: ${member.expireDate}\n⏰ เหลืออีก: ${days > 0 ? days + ' วัน' : 'หมดอายุแล้ว'}\n\nกด "ต่ออายุ" ในเมนูได้เลยครับ 🐯`
-    );
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ===== Logs =====
-router.get('/logs', authCheck, async (req, res) => {
-  try {
-    const { getLogs } = require('./sheets');
-    const logs = await getLogs();
-    res.json({ success: true, logs });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ===== Reports =====
-router.get('/reports', authCheck, async (req, res) => {
-  try {
-    const reports = await getReports();
-    res.json({ success: true, reports });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.post('/report/status', authCheck, async (req, res) => {
-  try {
-    const { rowIndex, status, lineUserId, memberEmail } = req.body;
-    if (!rowIndex || !status) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
-    const result = await updateReportStatus(rowIndex, status);
-    if (!result.success) return res.status(500).json({ error: result.error });
-    await writeLog(req.adminUser, req.adminName, 'อัปเดตสถานะปัญหา', `${memberEmail} → ${status}`);
-    // แจ้ง LINE ถ้าแก้ไขแล้ว
-    if (status === 'resolved' && lineUserId) {
-      await sendLineMessage(lineUserId,
-        `✅ Tiger Premium — แก้ไขปัญหาแล้ว!\n\n📧 อีเมล: ${memberEmail}\n\nแอดมินได้แก้ไขปัญหาที่คุณแจ้งเรียบร้อยแล้วครับ\nหากยังมีปัญหาอยู่ กรุณาแจ้งใหม่ได้เลยครับ 🐯`
-      );
-    }
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Public endpoint — ลูกค้าแจ้งปัญหา (ไม่ต้อง auth)
-router.post('/report', async (req, res) => {
-  try {
-    const { lineUserId, displayName, memberEmail, detail } = req.body;
-    if (!lineUserId || !memberEmail) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
-    const result = await addReport({ lineUserId, displayName, memberEmail, detail });
-    if (!result.success) return res.status(500).json({ error: result.error });
-    // แจ้ง LINE แอดมิน (ถ้ามี ADMIN_LINE_ID)
-    if (process.env.ADMIN_LINE_ID) {
-      await sendLineMessage(process.env.ADMIN_LINE_ID,
-        `🚨 แจ้งปัญหาใหม่!\n\n👤 ${displayName || lineUserId}\n📧 ${memberEmail}\n📝 ${detail || 'ไม่ระบุรายละเอียด'}\n\nกรุณาตรวจสอบใน Admin Dashboard ครับ`
-      );
-    }
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-async function sendLineMessage(userId, text) {
-  try {
-    const { messagingApi } = require('@line/bot-sdk');
-    const client = new messagingApi.MessagingApiClient({
-      channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
+    const sheets = await getSheets();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Houses!A:A',
     });
-    await client.pushMessage({ to: userId, messages: [{ type: 'text', text }] });
+    const rows = res.data.values || [];
+    const rowIndex = rows.findIndex(r => r[0] === houseId);
+    if (rowIndex === -1) return { success: false, error: 'ไม่พบบ้าน' };
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `Houses!F${rowIndex + 1}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[newStatus]] },
+    });
+    return { success: true };
   } catch (err) {
-    console.error('sendLineMessage error:', err.message);
+    console.error('updateHouseStatus error:', err.message);
+    return { success: false, error: err.message };
   }
 }
 
-module.exports = router;
+async function deleteHouse(houseId) {
+  try {
+    const sheets = await getSheets();
+    // ดึง spreadsheet metadata เพื่อหา sheetId
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID });
+    const sheet = meta.data.sheets.find(s => s.properties.title === 'Houses');
+    if (!sheet) return { success: false, error: 'ไม่พบ sheet Houses' };
+    const sheetId = sheet.properties.sheetId;
+
+    // หา row index
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Houses!A:A',
+    });
+    const rows = res.data.values || [];
+    const rowIndex = rows.findIndex(r => r[0] === houseId);
+    if (rowIndex === -1) return { success: false, error: 'ไม่พบบ้าน' };
+
+    // ลบแถวนั้น
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SHEET_ID,
+      requestBody: {
+        requests: [{
+          deleteDimension: {
+            range: {
+              sheetId,
+              dimension: 'ROWS',
+              startIndex: rowIndex,
+              endIndex: rowIndex + 1,
+            },
+          },
+        }],
+      },
+    });
+    return { success: true };
+  } catch (err) {
+    console.error('deleteHouse error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+// ===== Logs =====
+async function writeLog(adminUser, adminName, action, detail) {
+  try {
+    const sheets = await getSheets();
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID,
+      range: 'Logs!A:D',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [[
+          dayjs().format('YYYY-MM-DD HH:mm:ss'),
+          `${adminName} (${adminUser})`,
+          action,
+          detail,
+        ]],
+      },
+    });
+  } catch (err) {
+    console.error('writeLog error:', err.message);
+  }
+}
+
+async function getLogs() {
+  try {
+    const sheets = await getSheets();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Logs!A:D',
+    });
+    const rows = res.data.values || [];
+    return rows.slice(1).reverse().map(row => ({
+      timestamp:  row[0],
+      admin:      row[1],
+      action:     row[2],
+      detail:     row[3],
+    }));
+  } catch (err) {
+    console.error('getLogs error:', err.message);
+    return [];
+  }
+}
+
+module.exports = {
+  getMemberByLineId,
+  getMembersByLineId,
+  getAllMembers,
+  checkEmailExists,
+  addMember,
+  renewMember,
+  updateInviteStatus,
+  getMembersExpiringIn,
+  getHouses,
+  addHouse,
+  addHouses,
+  removeMemberFromHouse,
+  moveMemberToHouse,
+  updateMemberEmail,
+  updateMemberExpire,
+  updateHousePassword,
+  updateHouseStatus,
+  deleteHouse,
+  addReport,
+  getReports,
+  updateReportStatus,
+  getAdmins,
+  writeLog,
+  getLogs,
+};
