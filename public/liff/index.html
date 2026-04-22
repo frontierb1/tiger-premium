@@ -5,181 +5,154 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Tiger Premium</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Noto Sans Thai', -apple-system, sans-serif;
-      background: #0a0a0a;
-      color: #fff;
-      min-height: 100vh;
-      padding-bottom: 32px;
-    }
+    body { font-family: 'Noto Sans Thai', -apple-system, sans-serif; background: #0c0c0c; color: #fff; min-height: 100vh; padding-bottom: 40px; }
 
-    /* Header */
     .header {
-      background: linear-gradient(160deg, #1a0800 0%, #ff6b00 60%, #ff9500 100%);
-      padding: 36px 20px 48px;
+      background: linear-gradient(160deg, #1c0800 0%, #c94e00 55%, #ff9500 100%);
+      padding: 40px 20px 56px;
       text-align: center;
       position: relative;
       overflow: hidden;
     }
     .header::before {
-      content: '';
+      content: '🐯';
       position: absolute;
-      top: -60px; left: -60px;
-      width: 200px; height: 200px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.06);
+      font-size: 180px;
+      opacity: 0.06;
+      top: -20px; right: -30px;
+      line-height: 1;
+      pointer-events: none;
     }
-    .header::after {
-      content: '';
-      position: absolute;
-      bottom: -40px; right: -40px;
-      width: 140px; height: 140px;
-      border-radius: 50%;
-      background: rgba(0,0,0,0.12);
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 14px;
+      backdrop-filter: blur(8px);
     }
-    .header-logo { font-size: 44px; margin-bottom: 8px; position: relative; z-index: 1; }
-    .header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; position: relative; z-index: 1; }
-    .header p { font-size: 13px; opacity: 0.85; margin-top: 4px; position: relative; z-index: 1; }
+    .header h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; text-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+    .header p { font-size: 13px; opacity: 0.8; margin-top: 4px; }
 
-    /* Status card */
     .status-card {
-      margin: -24px 16px 0;
-      background: #161616;
-      border: 1px solid #242424;
-      border-radius: 18px;
+      margin: -28px 16px 0;
+      background: #181818;
+      border: 1px solid #272727;
+      border-radius: 20px;
       padding: 16px 18px;
       display: flex;
       align-items: center;
       gap: 14px;
       position: relative;
-      z-index: 2;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      z-index: 10;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.5);
     }
-    .status-dot {
-      width: 12px; height: 12px;
-      border-radius: 50%;
-      background: #333;
+    .status-icon {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
       flex-shrink: 0;
     }
-    .status-dot.green { background: #22c55e; box-shadow: 0 0 10px rgba(34,197,94,0.5); }
-    .status-dot.yellow { background: #f59e0b; box-shadow: 0 0 10px rgba(245,158,11,0.5); }
-    .status-dot.red { background: #ef4444; box-shadow: 0 0 10px rgba(239,68,68,0.5); }
+    .status-icon.green { background: rgba(34,197,94,0.15); }
+    .status-icon.yellow { background: rgba(245,158,11,0.15); }
+    .status-icon.red { background: rgba(239,68,68,0.15); }
+    .status-icon.gray { background: rgba(255,255,255,0.06); }
     .status-info { flex: 1; }
     .status-info strong { display: block; font-size: 15px; font-weight: 700; }
-    .status-info span { font-size: 12px; color: #888; margin-top: 2px; display: block; }
-    .loading-bar { height: 6px; background: #222; border-radius: 3px; overflow: hidden; }
-    .loading-bar-inner { height: 100%; background: linear-gradient(90deg, #ff6b00, #ff9500); border-radius: 3px; animation: loading 1.2s ease infinite; width: 40%; }
-    @keyframes loading { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
+    .status-info span { font-size: 12px; color: #666; margin-top: 2px; display: block; }
+    .status-info.green strong { color: #22c55e; }
+    .status-info.yellow strong { color: #f59e0b; }
+    .status-info.red strong { color: #ef4444; }
 
-    /* Menu */
-    .menu-section { padding: 20px 16px 0; }
-    .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .skel { height: 15px; border-radius: 8px; background: linear-gradient(90deg, #1f1f1f 25%, #2a2a2a 50%, #1f1f1f 75%); background-size: 200% 100%; animation: skel 1.4s ease infinite; margin-bottom: 7px; }
+    .skel.sm { width: 55%; height: 11px; margin-bottom: 0; }
+    @keyframes skel { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    .section-title { font-size: 11px; font-weight: 700; color: #444; letter-spacing: 1px; text-transform: uppercase; padding: 22px 20px 10px; }
+
+    .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 16px; }
     .menu-card {
       background: #141414;
-      border: 1px solid #202020;
-      border-radius: 16px;
-      padding: 18px 14px;
+      border: 1px solid #1e1e1e;
+      border-radius: 18px;
+      padding: 20px 14px;
       text-align: center;
       text-decoration: none;
       color: #fff;
-      display: block;
-      transition: all 0.2s;
-      position: relative;
-      overflow: hidden;
-    }
-    .menu-card::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(135deg, transparent, rgba(255,255,255,0.02));
-      opacity: 0;
-      transition: opacity 0.2s;
-    }
-    .menu-card:active { transform: scale(0.97); background: #1a1a1a; }
-    .menu-card:active::before { opacity: 1; }
-    .menu-card.primary { border-color: rgba(255,107,0,0.4); background: linear-gradient(135deg, #161616, #1a0c00); }
-    .menu-card .icon { font-size: 28px; margin-bottom: 8px; }
-    .menu-card .label { font-size: 14px; font-weight: 600; }
-    .menu-card .sub { font-size: 11px; color: #666; margin-top: 4px; }
-    .menu-card.primary .sub { color: rgba(255,149,0,0.7); }
-
-    /* Report button */
-    .report-btn {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 12px;
-      margin: 10px 16px 0;
-      background: #160808;
-      border: 1px solid rgba(239,68,68,0.25);
-      border-radius: 16px;
-      padding: 14px 18px;
-      text-decoration: none;
-      color: #fff;
-      transition: all 0.2s;
+      gap: 8px;
+      transition: transform 0.15s;
     }
-    .report-btn:active { background: #1f0a0a; transform: scale(0.98); }
-    .report-btn .icon { font-size: 24px; flex-shrink: 0; }
-    .report-btn .info { flex: 1; }
-    .report-btn .info strong { display: block; font-size: 14px; font-weight: 600; color: #fca5a5; }
-    .report-btn .info span { font-size: 12px; color: #888; margin-top: 2px; display: block; }
-    .report-btn .arrow { color: #444; font-size: 16px; }
+    .menu-card:active { transform: scale(0.97); }
+
+    .menu-card.orange { background: linear-gradient(135deg, #180f00, #1f1000); border-color: rgba(255,107,0,0.3); }
+    .menu-card.blue   { background: linear-gradient(135deg, #060e1a, #091520); border-color: rgba(55,138,221,0.25); }
+    .menu-card.green  { background: linear-gradient(135deg, #071208, #09180a); border-color: rgba(34,197,94,0.2); }
+    .menu-card.red    { background: linear-gradient(135deg, #140808, #1c0c0c); border-color: rgba(239,68,68,0.25); }
+
+    .menu-icon { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+    .menu-card.orange .menu-icon { background: rgba(255,107,0,0.15); }
+    .menu-card.blue   .menu-icon { background: rgba(55,138,221,0.12); }
+    .menu-card.green  .menu-icon { background: rgba(34,197,94,0.12); }
+    .menu-card.red    .menu-icon { background: rgba(239,68,68,0.12); }
+
+    .menu-label { font-size: 14px; font-weight: 700; }
+    .menu-sub   { font-size: 11px; }
+    .menu-card.orange .menu-sub { color: rgba(255,149,0,0.6); }
+    .menu-card.blue   .menu-sub { color: rgba(99,170,240,0.6); }
+    .menu-card.green  .menu-sub { color: rgba(74,222,128,0.6); }
+    .menu-card.red    .menu-sub { color: rgba(248,113,113,0.6); }
   </style>
 </head>
 <body>
   <div class="header">
-    <div class="header-logo">🐯</div>
-    <h1>Tiger Premium</h1>
-    <p>YouTube Premium Family</p>
+    <div class="header-badge">🐯 Tiger Premium</div>
+    <h1>YouTube Premium</h1>
+    <p>Family Plan — ราคาพิเศษ</p>
   </div>
 
-  <!-- Status card -->
-  <div class="status-card" id="status-card">
-    <div class="status-dot" id="status-dot"></div>
-    <div class="status-info">
-      <div class="loading-bar" id="loading-bar">
-        <div class="loading-bar-inner"></div>
-      </div>
-      <strong id="status-text" style="display:none">-</strong>
-      <span id="status-sub" style="display:none">-</span>
+  <div class="status-card">
+    <div class="status-icon gray" id="status-icon">⏳</div>
+    <div class="status-info" id="status-info">
+      <div class="skel" id="skel1"></div>
+      <div class="skel sm" id="skel2"></div>
+      <strong id="status-text" style="display:none"></strong>
+      <span id="status-sub" style="display:none"></span>
     </div>
   </div>
 
-  <!-- เมนูหลัก -->
-  <div class="menu-section">
-    <div class="menu-grid">
-      <a href="register.html" class="menu-card primary">
-        <div class="icon">📋</div>
-        <div class="label">สมัครสมาชิก</div>
-        <div class="sub">เริ่มใช้งานได้เลย</div>
-      </a>
-      <a href="check.html" class="menu-card">
-        <div class="icon">📅</div>
-        <div class="label">เช็ควันหมดอายุ</div>
-        <div class="sub">ดูสถานะของคุณ</div>
-      </a>
-      <a href="renew.html" class="menu-card">
-        <div class="icon">🔄</div>
-        <div class="label">ต่ออายุ</div>
-        <div class="sub">แนบสลิปยืนยัน</div>
-      </a>
-      <a href="check.html" class="menu-card">
-        <div class="icon">📊</div>
-        <div class="label">ข้อมูลของฉัน</div>
-        <div class="sub">ดูสถานะทั้งหมด</div>
-      </a>
-    </div>
-
-    <!-- ปุ่มแจ้งปัญหา -->
-    <a href="report.html" class="report-btn">
-      <div class="icon">🚨</div>
-      <div class="info">
-        <strong>แจ้งปัญหาการใช้งาน</strong>
-        <span>ใช้งานไม่ได้? แจ้งแอดมินได้เลยครับ</span>
-      </div>
-      <div class="arrow">›</div>
+  <div class="section-title">เมนูหลัก</div>
+  <div class="menu-grid">
+    <a href="register.html" class="menu-card orange">
+      <div class="menu-icon">📋</div>
+      <div class="menu-label">สมัครสมาชิก</div>
+      <div class="menu-sub">เริ่มใช้งานได้เลย</div>
+    </a>
+    <a href="check.html" class="menu-card blue">
+      <div class="menu-icon">📅</div>
+      <div class="menu-label">เช็ควันหมดอายุ</div>
+      <div class="menu-sub">ดูสถานะของคุณ</div>
+    </a>
+    <a href="renew.html" class="menu-card green">
+      <div class="menu-icon">🔄</div>
+      <div class="menu-label">ต่ออายุ</div>
+      <div class="menu-sub">แนบสลิปยืนยัน</div>
+    </a>
+    <a href="report.html" class="menu-card red">
+      <div class="menu-icon">🚨</div>
+      <div class="menu-label">แจ้งปัญหา</div>
+      <div class="menu-sub">ใช้งานไม่ได้?</div>
     </a>
   </div>
 
@@ -190,29 +163,34 @@
     async function init() {
       await liff.init({ liffId: LIFF_ID });
       if (!liff.isLoggedIn()) { liff.login(); return; }
-
       const profile = await liff.getProfile();
       const res = await fetch(`${BASE_URL}/api/member/${profile.userId}`);
       const data = await res.json();
 
-      // ซ่อน loading bar
-      document.getElementById('loading-bar').style.display = 'none';
+      document.getElementById('skel1').style.display = 'none';
+      document.getElementById('skel2').style.display = 'none';
       document.getElementById('status-text').style.display = 'block';
       document.getElementById('status-sub').style.display = 'block';
 
+      const iconEl = document.getElementById('status-icon');
+      const infoEl = document.getElementById('status-info');
+
       if (data.found) {
-        const days = data.daysLeft;
-        const dot = document.getElementById('status-dot');
-        dot.className = 'status-dot ' + (days > 7 ? 'green' : days > 0 ? 'yellow' : 'red');
-        document.getElementById('status-text').textContent =
-          days > 7 ? `✅ ใช้งานได้ — เหลือ ${days} วัน`
-          : days > 0 ? `⚠️ ใกล้หมดอายุ — เหลือ ${days} วัน`
-          : `❌ สมาชิกหมดอายุแล้ว`;
+        const d = data.daysLeft;
+        const cls = d > 7 ? 'green' : d > 0 ? 'yellow' : 'red';
+        const icon = d > 7 ? '✅' : d > 0 ? '⚠️' : '❌';
+        const text = d > 7 ? `ใช้งานได้ — เหลือ ${d} วัน` : d > 0 ? `ใกล้หมดอายุ — เหลือ ${d} วัน` : 'หมดอายุแล้ว';
+        iconEl.textContent = icon;
+        iconEl.className = `status-icon ${cls}`;
+        infoEl.className = `status-info ${cls}`;
+        document.getElementById('status-text').textContent = text;
         document.getElementById('status-sub').textContent = `หมดอายุ ${data.expireDate}`;
       } else {
-        document.getElementById('status-dot').style.background = '#333';
+        iconEl.textContent = '👋';
+        iconEl.className = 'status-icon gray';
+        infoEl.className = 'status-info';
         document.getElementById('status-text').textContent = 'ยังไม่ได้สมัครสมาชิก';
-        document.getElementById('status-sub').textContent = 'กดสมัครสมาชิกด้านล่างได้เลยครับ';
+        document.getElementById('status-sub').textContent = 'กดสมัครสมาชิกได้เลยครับ';
       }
     }
     init().catch(console.error);
