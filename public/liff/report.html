@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>แจ้งปัญหา - Tiger Premium</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Noto Sans Thai', -apple-system, sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+      min-height: 100vh;
+      padding-bottom: 48px;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
+      padding: 20px 20px 28px;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -40px; right: -40px;
+      width: 120px; height: 120px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+    }
+    .header-top { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .header-back { color: #fff; text-decoration: none; font-size: 22px; opacity: 0.9; }
+    .header-title { font-size: 18px; font-weight: 700; }
+    .header-desc { font-size: 13px; opacity: 0.85; line-height: 1.5; }
+
+    /* Loading */
+    .loading-wrap { text-align: center; padding: 80px 20px; color: #555; }
+    .spinner { display: inline-block; width: 32px; height: 32px; border: 3px solid #222; border-top-color: #e74c3c; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Not found */
+    .not-found { text-align: center; padding: 60px 20px; }
+    .not-found .icon { font-size: 52px; margin-bottom: 16px; }
+    .not-found p { color: #888; font-size: 14px; line-height: 1.7; }
+    .not-found a { color: #e74c3c; }
+
+    /* Section */
+    .section { margin: 20px 16px 0; }
+    .section-label { font-size: 12px; color: #888; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 10px; }
+
+    /* Email selector */
+    .email-list { display: flex; flex-direction: column; gap: 8px; }
+    .email-card {
+      background: #161616;
+      border: 2px solid #242424;
+      border-radius: 14px;
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .email-card.selected {
+      border-color: #e74c3c;
+      background: #1f0a08;
+    }
+    .email-card .radio {
+      width: 18px; height: 18px;
+      border: 2px solid #444;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    .email-card.selected .radio {
+      border-color: #e74c3c;
+      background: #e74c3c;
+    }
+    .email-card.selected .radio::after {
+      content: '';
+      width: 6px; height: 6px;
+      background: #fff;
+      border-radius: 50%;
+    }
+    .email-card .email-info { flex: 1; }
+    .email-card .email-addr { font-size: 14px; font-weight: 600; word-break: break-all; }
+    .email-card .email-status { font-size: 12px; margin-top: 3px; }
+    .email-card .email-status.ok { color: #22c55e; }
+    .email-card .email-status.warn { color: #f59e0b; }
+    .email-card .email-status.expired { color: #ef4444; }
+
+    /* Problem type */
+    .problem-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .problem-chip {
+      background: #161616;
+      border: 1.5px solid #242424;
+      border-radius: 12px;
+      padding: 12px 14px;
+      cursor: pointer;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+      color: #aaa;
+    }
+    .problem-chip.selected {
+      border-color: #e74c3c;
+      background: #1f0a08;
+      color: #fff;
+    }
+    .problem-chip .chip-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+
+    /* Textarea */
+    .detail-box {
+      background: #161616;
+      border: 1.5px solid #242424;
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 14px;
+      color: #fff;
+      width: 100%;
+      min-height: 100px;
+      outline: none;
+      resize: none;
+      font-family: inherit;
+      line-height: 1.6;
+      transition: border-color 0.2s;
+    }
+    .detail-box:focus { border-color: #e74c3c; }
+    .detail-box::placeholder { color: #444; }
+
+    /* Submit button */
+    .submit-btn {
+      display: block;
+      width: calc(100% - 32px);
+      margin: 20px 16px 0;
+      background: linear-gradient(135deg, #c0392b, #e74c3c);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity 0.2s, transform 0.1s;
+      box-shadow: 0 4px 20px rgba(231,76,60,0.3);
+    }
+    .submit-btn:active { transform: scale(0.98); opacity: 0.9; }
+    .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    /* Alert */
+    .alert {
+      margin: 16px 16px 0;
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .alert.error { background: #200a08; border: 1px solid #e74c3c; color: #fca5a5; }
+    .alert.success { background: #081a0a; border: 1px solid #22c55e; color: #86efac; }
+
+    /* Success state */
+    .success-wrap { text-align: center; padding: 60px 24px; }
+    .success-wrap .big-icon { font-size: 64px; margin-bottom: 20px; animation: bounce 0.6s ease; }
+    @keyframes bounce { 0%,100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+    .success-wrap h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .success-wrap p { color: #888; font-size: 14px; line-height: 1.7; }
+    .success-wrap .ref { margin-top: 16px; background: #161616; border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #aaa; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-top">
+      <a href="index.html" class="header-back">←</a>
+      <div class="header-title">🚨 แจ้งปัญหาการใช้งาน</div>
+    </div>
+    <div class="header-desc">ใช้งานไม่ได้? เข้าไม่ได้? แจ้งแอดมินได้เลยครับ ทีมงานจะรีบดูแลให้โดยเร็ว</div>
+  </div>
+
+  <div id="loading-wrap" class="loading-wrap">
+    <div class="spinner"></div>
+    <div>กำลังโหลดข้อมูล...</div>
+  </div>
+
+  <div id="not-found" class="not-found" style="display:none">
+    <div class="icon">🔍</div>
+    <p>ไม่พบข้อมูลสมาชิก<br><br>กรุณา <a href="register.html">สมัครสมาชิก</a> ก่อนนะครับ</p>
+  </div>
+
+  <div id="main-content" style="display:none">
+
+    <!-- เลือกอีเมล -->
+    <div class="section">
+      <div class="section-label">เลือกอีเมลที่มีปัญหา</div>
+      <div class="email-list" id="email-list"></div>
+    </div>
+
+    <!-- ประเภทปัญหา -->
+    <div class="section">
+      <div class="section-label">ประเภทปัญหา</div>
+      <div class="problem-grid" id="problem-grid">
+        <div class="problem-chip" data-val="เข้าใช้งานไม่ได้" onclick="selectProblem(this)">
+          <span class="chip-icon">🚫</span>เข้าใช้งานไม่ได้
+        </div>
+        <div class="problem-chip" data-val="ถูกเตะออกจากบ้าน" onclick="selectProblem(this)">
+          <span class="chip-icon">🏠</span>ถูกเตะออกจากบ้าน
+        </div>
+        <div class="problem-chip" data-val="ไม่ได้รับคำเชิญ" onclick="selectProblem(this)">
+          <span class="chip-icon">📧</span>ไม่ได้รับคำเชิญ
+        </div>
+        <div class="problem-chip" data-val="อื่นๆ" onclick="selectProblem(this)">
+          <span class="chip-icon">💬</span>อื่นๆ
+        </div>
+      </div>
+    </div>
+
+    <!-- รายละเอียดเพิ่มเติม -->
+    <div class="section">
+      <div class="section-label">รายละเอียดเพิ่มเติม (ไม่บังคับ)</div>
+      <textarea class="detail-box" id="detail-input" placeholder="อธิบายปัญหาเพิ่มเติม เช่น เกิดขึ้นเมื่อไหร่ มีข้อความ error อะไรบ้าง..."></textarea>
+    </div>
+
+    <div id="alert-box"></div>
+    <button class="submit-btn" id="submit-btn" onclick="submit()" disabled>ส่งแจ้งปัญหา 🚨</button>
+
+  </div>
+
+  <div id="success-wrap" class="success-wrap" style="display:none">
+    <div class="big-icon">✅</div>
+    <h2>แจ้งปัญหาแล้วครับ!</h2>
+    <p>ทีมงานได้รับเรื่องแล้ว<br>จะรีบแก้ไขและแจ้งกลับผ่าน LINE ครับ</p>
+    <div class="ref" id="ref-detail"></div>
+    <br>
+    <a href="index.html" style="color:#e74c3c;font-size:14px;">← กลับหน้าหลัก</a>
+  </div>
+
+  <script>
+    const LIFF_ID = '2009843737-CwJgLFBY';
+    const BASE_URL = window.location.origin;
+    const PKG = { '1month': '1 เดือน', '2months': '2 เดือน', '3months': '3 เดือน' };
+
+    let profile = null;
+    let members = [];
+    let selectedEmail = null;
+    let selectedProblem = null;
+
+    async function init() {
+      await liff.init({ liffId: LIFF_ID });
+      if (!liff.isLoggedIn()) { liff.login(); return; }
+      profile = await liff.getProfile();
+
+      const res = await fetch(`${BASE_URL}/api/members/${profile.userId}`);
+      const data = await res.json();
+
+      document.getElementById('loading-wrap').style.display = 'none';
+
+      if (!data.found || data.members.length === 0) {
+        document.getElementById('not-found').style.display = 'block';
+        return;
+      }
+
+      members = data.members;
+      document.getElementById('main-content').style.display = 'block';
+
+      const emailList = document.getElementById('email-list');
+      members.forEach((m, i) => {
+        const days = m.daysLeft;
+        const statusClass = days > 7 ? 'ok' : days > 0 ? 'warn' : 'expired';
+        const statusText = days > 7 ? `✅ ใช้งานได้ — เหลือ ${days} วัน`
+          : days > 0 ? `⚠️ ใกล้หมดอายุ — เหลือ ${days} วัน`
+          : `❌ หมดอายุแล้ว (${m.expireDate})`;
+
+        const card = document.createElement('div');
+        card.className = 'email-card';
+        card.innerHTML = `
+          <div class="radio"></div>
+          <div class="email-info">
+            <div class="email-addr">${m.houseEmail || 'ไม่มีอีเมล'}</div>
+            <div class="email-status ${statusClass}">${statusText}</div>
+          </div>
+        `;
+        card.onclick = () => selectEmail(card, m.houseEmail);
+        emailList.appendChild(card);
+
+        // default เลือกตัวแรก
+        if (i === 0) card.click();
+      });
+    }
+
+    function selectEmail(el, email) {
+      document.querySelectorAll('.email-card').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+      selectedEmail = email;
+      checkReady();
+    }
+
+    function selectProblem(el) {
+      document.querySelectorAll('.problem-chip').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+      selectedProblem = el.dataset.val;
+      checkReady();
+    }
+
+    function checkReady() {
+      document.getElementById('submit-btn').disabled = !(selectedEmail && selectedProblem);
+    }
+
+    async function submit() {
+      const btn = document.getElementById('submit-btn');
+      const detail = document.getElementById('detail-input').value.trim();
+      const fullDetail = selectedProblem + (detail ? ` — ${detail}` : '');
+
+      btn.disabled = true;
+      btn.textContent = 'กำลังส่ง...';
+
+      try {
+        const res = await fetch(`${BASE_URL}/api/admin/report`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lineUserId: profile.userId,
+            displayName: profile.displayName,
+            memberEmail: selectedEmail,
+            detail: fullDetail,
+          }),
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          document.getElementById('main-content').style.display = 'none';
+          document.getElementById('success-wrap').style.display = 'block';
+          document.getElementById('ref-detail').innerHTML =
+            `📧 อีเมล: <strong>${selectedEmail}</strong><br>📝 ปัญหา: ${selectedProblem}`;
+        } else {
+          document.getElementById('alert-box').innerHTML =
+            `<div class="alert error">❌ ${data.error}</div>`;
+          btn.disabled = false;
+          btn.textContent = 'ส่งแจ้งปัญหา 🚨';
+        }
+      } catch (err) {
+        document.getElementById('alert-box').innerHTML =
+          `<div class="alert error">เกิดข้อผิดพลาด กรุณาลองใหม่ครับ</div>`;
+        btn.disabled = false;
+        btn.textContent = 'ส่งแจ้งปัญหา 🚨';
+      }
+    }
+
+    init().catch(console.error);
+  </script>
+</body>
+</html>
