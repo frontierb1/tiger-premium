@@ -226,7 +226,9 @@ router.post('/invite', authCheck, async (req, res) => {
     if (!rowIndex || !lineUserId) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
     const members = await getAllMembers();
     const member = members.find(m => m.rowIndex === parseInt(rowIndex));
-    const result = await updateInviteStatus(rowIndex, '', 'invited');
+    // เก็บ houseId เดิมไว้ ไม่ล้างออก
+    const existingHouseId = member?.houseId || '';
+    const result = await updateInviteStatus(rowIndex, existingHouseId, 'active');
     if (!result.success) return res.status(500).json({ error: result.error });
     await writeLog(req.adminUser, req.adminName, 'ยืนยันกดรับ', `${member?.houseEmail || lineUserId}`);
     const email = member?.houseEmail || '-';
