@@ -5,92 +5,140 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Dashboard - Tiger Premium</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a1628; color: #fff; min-height: 100vh; }
-    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-    .login-card { background: #0d1f3c; border: 1px solid #1e3a5f; border-radius: 16px; padding: 32px; width: 320px; }
-    .login-card h2 { font-size: 20px; margin-bottom: 6px; }
-    .login-card p { font-size: 13px; color: #85B7EB; margin-bottom: 24px; }
-    .login-card input { width: 100%; background: #0a1628; border: 1.5px solid #1e3a5f; border-radius: 10px; padding: 12px 14px; font-size: 14px; color: #fff; outline: none; margin-bottom: 12px; }
-    .login-card input:focus { border-color: #378ADD; }
-    .btn-login { width: 100%; background: #185FA5; color: #fff; border: none; border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 700; cursor: pointer; }
-    .login-error { color: #ef4444; font-size: 13px; margin-top: 8px; text-align: center; }
-    .header { background: #0c2461; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1e3a5f; }
-    .header h1 { font-size: 17px; font-weight: 700; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'IBM Plex Sans Thai', -apple-system, sans-serif;
+      background: #060d1a;
+      color: #e2eaf5;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0a1628; }
+    ::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #378ADD; }
+
+    /* Page fade-in */
+    #dashboard { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+    /* Loading pulse */
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .loading { animation: pulse 1.5s ease infinite; color: #85B7EB; }
+
+    /* Spinner */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #1e3a5f; border-top-color: #378ADD; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+
+    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at 50% 0%, #0c2461 0%, #060d1a 70%); }
+    .login-card { background: rgba(13,31,60,0.9); border: 1px solid #1e3a5f; border-radius: 20px; padding: 36px 32px; width: 340px; backdrop-filter: blur(20px); box-shadow: 0 24px 64px rgba(0,0,0,0.5); }
+    .login-card h2 { font-size: 22px; margin-bottom: 4px; font-weight: 700; }
+    .login-card p { font-size: 13px; color: #85B7EB; margin-bottom: 28px; }
+    .login-card input { width: 100%; background: rgba(10,22,40,0.8); border: 1.5px solid #1e3a5f; border-radius: 12px; padding: 13px 16px; font-size: 14px; color: #fff; outline: none; margin-bottom: 12px; transition: border-color 0.2s, box-shadow 0.2s; font-family: inherit; }
+    .login-card input:focus { border-color: #378ADD; box-shadow: 0 0 0 3px rgba(55,138,221,0.15); }
+    .btn-login { width: 100%; background: linear-gradient(135deg, #185FA5, #1e7bd4); color: #fff; border: none; border-radius: 12px; padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer; transition: opacity 0.2s, transform 0.1s; font-family: inherit; }
+    .btn-login:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-login:active { transform: translateY(0); }
+    .login-error { color: #ef4444; font-size: 13px; margin-top: 10px; text-align: center; }
+
+    .header { background: linear-gradient(135deg, #0c1f3f 0%, #091729 100%); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(30,58,95,0.8); position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px); }
+    .header h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
     .header-right { display: flex; align-items: center; gap: 12px; }
     .last-update { font-size: 12px; color: #85B7EB; }
-    .logout-btn { background: none; border: 1px solid #1e3a5f; color: #85B7EB; border-radius: 8px; padding: 6px 12px; font-size: 12px; cursor: pointer; }
-    /* Alert banner */
-    .alert-banner { background: #2a0a0a; border: 1px solid #ef4444; border-radius: 10px; margin: 12px 24px 0; padding: 12px 16px; display: none; }
+    .logout-btn { background: none; border: 1px solid #1e3a5f; color: #85B7EB; border-radius: 8px; padding: 6px 14px; font-size: 12px; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+    .logout-btn:hover { background: #1e3a5f; color: #fff; }
+
+    .alert-banner { background: linear-gradient(135deg, #2a0a0a, #1a0808); border: 1px solid #ef4444; border-radius: 12px; margin: 12px 24px 0; padding: 12px 16px; display: none; }
     .alert-banner.show { display: block; }
     .alert-banner h4 { color: #ef4444; font-size: 13px; margin-bottom: 6px; }
     .alert-banner ul { padding-left: 16px; }
     .alert-banner li { color: #fca5a5; font-size: 12px; margin-bottom: 2px; }
-    /* Tabs */
-    .tabs { display: flex; gap: 4px; padding: 14px 24px 0; border-bottom: 1px solid #1e3a5f; overflow-x: auto; }
-    .tab { padding: 9px 18px; font-size: 13px; cursor: pointer; border-radius: 8px 8px 0 0; color: #85B7EB; background: none; border: none; border-bottom: 2px solid transparent; white-space: nowrap; }
-    .tab.active { color: #fff; border-bottom: 2px solid #378ADD; background: #0d1f3c; }
+
+    .tabs { display: flex; gap: 2px; padding: 12px 20px 0; border-bottom: 1px solid #1e3a5f; overflow-x: auto; background: #060d1a; }
+    .tabs::-webkit-scrollbar { height: 0; }
+    .tab { padding: 9px 16px; font-size: 13px; cursor: pointer; border-radius: 10px 10px 0 0; color: #85B7EB; background: none; border: none; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.2s; font-family: inherit; font-weight: 500; }
+    .tab:hover { color: #B5D4F4; background: rgba(55,138,221,0.08); }
+    .tab.active { color: #fff; border-bottom: 2px solid #378ADD; background: rgba(55,138,221,0.12); }
+
     .content { padding: 16px 24px; }
+
     .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
-    .stat-card { background: #0d1f3c; border: 1px solid #1e3a5f; border-radius: 12px; padding: 14px; }
-    .stat-card .label { font-size: 11px; color: #85B7EB; margin-bottom: 4px; }
-    .stat-card .value { font-size: 26px; font-weight: 700; }
+    .stat-card { background: linear-gradient(135deg, #0d1f3c, #0a1628); border: 1px solid #1e3a5f; border-radius: 14px; padding: 16px; transition: border-color 0.2s, transform 0.2s; }
+    .stat-card:hover { border-color: #378ADD; transform: translateY(-2px); }
+    .stat-card .label { font-size: 11px; color: #85B7EB; margin-bottom: 6px; font-weight: 500; letter-spacing: 0.3px; }
+    .stat-card .value { font-size: 28px; font-weight: 700; line-height: 1; }
     .stat-card.blue .value { color: #378ADD; }
     .stat-card.yellow .value { color: #f59e0b; }
     .stat-card.orange .value { color: #ff9500; }
     .stat-card.red .value { color: #ef4444; }
-    /* Bulk panel */
-    .bulk-panel { background: #0c2461; border: 1px solid #1e3a5f; border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
+
+    .bulk-panel { background: linear-gradient(135deg, #0c2461, #091d4a); border: 1px solid #1e3a5f; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
     .bulk-panel-title { font-size: 13px; font-weight: 600; color: #B5D4F4; margin-bottom: 10px; }
     .bulk-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
     .bulk-row label { font-size: 12px; color: #85B7EB; min-width: 80px; }
-    .house-sel-main { background: #0a1628; border: 1.5px solid #378ADD; border-radius: 8px; padding: 7px 10px; font-size: 13px; color: #fff; outline: none; min-width: 200px; }
+    .house-sel-main { background: #0a1628; border: 1.5px solid #378ADD; border-radius: 8px; padding: 7px 10px; font-size: 13px; color: #fff; outline: none; min-width: 200px; font-family: inherit; transition: box-shadow 0.2s; }
+    .house-sel-main:focus { box-shadow: 0 0 0 3px rgba(55,138,221,0.2); }
     .slot-badge { font-size: 12px; padding: 4px 10px; border-radius: 8px; background: #0a1628; border: 1px solid #1e3a5f; color: #85B7EB; }
     .slot-badge.ok { border-color: #22c55e; color: #22c55e; }
     .slot-badge.full { border-color: #ef4444; color: #ef4444; }
     .bulk-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-    /* Table */
-    .table-wrap { background: #0d1f3c; border: 1px solid #1e3a5f; border-radius: 10px; overflow: hidden; }
-    .table-header { padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1e3a5f; flex-wrap: wrap; gap: 8px; }
+
+    .table-wrap { background: #0a1628; border: 1px solid #1e3a5f; border-radius: 14px; overflow: hidden; }
+    .table-header { padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1e3a5f; flex-wrap: wrap; gap: 8px; background: linear-gradient(135deg, #0d1f3c, #0a1628); }
     .table-header h3 { font-size: 14px; font-weight: 600; }
     table { width: 100%; border-collapse: collapse; }
-    th { background: #0a1628; padding: 9px 12px; text-align: left; font-size: 11px; color: #85B7EB; font-weight: 500; }
-    td { padding: 10px 12px; font-size: 12px; border-bottom: 1px solid #1a2a40; vertical-align: middle; }
+    th { background: rgba(10,22,40,0.8); padding: 10px 12px; text-align: left; font-size: 11px; color: #85B7EB; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+    td { padding: 10px 12px; font-size: 12px; border-bottom: 1px solid rgba(30,58,95,0.5); vertical-align: middle; transition: background 0.15s; }
     tr:last-child td { border-bottom: none; }
-    tr:hover td { background: #0f2240; }
-    tr.selected-row td { background: #0c2461; }
-    tr.overflow-row td { background: #2a0a0a; }
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-    .badge.pending { background: #2a1a00; color: #f59e0b; border: 1px solid #f59e0b; }
-    .badge.inviting { background: #0a1a2a; color: #378ADD; border: 1px solid #378ADD; }
-    .badge.invited { background: #0a2a0a; color: #22c55e; border: 1px solid #22c55e; }
-    .badge.removed { background: #1a1a1a; color: #555; border: 1px solid #333; }
-    .badge.red { background: #2a0a0a; color: #ef4444; border: 1px solid #ef4444; }
-    .badge.yellow { background: #2a1a00; color: #f59e0b; border: 1px solid #f59e0b; }
-    .badge.green { background: #0a2a0a; color: #22c55e; border: 1px solid #22c55e; }
-    .badge.warn { background: #2a0a0a; color: #ef4444; border: 1px solid #ef4444; }
-    .btn-sm { border: none; border-radius: 7px; padding: 5px 12px; font-size: 11px; cursor: pointer; font-weight: 600; }
+    tr:hover td { background: rgba(55,138,221,0.06); }
+    tr.selected-row td { background: rgba(55,138,221,0.12); }
+    tr.overflow-row td { background: rgba(239,68,68,0.08); }
+
+    .badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: 0.2px; }
+    .badge.pending { background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.4); }
+    .badge.inviting { background: rgba(55,138,221,0.15); color: #378ADD; border: 1px solid rgba(55,138,221,0.4); }
+    .badge.invited { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.4); }
+    .badge.removed { background: rgba(255,255,255,0.05); color: #555; border: 1px solid #333; }
+    .badge.red { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.4); }
+    .badge.yellow { background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.4); }
+    .badge.green { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.4); }
+    .badge.warn { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.4); }
+
+    .btn-sm { border: none; border-radius: 8px; padding: 5px 12px; font-size: 11px; cursor: pointer; font-weight: 600; transition: all 0.15s; font-family: inherit; }
+    .btn-sm:hover { opacity: 0.85; transform: translateY(-1px); }
+    .btn-sm:active { transform: translateY(0); }
     .btn-blue { background: #185FA5; color: #fff; }
-    .btn-blue:hover { background: #1e6fc0; }
-    .btn-green { background: #1a4a1a; color: #22c55e; border: 1px solid #22c55e; }
-    .btn-orange { background: #3a2000; color: #ff9500; border: 1px solid #ff9500; }
-    .btn-gray { background: #0a1628; color: #85B7EB; border: 1px solid #1e3a5f; }
-    .btn-gray:hover { background: #1e3a5f; }
-    .btn-sm:disabled { opacity: 0.35; cursor: not-allowed; }
-    .search-bar { background: #0a1628; border: 1px solid #1e3a5f; border-radius: 7px; padding: 6px 12px; font-size: 12px; color: #fff; outline: none; width: 180px; }
+    .btn-green { background: rgba(26,74,26,0.8); color: #22c55e; border: 1px solid rgba(34,197,94,0.4); }
+    .btn-orange { background: rgba(58,32,0,0.8); color: #ff9500; border: 1px solid rgba(255,149,0,0.4); }
+    .btn-gray { background: rgba(10,22,40,0.8); color: #85B7EB; border: 1px solid #1e3a5f; }
+    .btn-gray:hover { background: #1e3a5f; color: #fff; border-color: #378ADD; }
+    .btn-sm:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+    .search-bar { background: rgba(10,22,40,0.8); border: 1px solid #1e3a5f; border-radius: 8px; padding: 7px 12px; font-size: 12px; color: #fff; outline: none; width: 200px; transition: border-color 0.2s, box-shadow 0.2s; font-family: inherit; }
+    .search-bar:focus { border-color: #378ADD; box-shadow: 0 0 0 3px rgba(55,138,221,0.15); }
+
     .loading { text-align: center; padding: 32px; color: #555; }
     .empty { text-align: center; padding: 32px; color: #555; font-size: 13px; }
-    .notif { position: fixed; top: 16px; right: 16px; border-radius: 10px; padding: 10px 16px; font-size: 13px; z-index: 999; max-width: 300px; }
-    .notif.success { background: #0a2a0a; border: 1px solid #22c55e; color: #86efac; }
-    .notif.error { background: #2a0a0a; border: 1px solid #ef4444; color: #fca5a5; }
-    .notif.info { background: #0a1a2a; border: 1px solid #378ADD; color: #B5D4F4; }
+
+    .notif { position: fixed; top: 20px; right: 20px; border-radius: 12px; padding: 12px 18px; font-size: 13px; z-index: 9999; max-width: 320px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); animation: slideIn 0.3s ease; font-family: inherit; }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+    .notif.success { background: linear-gradient(135deg, #0a2a0a, #0d3d0d); border: 1px solid #22c55e; color: #86efac; }
+    .notif.error { background: linear-gradient(135deg, #2a0a0a, #3d0d0d); border: 1px solid #ef4444; color: #fca5a5; }
+    .notif.info { background: linear-gradient(135deg, #0a1a2a, #0d2240); border: 1px solid #378ADD; color: #B5D4F4; }
+
     input[type=checkbox] { width: 15px; height: 15px; cursor: pointer; accent-color: #378ADD; }
     .tab-content { display: none; }
-    .tab-content.active { display: block; }
+    .tab-content.active { display: block; animation: fadeIn 0.2s ease; }
     .overflow-warn { color: #ef4444; font-size: 11px; font-weight: 600; margin-left: 4px; }
     .sortable { cursor: pointer; user-select: none; }
-    .sortable:hover { color: #fff; background: #1a2a40; }
+    .sortable:hover { color: #fff; background: rgba(55,138,221,0.1); }
+
+    /* Monospace for passwords */
+    .mono { font-family: 'JetBrains Mono', monospace; }
 
     /* ===== Dashboard ===== */
     .dash-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 16px; }
@@ -145,7 +193,7 @@
   <div class="header">
     <h1>🐯 Tiger Premium — Admin</h1>
     <div class="header-right">
-      <span class="last-update" id="last-update">กำลังโหลด...</span>
+      <span class="last-update" id="last-update"><span class="spinner"></span>กำลังโหลด...</span>
       <span style="font-size:12px;color:#85B7EB" id="admin-display-name"></span>
       <button class="logout-btn" onclick="logout()">ออกจากระบบ</button>
     </div>
@@ -1032,7 +1080,20 @@ function switchTab(tab, el) {
   if (tab === 'all') renderWarnExpiredMembers();
 }
 
-async function loadAll() {
+let _isLoading = false;
+let _loadDebounce = null;
+
+function scheduleLoad(delay = 0) {
+  clearTimeout(_loadDebounce);
+  _loadDebounce = setTimeout(loadAll, delay);
+}
+
+async function loadAll(showLoader = false) {
+  if (_isLoading) return;
+  _isLoading = true;
+  const updateEl = document.getElementById('last-update');
+  if (updateEl) updateEl.innerHTML = '<span class="spinner"></span>กำลังโหลด...';
+
   try {
     const [mRes, hRes] = await Promise.all([
       fetch(`${BASE_URL}/api/admin/members`, { headers: { 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password } }),
@@ -1040,9 +1101,16 @@ async function loadAll() {
     ]);
     allMembers = (await mRes.json()).members || [];
     allHouses = (await hRes.json()).houses || [];
+
+    // render เฉพาะ tab ที่กำลังเปิดอยู่ก่อน แล้วค่อย render ที่เหลือ
     renderAll();
-    document.getElementById('last-update').textContent = `อัปเดต ${new Date().toLocaleTimeString('th-TH')}`;
-  } catch { showNotif('โหลดข้อมูลไม่สำเร็จ', 'error'); }
+    if (updateEl) updateEl.innerHTML = `✓ อัปเดต ${new Date().toLocaleTimeString('th-TH')}`;
+  } catch {
+    showNotif('โหลดข้อมูลไม่สำเร็จ', 'error');
+    if (updateEl) updateEl.textContent = 'โหลดไม่สำเร็จ';
+  } finally {
+    _isLoading = false;
+  }
 }
 
 function daysLeft(d) { return Math.ceil((new Date(d) - new Date()) / 86400000); }
@@ -1310,7 +1378,7 @@ function renderHouses() {
         <td>${h.houseEmail}</td>
         <td style="font-size:12px">
           <span style="color:#85B7EB">🔑</span>
-          <span id="pass-text-${h.houseId}" style="font-family:monospace;color:#f59e0b">${h.housePassword || '-'}</span>
+          <span id="pass-text-${h.houseId}" class="mono" style="color:#f59e0b">${h.housePassword || '-'}</span>
           <button class="btn-sm btn-gray" style="font-size:10px;margin-left:6px;padding:3px 8px" onclick="event.stopPropagation();openHousePassModal('${h.houseId}','${(h.housePassword||'').replace(/'/g,"\\'")}')">✏️</button>
         </td>
         <td>${h.expireDate} ${daysBadge(days)}</td>
@@ -1451,7 +1519,7 @@ async function bulkInvite() {
     } catch {}
   }
   clearSelection();
-  await loadAll();
+  scheduleLoad(500);
   btn.textContent = '📨 ส่งเชิญทั้งที่เลือก';
   showNotif(`✅ ส่งเชิญ ${success} คน ไปบ้าน ${houseId} แล้ว`, 'success');
 }
@@ -1470,7 +1538,7 @@ async function singleInvite(rowIndex, lineUserId, email, btn) {
       body: JSON.stringify({ rowIndex, lineUserId, houseId }),
     });
     const data = await res.json();
-    if (data.success) { showNotif(`📨 ส่งเชิญ ${email} ไปบ้าน ${houseId} แล้ว`, 'success'); await loadAll(); }
+    if (data.success) { showNotif(`📨 ส่งเชิญ ${email} ไปบ้าน ${houseId} แล้ว`, 'success'); scheduleLoad(500); }
     else { showNotif(`❌ ${data.error}`, 'error'); btn.disabled = false; btn.textContent = '📨 ส่งเชิญ'; }
   } catch { showNotif('❌ เกิดข้อผิดพลาด', 'error'); btn.disabled = false; btn.textContent = '📨 ส่งเชิญ'; }
 }
@@ -1484,7 +1552,7 @@ async function markInvited(rowIndex, lineUserId, email, btn) {
       body: JSON.stringify({ rowIndex, lineUserId }),
     });
     const data = await res.json();
-    if (data.success) { showNotif(`✅ ${email} กดรับแล้ว`, 'success'); await loadAll(); }
+    if (data.success) { showNotif(`✅ ${email} กดรับแล้ว`, 'success'); scheduleLoad(500); }
     else { showNotif(`❌ ${data.error}`, 'error'); btn.disabled = false; btn.textContent = '✅ กดรับแล้ว'; }
   } catch { showNotif('❌ เกิดข้อผิดพลาด', 'error'); btn.disabled = false; btn.textContent = '✅ กดรับแล้ว'; }
 }
@@ -1549,7 +1617,7 @@ async function toggleHouseStatus(houseId, newStatus, btn) {
     const data = await res.json();
     if (data.success) {
       showNotif(`✅ ${houseId} → ${newStatus}`, 'success');
-      await loadAll();
+      scheduleLoad(500);
     } else {
       showNotif(`❌ ${data.error}`, 'error');
       btn.disabled = false;
@@ -1577,7 +1645,7 @@ function confirmDeleteHouse(houseId) {
         const data = await res.json();
         if (data.success) {
           showNotif(`✅ ลบ ${houseId} แล้ว`, 'success');
-          await loadAll();
+          scheduleLoad(500);
         } else {
           showNotif(`❌ ${data.error}`, 'error');
         }
@@ -1629,7 +1697,7 @@ async function addSingleHouse() {
       document.getElementById('single-house-email').value = '';
       document.getElementById('single-house-pass').value = '';
       document.getElementById('single-house-id').value = '';
-      await loadAll();
+      scheduleLoad(500);
     } else {
       resultEl.innerHTML = `<div style="color:#ef4444;font-size:12px;margin-top:8px">❌ ${data.error}</div>`;
     }
@@ -1732,7 +1800,7 @@ async function addBulkHouses() {
       resultEl.innerHTML = `<div style="color:#22c55e;font-size:12px;margin-top:8px">✅ เพิ่ม ${data.count} บ้านสำเร็จ!<br>${data.houses.map(h => h.houseId + ': ' + h.houseEmail).join('<br>')}</div>`;
       document.getElementById('bulk-house-text').value = '';
       document.getElementById('bulk-preview').style.display = 'none';
-      await loadAll();
+      scheduleLoad(500);
     } else {
       resultEl.innerHTML = `<div style="color:#ef4444;font-size:12px;margin-top:8px">❌ ${data.error}</div>`;
     }
@@ -1797,7 +1865,7 @@ async function removeMember(rowIndex, lineUserId, email, btn) {
         const data = await res.json();
         if (data.success) {
           showNotif(`✅ ลบ ${email} ออกจากบ้านแล้ว`, 'success');
-          await loadAll();
+          scheduleLoad(500);
         } else {
           showNotif(`❌ ${data.error}`, 'error');
           btn.disabled = false; btn.textContent = '🗑 ลบ';
@@ -1880,7 +1948,7 @@ async function confirmEdit() {
     const data = await res.json();
     if (data.success) {
       showNotif(`✅ แก้ไขข้อมูลสำเร็จ`, 'success');
-      await loadAll();
+      scheduleLoad(500);
     } else {
       showNotif(`❌ ${data.error}`, 'error');
     }
@@ -1920,7 +1988,7 @@ async function confirmHousePass() {
     const data = await res.json();
     if (data.success) {
       showNotif(`✅ แก้ไข password ${_housePassData.houseId} แล้ว`, 'success');
-      await loadAll();
+      scheduleLoad(500);
     } else {
       showNotif(`❌ ${data.error}`, 'error');
     }
@@ -1929,7 +1997,7 @@ async function confirmHousePass() {
   }
 }
 
-setInterval(loadAll, 60000);
+setInterval(() => { if (!_isLoading) loadAll(); }, 15000);
 </script>
 </body>
 </html>
