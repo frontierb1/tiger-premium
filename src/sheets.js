@@ -23,6 +23,7 @@ function rowToMember(row) {
     createdAt:     row[7],
     houseId:       row[8],
     inviteStatus:  row[9],
+    registeredAt:  row[10] || row[7], // K: registered_at (fallback to createdAt)
   };
 }
 
@@ -31,7 +32,7 @@ async function getMemberByLineId(lineUserId) {
     const sheets = await getSheets();
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: 'Members!A:J',
+      range: 'Members!A:K',
     });
     const rows = res.data.values || [];
     const row = rows.find(r => r[0] === lineUserId);
@@ -47,7 +48,7 @@ async function getMembersByLineId(lineUserId) {
     const sheets = await getSheets();
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: 'Members!A:J',
+      range: 'Members!A:K',
     });
     const rows = res.data.values || [];
     return rows.filter(r => r[0] === lineUserId).map(rowToMember);
@@ -62,7 +63,7 @@ async function getAllMembers() {
     const sheets = await getSheets();
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: 'Members!A:J',
+      range: 'Members!A:K',
     });
     const rows = res.data.values || [];
     return rows.slice(1).map((row, i) => ({ ...rowToMember(row), rowIndex: i + 2 }));
@@ -77,7 +78,7 @@ async function checkEmailExists(email) {
     const sheets = await getSheets();
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: 'Members!A:J',
+      range: 'Members!A:K',
     });
     const rows = res.data.values || [];
     return rows.some(r => r[5] && r[5].toLowerCase() === email.toLowerCase());
@@ -91,9 +92,10 @@ async function addMember(data) {
   try {
     const sheets = await getSheets();
     const expireDate = calculateExpireDate(data.packageType);
+    const now = dayjs().format('YYYY-MM-DD HH:mm:ss');
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
-      range: 'Members!A:J',
+      range: 'Members!A:K',
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [[
@@ -104,9 +106,10 @@ async function addMember(data) {
           'active',                                     // E: status
           data.memberEmail || '',                       // F: member_email
           data.slipUrl ? 'มีสลิป ✓' : '',             // G: slip_url
-          dayjs().format('YYYY-MM-DD HH:mm:ss'),       // H: created_at
+          now,                                          // H: created_at
           '',                                           // I: house_id
           'pending',                                    // J: invite_status
+          now,                                          // K: registered_at (ไม่เปลี่ยนตอน renew)
         ]],
       },
     });
@@ -122,7 +125,7 @@ async function renewMember(lineUserId, packageType, slipUrl, memberEmail) {
     const sheets = await getSheets();
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: 'Members!A:J',
+      range: 'Members!A:K',
     });
     const rows = res.data.values || [];
 
@@ -180,7 +183,7 @@ async function getMembersExpiringIn(days) {
     const sheets = await getSheets();
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: 'Members!A:J',
+      range: 'Members!A:K',
     });
     const rows = res.data.values || [];
     const targetDate = dayjs().add(days, 'day').format('YYYY-MM-DD');
@@ -367,7 +370,7 @@ async function getAdmins() {
     const sheets = await getSheets();
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: 'Admins!A:D',
+      range: 'Admins!A:E',
     });
     const rows = res.data.values || [];
     return rows.slice(1).map(row => ({
@@ -375,6 +378,7 @@ async function getAdmins() {
       password:    row[1],
       displayName: row[2],
       status:      row[3] || 'active',
+      role:        row[4] || 'admin', // E: role — 'owner' หรือ 'admin'
     }));
   } catch (err) {
     console.error('getAdmins error:', err.message);
