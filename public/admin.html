@@ -158,8 +158,8 @@
   </div>
 
   <div class="tabs">
-    <button class="tab active" onclick="switchTab('dashboard',this)">📊 Dashboard</button>
-    <button class="tab" onclick="switchTab('pending',this)">⏳ รอเชิญ <span id="badge-pending"></span></button>
+    <button class="tab active" id="tab-btn-dashboard" onclick="switchTab('dashboard',this)" style="display:none">📊 Dashboard</button>
+    <button class="tab active" onclick="switchTab('pending',this)">⏳ รอเชิญ <span id="badge-pending"></span></button>
     <button class="tab" onclick="switchTab('inviting',this)">📨 กำลังเชิญ <span id="badge-inviting"></span></button>
     <button class="tab" onclick="switchTab('expiring',this)">⚠️ ใกล้หมดอายุ</button>
     <button class="tab" onclick="switchTab('houses',this)">🏠 จัดการบ้าน</button>
@@ -177,7 +177,7 @@
     </div>
 
     <!-- Tab: Dashboard -->
-    <div id="tab-dashboard" class="tab-content active">
+    <div id="tab-dashboard" class="tab-content">
 
       <!-- Revenue Stats -->
       <div class="dash-grid">
@@ -192,7 +192,7 @@
           <div class="d-sub" id="dash-month-count">0 ออเดอร์</div>
         </div>
         <div class="dash-card orange">
-          <div class="d-label">🏆 รายได้ทั้งหมด</div>
+          <div class="d-label">🏆 รายได้ทั้งหมด (ตลอดกาล)</div>
           <div class="d-value" id="dash-total-rev">฿0</div>
           <div class="d-sub" id="dash-total-count">0 ออเดอร์</div>
         </div>
@@ -203,21 +203,28 @@
         </div>
       </div>
 
-      <!-- Warning Boxes -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-
-        <!-- สมาชิกหมดอายุยังอยู่ในบ้าน -->
-        <div class="warn-box">
-          <h4>🔴 สมาชิกหมดอายุแล้ว ยังอยู่ในบ้าน</h4>
-          <div id="warn-expired-members"></div>
+      <!-- Conversion Stats -->
+      <div class="dash-grid" style="margin-bottom:14px">
+        <div class="dash-card blue">
+          <div class="d-label">🆕 สมัครใหม่ทั้งหมด</div>
+          <div class="d-value" id="dash-new">0</div>
+          <div class="d-sub">LINE users ไม่ซ้ำ</div>
         </div>
-
-        <!-- บ้านใกล้หมดอายุ -->
-        <div class="warn-box">
-          <h4>🏠 บ้านใกล้หมดอายุ (ภายใน 14 วัน)</h4>
-          <div id="warn-expiring-houses"></div>
+        <div class="dash-card green">
+          <div class="d-label">🔄 ต่ออายุทั้งหมด</div>
+          <div class="d-value" id="dash-renew">0</div>
+          <div class="d-sub" id="dash-renew-rev">฿0</div>
         </div>
-
+        <div class="dash-card red">
+          <div class="d-label">❌ หมดอายุไม่ต่อ</div>
+          <div class="d-value" id="dash-churn">0</div>
+          <div class="d-sub" id="dash-churn-rate">0% churn</div>
+        </div>
+        <div class="dash-card yellow">
+          <div class="d-label">📊 Conversion Rate</div>
+          <div class="d-value" id="dash-conversion">0%</div>
+          <div class="d-sub">ต่ออายุ / สมัครทั้งหมด</div>
+        </div>
       </div>
 
       <!-- Charts -->
@@ -246,7 +253,7 @@
     </div>
 
     <!-- Tab: รอเชิญ -->
-    <div id="tab-pending" class="tab-content">
+    <div id="tab-pending" class="tab-content active">
       <!-- Action bar หลัก -->
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;background:#0d1f3c;border:1px solid #1e3a5f;border-radius:10px;padding:12px 14px;">
         <span style="font-size:13px;color:#85B7EB">เลือกแล้ว: <strong id="selected-count-text" style="color:#fff">0</strong> คน</span>
@@ -347,6 +354,13 @@
 
     <!-- Tab: จัดการบ้าน -->
     <div id="tab-houses" class="tab-content">
+
+      <!-- บ้านใกล้หมดอายุ -->
+      <div class="warn-box" style="margin-bottom:14px">
+        <h4>🏠 บ้านใกล้หมดอายุ (ภายใน 3 วัน)</h4>
+        <div id="warn-expiring-houses"></div>
+      </div>
+
       <div class="table-wrap">
         <div class="table-header">
           <h3>บ้านทั้งหมด</h3>
@@ -425,9 +439,16 @@
 
     <!-- Tab: สมาชิกทั้งหมด -->
     <div id="tab-all" class="tab-content">
+
+      <!-- สมาชิกหมดอายุยังอยู่ในบ้าน -->
+      <div class="warn-box" style="margin-bottom:14px">
+        <h4>🔴 สมาชิกหมดอายุแล้ว ยังอยู่ในบ้าน</h4>
+        <div id="warn-expired-members"></div>
+      </div>
+
       <div class="table-wrap">
         <div class="table-header">
-          <h3>สมาชิกทั้งหมด (ไม่รวม invited)</h3>
+          <h3>สมาชิกทั้งหมด</h3>
           <input class="search-bar" placeholder="ค้นหาอีเมล/บ้าน..." oninput="filterTable('all-body',this.value)"/>
         </div>
         <div id="all-loading" class="loading">กำลังโหลด...</div>
@@ -623,7 +644,22 @@ function toggleBulkPanel() {
   }
 }
 
-let currentAdmin = { username: '', password: '', displayName: '' };
+let currentAdmin = { username: '', password: '', displayName: '', role: 'admin' };
+
+function applyRole(role) {
+  const tabDash = document.getElementById('tab-btn-dashboard');
+  if (role === 'owner') {
+    tabDash.style.display = 'inline-block';
+  } else {
+    tabDash.style.display = 'none';
+    if (document.getElementById('tab-dashboard').classList.contains('active')) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelector('.tab[onclick*="pending"]').classList.add('active');
+      document.getElementById('tab-pending').classList.add('active');
+    }
+  }
+}
 
 // Auto-restore session จาก localStorage
 (function restoreSession() {
@@ -636,14 +672,14 @@ let currentAdmin = { username: '', password: '', displayName: '' };
         document.getElementById('login-page').style.display = 'none';
         document.getElementById('dashboard').style.display = 'block';
         document.getElementById('admin-display-name').textContent = `👤 ${admin.displayName}`;
+        applyRole(admin.role || 'admin');
         setDefaultDates();
-        // verify session ยังใช้ได้ไหม
         fetch(`${BASE_URL}/api/admin/members`, {
           headers: { 'x-admin-user': admin.username, 'x-admin-pass': admin.password }
         }).then(r => {
           if (r.status === 401) {
             localStorage.removeItem('tiger_admin');
-            currentAdmin = { username: '', password: '', displayName: '' };
+            currentAdmin = { username: '', password: '', displayName: '', role: 'admin' };
             document.getElementById('login-page').style.display = 'flex';
             document.getElementById('dashboard').style.display = 'none';
           } else {
@@ -667,11 +703,12 @@ async function login() {
     });
     const data = await res.json();
     if (data.success) {
-      currentAdmin = { username, password, displayName: data.displayName };
+      currentAdmin = { username, password, displayName: data.displayName, role: data.role || 'admin' };
       localStorage.setItem('tiger_admin', JSON.stringify(currentAdmin));
       document.getElementById('login-page').style.display = 'none';
       document.getElementById('dashboard').style.display = 'block';
-      document.getElementById('admin-display-name').textContent = `👤 ${data.displayName}`;
+      document.getElementById('admin-display-name').textContent = `👤 ${data.displayName} ${data.role === 'owner' ? '👑' : ''}`;
+      applyRole(data.role || 'admin');
       setDefaultDates();
       loadAll();
     } else {
@@ -683,12 +720,12 @@ async function login() {
 }
 
 function logout() {
-  currentAdmin = { username: '', displayName: '' };
+  currentAdmin = { username: '', displayName: '', role: 'admin' };
+  localStorage.removeItem('tiger_admin');
   document.getElementById('login-page').style.display = 'flex';
   document.getElementById('dashboard').style.display = 'none';
   document.getElementById('admin-user').value = '';
   document.getElementById('admin-pass').value = '';
-  currentAdmin.password = '';
 }
 let chartDaily = null, chartRevenue = null, chartPackage = null, chartHouses = null;
 
@@ -707,12 +744,12 @@ function renderDashboard() {
   let totalRev = 0, totalCount = 0;
 
   allMembers.forEach(m => {
-    if (!m.createdAt || m.inviteStatus === 'removed') return;
+    if (m.inviteStatus === 'removed') return;
     const price = PKG_PRICE[m.package] || 0;
-    const dateStr = m.createdAt.split(' ')[0];
+    const regStr = (m.registeredAt || m.createdAt || '').split(' ')[0];
     totalRev += price; totalCount++;
-    if (dateStr && dateStr.startsWith(thisMonth)) { monthRev += price; monthCount++; }
-    if (dateStr === todayStr) { todayRev += price; todayCount++; }
+    if (regStr && regStr.startsWith(thisMonth)) { monthRev += price; monthCount++; }
+    if (regStr === todayStr) { todayRev += price; todayCount++; }
   });
 
   document.getElementById('dash-today').textContent = `฿${todayRev.toLocaleString()}`;
@@ -724,8 +761,42 @@ function renderDashboard() {
   document.getElementById('dash-active').textContent = active.length;
   document.getElementById('dash-house-count').textContent = `${allHouses.length} บ้าน`;
 
+  // Conversion stats
+  // unique LINE users = สมาชิกไม่ซ้ำ
+  const uniqueUsers = new Set(allMembers.filter(m => m.inviteStatus !== 'removed').map(m => m.lineUserId)).size;
+  // ถ้า user เดียวกันมีหลาย row = ต่ออายุ
+  const lineUserCounts = {};
+  allMembers.filter(m => m.inviteStatus !== 'removed').forEach(m => {
+    lineUserCounts[m.lineUserId] = (lineUserCounts[m.lineUserId] || 0) + 1;
+  });
+  const renewCount = Object.values(lineUserCounts).filter(c => c > 1).reduce((sum, c) => sum + (c - 1), 0);
+  const renewRev = allMembers.filter(m => {
+    if (m.inviteStatus === 'removed') return false;
+    return lineUserCounts[m.lineUserId] > 1;
+  }).reduce((sum, m, _, arr) => {
+    // นับเฉพาะ row ที่ 2 เป็นต้นไปของ user นั้น
+    return sum;
+  }, 0);
+
+  // หมดอายุแล้วไม่ต่อ = status removed หรือ expired และ daysLeft < 0 และไม่มี row ใหม่
+  const today2 = localDateStr(new Date());
+  const churnCount = allMembers.filter(m =>
+    m.inviteStatus !== 'removed' &&
+    m.expireDate < today2 &&
+    lineUserCounts[m.lineUserId] === 1
+  ).length;
+
+  const conversionRate = uniqueUsers > 0 ? Math.round((renewCount / uniqueUsers) * 100) : 0;
+  const churnRate = uniqueUsers > 0 ? Math.round((churnCount / uniqueUsers) * 100) : 0;
+
+  document.getElementById('dash-new').textContent = uniqueUsers;
+  document.getElementById('dash-renew').textContent = renewCount;
+  document.getElementById('dash-renew-rev').textContent = `ต่ออายุ ${renewCount} ครั้ง`;
+  document.getElementById('dash-churn').textContent = churnCount;
+  document.getElementById('dash-churn-rate').textContent = `${churnRate}% churn`;
+  document.getElementById('dash-conversion').textContent = `${conversionRate}%`;
+
   renderWarnExpiredMembers();
-  renderWarnExpiringHouses();
   renderChartDaily();
   renderChartRevenue();
   renderChartPackage();
@@ -766,25 +837,25 @@ function renderWarnExpiredMembers() {
 
 function renderWarnExpiringHouses() {
   const el = document.getElementById('warn-expiring-houses');
-  const today = localDateStr(new Date());
+  if (!el) return;
   const soon = allHouses.filter(h => {
     const dl = daysLeft(h.expireDate);
-    return dl >= 0 && dl <= 14;
+    return dl >= 0 && dl <= 3;
   }).sort((a,b) => a.expireDate.localeCompare(b.expireDate));
 
   if (soon.length === 0) {
-    el.innerHTML = '<div class="warn-empty">✅ ไม่มีบ้านใกล้หมดอายุ</div>';
+    el.innerHTML = '<div class="warn-empty">✅ ไม่มีบ้านหมดอายุใน 3 วัน</div>';
     return;
   }
   el.innerHTML = soon.map(h => {
     const dl = daysLeft(h.expireDate);
-    const cls = dl <= 3 ? 'red' : dl <= 7 ? 'yellow' : 'pending';
+    const cls = dl === 0 ? 'red' : dl <= 1 ? 'red' : 'yellow';
     return `<div class="warn-item">
       <div>
         <div style="font-weight:600">${h.houseId}</div>
         <div style="color:#555;font-size:11px">${h.houseEmail} | หมด: ${h.expireDate}</div>
       </div>
-      <span class="badge ${cls}">เหลือ ${dl} วัน</span>
+      <span class="badge ${cls}">${dl === 0 ? 'หมดแล้ว' : 'เหลือ ' + dl + ' วัน'}</span>
     </div>`;
   }).join('');
 }
@@ -798,7 +869,10 @@ function renderChartDaily() {
     d.setDate(d.getDate() - i);
     const ds = localDateStr(d);
     days.push(ds.slice(5)); // MM-DD
-    const c = allMembers.filter(m => m.createdAt && m.createdAt.startsWith(ds)).length;
+    const c = allMembers.filter(m => {
+      const regDate = (m.registeredAt || m.createdAt || '').split(' ')[0];
+      return regDate === ds;
+    }).length;
     counts.push(c);
   }
 
@@ -839,7 +913,10 @@ function renderChartRevenue() {
     const label = `${d.getMonth()+1}/${String(d.getFullYear()).slice(2)}`;
     months.push(label);
     const rev = allMembers
-      .filter(m => m.createdAt && m.createdAt.startsWith(monthKey) && m.inviteStatus !== 'removed')
+      .filter(m => {
+        const regDate = (m.registeredAt || m.createdAt || '').substring(0, 7);
+        return regDate === monthKey && m.inviteStatus !== 'removed';
+      })
       .reduce((sum, m) => sum + (PKG_PRICE[m.package] || 0), 0);
     revenues.push(rev);
   }
@@ -933,12 +1010,16 @@ function renderChartHouses() {
 }
 
 function switchTab(tab, el) {
+  // ป้องกัน admin ธรรมดาเข้า dashboard
+  if (tab === 'dashboard' && currentAdmin.role !== 'owner') return;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   document.getElementById(`tab-${tab}`).classList.add('active');
   if (tab === 'logs') loadLogs();
   if (tab === 'dashboard') renderDashboard();
+  if (tab === 'houses') renderWarnExpiringHouses();
+  if (tab === 'all') renderWarnExpiredMembers();
 }
 
 async function loadAll() {
@@ -996,8 +1077,8 @@ function renderAll() {
     const d = daysLeft(m.expireDate);
     return d >= 0 && d <= 7 && m.status === 'active';
   });
-  // visible = ทุกคนยกเว้น invited และ removed
-  const visible = allMembers.filter(m => m.inviteStatus !== 'invited' && m.inviteStatus !== 'removed');
+  // visible = ทุกคนยกเว้น removed เท่านั้น
+  const visible = allMembers.filter(m => m.inviteStatus !== 'removed');
 
   document.getElementById('stat-total').textContent = allMembers.filter(m => m.inviteStatus !== 'removed').length;
   document.getElementById('stat-pending').textContent = pending.length;
@@ -1014,10 +1095,11 @@ function renderAll() {
   renderHouses();
   renderAllMembers(visible);
 
-  // render dashboard ถ้าอยู่ที่ tab dashboard
-  if (document.getElementById('tab-dashboard').classList.contains('active')) {
-    renderDashboard();
-  }
+  // render ตาม tab ที่เปิดอยู่
+  const activeTab = document.querySelector('.tab-content.active')?.id;
+  if (activeTab === 'tab-dashboard') renderDashboard();
+  if (activeTab === 'tab-houses') renderWarnExpiringHouses();
+  if (activeTab === 'tab-all') renderWarnExpiredMembers();
 }
 
 function populateHouseSelect() {
