@@ -1268,12 +1268,11 @@ function renderHouses() {
     const slot = getHouseSlot(h.houseId);
     const isOverflow = used > h.maxMembers;
     const days = daysLeft(h.expireDate);
-    const emails = visibleMembers.map(m => m.houseEmail).filter(Boolean);
-    const chunks = [];
-    for (let i = 0; i < emails.length; i += 5) chunks.push(emails.slice(i, i+5));
-    const copyBtns = chunks.map((chunk, i) =>
-      `<button class="btn-sm btn-gray" style="margin:2px" onclick="event.stopPropagation();copyText('${chunk.join(', ')}',this)">Copy ${i*5+1}-${Math.min(i*5+5,emails.length)}</button>`
-    ).join('');
+    // fix copy: escape อีเมลให้ถูกต้อง
+    const allEmails = houseMembers.filter(m => m.houseEmail).map(m => m.houseEmail);
+    const copyBtn = allEmails.length > 0
+      ? `<button class="btn-sm btn-gray" style="margin:2px" onclick="event.stopPropagation();copyEmailList(${JSON.stringify(allEmails)},this)">📋 Copy ทั้งหมด (${allEmails.length})</button>`
+      : '-';
 
     const statusMap = { pending: 'รอเชิญ', inviting: 'กำลังเชิญ', invited: 'เชิญแล้ว', removed: 'ถูกลบ' };
     const badgeMap = { pending: 'pending', inviting: 'inviting', invited: 'invited', removed: 'removed' };
@@ -1292,6 +1291,8 @@ function renderHouses() {
       </tr>`;
     }).join('') : `<tr style="background:#060f1e"><td></td><td colspan="6" style="font-size:12px;color:#555;padding-left:24px">ไม่มีสมาชิก</td></tr>`;
 
+    const isActive = h.status === 'active';
+
     return `
       <tr class="${isOverflow ? 'overflow-row' : ''}" style="cursor:pointer" onclick="toggleHouseMembers('${h.houseId}')">
         <td style="text-align:center;font-size:12px;color:#85B7EB" id="arrow-${h.houseId}">▶</td>
@@ -1300,12 +1301,16 @@ function renderHouses() {
         <td style="font-size:12px">
           <span style="color:#85B7EB">🔑</span>
           <span id="pass-text-${h.houseId}" style="font-family:monospace;color:#f59e0b">${h.housePassword || '-'}</span>
-          <button class="btn-sm btn-gray" style="font-size:10px;margin-left:6px;padding:3px 8px" onclick="event.stopPropagation();openHousePassModal('${h.houseId}','${h.housePassword||''}')">✏️</button>
+          <button class="btn-sm btn-gray" style="font-size:10px;margin-left:6px;padding:3px 8px" onclick="event.stopPropagation();openHousePassModal('${h.houseId}','${(h.housePassword||'').replace(/'/g,"\\'")}')">✏️</button>
         </td>
         <td>${h.expireDate} ${daysBadge(days)}</td>
         <td><span class="badge ${slot > 0 ? 'green' : 'red'}">${slot > 0 ? 'ว่าง ' + slot + ' ที่' : 'เต็ม'}${isOverflow ? ' <span class="overflow-warn">เกิน!</span>' : ''}</span></td>
-        <td><span class="badge ${h.status === 'active' ? 'invited' : 'red'}">${h.status}</span></td>
-        <td onclick="event.stopPropagation()">${copyBtns || '-'}</td>
+        <td onclick="event.stopPropagation()" style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;padding:8px 12px">
+          <span class="badge ${isActive ? 'invited' : 'red'}">${isActive ? 'active' : 'inactive'}</span>
+          <button class="btn-sm ${isActive ? 'btn-orange' : 'btn-green'}" style="font-size:10px;padding:3px 8px" onclick="event.stopPropagation();toggleHouseStatus('${h.houseId}','${isActive ? 'inactive' : 'active'}',this)">${isActive ? '⏸ ปิด' : '▶ เปิด'}</button>
+          <button class="btn-sm" style="font-size:10px;padding:3px 8px;background:#2a0a0a;color:#ef4444;border:1px solid #ef4444" onclick="event.stopPropagation();confirmDeleteHouse('${h.houseId}')">🗑 ลบ</button>
+        </td>
+        <td onclick="event.stopPropagation()">${copyBtn}</td>
       </tr>
       <tr id="members-${h.houseId}" style="display:none">
         <td colspan="8" style="padding:0">
@@ -1493,6 +1498,75 @@ function copyText(text, btn) {
     const orig = btn.textContent;
     btn.textContent = 'Copied ✓';
     setTimeout(() => btn.textContent = orig, 1500);
+  });
+}
+
+function copyEmailList(emailArray, btn) {
+  const text = emailArray.join('\n');
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = 'Copied ✓';
+    showNotif(`✅ Copy ${emailArray.length} อีเมลแล้ว`, 'success');
+    setTimeout(() => btn.textContent = orig, 1500);
+  }).catch(() => {
+    // fallback สำหรับ browser เก่า
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showNotif(`✅ Copy ${emailArray.length} อีเมลแล้ว`, 'success');
+  });
+}
+
+async function toggleHouseStatus(houseId, newStatus, btn) {
+  btn.disabled = true;
+  try {
+    const res = await fetch(`${BASE_URL}/api/admin/house/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password },
+      body: JSON.stringify({ houseId, status: newStatus }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      showNotif(`✅ ${houseId} → ${newStatus}`, 'success');
+      await loadAll();
+    } else {
+      showNotif(`❌ ${data.error}`, 'error');
+      btn.disabled = false;
+    }
+  } catch {
+    showNotif('❌ เกิดข้อผิดพลาด', 'error');
+    btn.disabled = false;
+  }
+}
+
+function confirmDeleteHouse(houseId) {
+  showConfirmModal({
+    icon: '🗑',
+    title: 'ลบบ้าน',
+    desc: `ลบ ${houseId} ออกจากระบบใช่ไหมครับ?\nสมาชิกในบ้านนี้จะยังอยู่ในระบบแต่ไม่มีบ้าน`,
+    btnText: 'ลบเลย',
+    btnClass: 'modal-btn-danger',
+    onConfirm: async () => {
+      try {
+        const res = await fetch(`${BASE_URL}/api/admin/house/delete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password },
+          body: JSON.stringify({ houseId }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showNotif(`✅ ลบ ${houseId} แล้ว`, 'success');
+          await loadAll();
+        } else {
+          showNotif(`❌ ${data.error}`, 'error');
+        }
+      } catch {
+        showNotif('❌ เกิดข้อผิดพลาด', 'error');
+      }
+    }
   });
 }
 
