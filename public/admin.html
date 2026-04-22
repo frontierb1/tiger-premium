@@ -542,17 +542,33 @@
 
     <!-- Tab: รายงานปัญหา -->
     <div id="tab-reports" class="tab-content">
+
+      <!-- Stats -->
+      <div class="stats-grid" style="margin-bottom:14px">
+        <div class="stat-card red"><div class="label">🔴 รอดำเนินการ</div><div class="value" id="rpt-pending">-</div></div>
+        <div class="stat-card yellow"><div class="label">🔧 กำลังแก้ไข</div><div class="value" id="rpt-inprogress">-</div></div>
+        <div class="stat-card blue"><div class="label">✅ แก้ไขแล้ว</div><div class="value" id="rpt-resolved">-</div></div>
+        <div class="stat-card orange"><div class="label">📊 ทั้งหมด</div><div class="value" id="rpt-total">-</div></div>
+      </div>
+
+      <!-- ประเภทปัญหาที่พบบ่อย -->
+      <div class="warn-box" style="margin-bottom:14px" id="rpt-summary-box">
+        <h4 style="margin-bottom:12px">📋 ปัญหาที่พบบ่อย</h4>
+        <div id="rpt-summary"></div>
+      </div>
+
+      <!-- ตารางรายการ -->
       <div class="table-wrap">
         <div class="table-header">
           <h3>🚨 รายการแจ้งปัญหา</h3>
-          <div style="display:flex;gap:8px;align-items:center">
-            <select class="search-bar" id="report-filter" onchange="loadReports()" style="width:120px">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <select class="search-bar" id="report-filter" onchange="loadReports()" style="width:130px">
               <option value="all">ทั้งหมด</option>
               <option value="pending">รอดำเนินการ</option>
               <option value="in_progress">กำลังแก้ไข</option>
               <option value="resolved">แก้ไขแล้ว</option>
             </select>
-            <input class="search-bar" placeholder="ค้นหา..." oninput="filterTable('reports-body',this.value)"/>
+            <input class="search-bar" placeholder="ค้นหา..." oninput="filterTable('reports-body',this.value)" style="width:160px"/>
           </div>
         </div>
         <div id="reports-loading" class="loading">กำลังโหลด...</div>
@@ -563,7 +579,7 @@
             <th>อีเมลที่มีปัญหา</th>
             <th>รายละเอียด</th>
             <th>สถานะ</th>
-            <th>การดำเนินการ</th>
+            <th>ดำเนินการ</th>
           </tr></thead>
           <tbody id="reports-body"></tbody>
         </table>
@@ -1125,12 +1141,44 @@ async function loadReports() {
     const data = await res.json();
     _allReports = data.reports || [];
 
+    // Stats
+    const pending    = _allReports.filter(r => r.status === 'pending').length;
+    const inProgress = _allReports.filter(r => r.status === 'in_progress').length;
+    const resolved   = _allReports.filter(r => r.status === 'resolved').length;
+    document.getElementById('rpt-pending').textContent    = pending;
+    document.getElementById('rpt-inprogress').textContent = inProgress;
+    document.getElementById('rpt-resolved').textContent   = resolved;
+    document.getElementById('rpt-total').textContent      = _allReports.length;
+
+    // badge tab
+    document.getElementById('badge-reports').textContent = pending > 0 ? `(${pending})` : '';
+
+    // Summary — นับประเภทปัญหา
+    const problemCount = {};
+    _allReports.forEach(r => {
+      const key = (r.detail || 'อื่นๆ').split(' — ')[0].trim();
+      problemCount[key] = (problemCount[key] || 0) + 1;
+    });
+    const summaryEl = document.getElementById('rpt-summary');
+    const sorted = Object.entries(problemCount).sort((a,b) => b[1]-a[1]);
+    if (sorted.length === 0) {
+      summaryEl.innerHTML = '<div class="warn-empty">ยังไม่มีข้อมูล</div>';
+    } else {
+      const maxCount = sorted[0][1];
+      summaryEl.innerHTML = sorted.map(([k,v]) => `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div style="font-size:12px;color:#85B7EB;min-width:150px">${k}</div>
+          <div style="flex:1;background:#0a1628;border-radius:4px;height:8px;overflow:hidden">
+            <div style="height:100%;background:#ef4444;border-radius:4px;width:${Math.round(v/maxCount*100)}%;transition:width 0.5s ease"></div>
+          </div>
+          <div style="font-size:12px;font-weight:700;min-width:28px;text-align:right">${v}</div>
+        </div>
+      `).join('');
+    }
+
+    // Filter & render table
     const filter = document.getElementById('report-filter').value;
     const filtered = filter === 'all' ? _allReports : _allReports.filter(r => r.status === filter);
-
-    // badge
-    const pending = _allReports.filter(r => r.status === 'pending').length;
-    document.getElementById('badge-reports').textContent = pending > 0 ? `(${pending})` : '';
 
     document.getElementById('reports-loading').style.display = 'none';
 
@@ -1141,19 +1189,20 @@ async function loadReports() {
 
     document.getElementById('reports-table').style.display = 'table';
     const statusMap = { pending: 'รอดำเนินการ', in_progress: 'กำลังแก้ไข', resolved: 'แก้ไขแล้ว' };
-    const badgeCls = { pending: 'red', in_progress: 'yellow', resolved: 'green' };
+    const badgeCls  = { pending: 'red', in_progress: 'yellow', resolved: 'green' };
 
     document.getElementById('reports-body').innerHTML = filtered.map(r => `
       <tr>
-        <td style="white-space:nowrap;font-size:11px">${r.timestamp}</td>
+        <td style="white-space:nowrap;font-size:11px;color:#85B7EB">${r.timestamp ? r.timestamp.split(' ')[0] : '-'}<br><span style="color:#555">${r.timestamp ? r.timestamp.split(' ')[1] || '' : ''}</span></td>
         <td style="font-size:12px">${r.displayName || '-'}</td>
-        <td style="font-size:12px;color:#85B7EB">${r.memberEmail || '-'}</td>
-        <td style="font-size:12px;max-width:200px">${r.detail || '-'}</td>
+        <td style="font-size:12px;color:#f59e0b">${r.memberEmail || '-'}</td>
+        <td style="font-size:12px;max-width:180px;color:#ccc">${r.detail || '-'}</td>
         <td><span class="badge ${badgeCls[r.status]||'pending'}">${statusMap[r.status]||r.status}</span></td>
         <td>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
-            ${r.status !== 'in_progress' ? `<button class="btn-sm btn-orange" onclick="updateReport(${r.rowIndex},'in_progress','${r.lineUserId}','${r.memberEmail}',this)">🔧 กำลังแก้</button>` : ''}
+            ${r.status === 'pending' ? `<button class="btn-sm btn-orange" onclick="updateReport(${r.rowIndex},'in_progress','${r.lineUserId}','${r.memberEmail}',this)">🔧 รับเรื่อง</button>` : ''}
             ${r.status !== 'resolved' ? `<button class="btn-sm btn-green" onclick="updateReport(${r.rowIndex},'resolved','${r.lineUserId}','${r.memberEmail}',this)">✅ แก้แล้ว</button>` : ''}
+            ${r.status === 'resolved' ? `<span style="color:#555;font-size:11px">เสร็จแล้ว ✓</span>` : ''}
           </div>
         </td>
       </tr>
@@ -1161,6 +1210,7 @@ async function loadReports() {
   } catch (err) {
     console.error('loadReports error:', err);
     document.getElementById('reports-loading').style.display = 'none';
+    showNotif('โหลดรายการปัญหาไม่สำเร็จ', 'error');
   }
 }
 
