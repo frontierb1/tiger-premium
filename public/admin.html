@@ -1349,7 +1349,7 @@ function renderHouses() {
     // fix copy: escape อีเมลให้ถูกต้อง
     const allEmails = houseMembers.filter(m => m.houseEmail).map(m => m.houseEmail);
     const copyBtn = allEmails.length > 0
-      ? `<button class="btn-sm btn-gray" style="margin:2px" onclick="event.stopPropagation();copyEmailList(${JSON.stringify(allEmails)},this)">📋 Copy ทั้งหมด (${allEmails.length})</button>`
+      ? `<button class="btn-sm btn-gray" style="margin:2px" data-emails='${JSON.stringify(allEmails).replace(/'/g,"&#39;")}' onclick="event.stopPropagation();copyEmailList(JSON.parse(this.dataset.emails),this)">📋 Copy ทั้งหมด (${allEmails.length})</button>`
       : '-';
 
     const statusMap = { pending: 'รอเชิญ', inviting: 'กำลังเชิญ', invited: 'เชิญแล้ว', removed: 'ถูกลบ' };
