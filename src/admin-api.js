@@ -1,5 +1,5 @@
 const express = require('express');
-const { getAllMembers, getHouses, updateInviteStatus, getMemberByLineId, addHouse, addHouses, removeMemberFromHouse, moveMemberToHouse, updateMemberEmail, updateMemberExpire, updateHousePassword, getAdmins, writeLog } = require('./sheets');
+const { getAllMembers, getHouses, updateInviteStatus, getMemberByLineId, addHouse, addHouses, removeMemberFromHouse, moveMemberToHouse, updateMemberEmail, updateMemberExpire, updateHousePassword, updateHouseStatus, deleteHouse, getAdmins, writeLog } = require('./sheets');
 const dayjs = require('dayjs');
 const router = express.Router();
 
@@ -169,6 +169,34 @@ router.post('/house/password', authCheck, async (req, res) => {
     const result = await updateHousePassword(houseId, newPassword);
     if (!result.success) return res.status(500).json({ error: result.error });
     await writeLog(req.adminUser, req.adminName, 'แก้ไข password บ้าน', `${houseId}`);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// แก้สถานะบ้าน (active/inactive)
+router.post('/house/status', authCheck, async (req, res) => {
+  try {
+    const { houseId, status } = req.body;
+    if (!houseId || !status) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
+    const result = await updateHouseStatus(houseId, status);
+    if (!result.success) return res.status(500).json({ error: result.error });
+    await writeLog(req.adminUser, req.adminName, 'แก้สถานะบ้าน', `${houseId} → ${status}`);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ลบบ้าน
+router.post('/house/delete', authCheck, async (req, res) => {
+  try {
+    const { houseId } = req.body;
+    if (!houseId) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
+    const result = await deleteHouse(houseId);
+    if (!result.success) return res.status(500).json({ error: result.error });
+    await writeLog(req.adminUser, req.adminName, 'ลบบ้าน', `${houseId}`);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
