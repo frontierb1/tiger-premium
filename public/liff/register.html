@@ -3,297 +3,457 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>สมัครสมาชิก - Tiger Premium</title>
+  <title>Tiger Premium</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Noto Sans Thai', -apple-system, sans-serif; background: #0c0c0c; color: #fff; min-height: 100vh; padding-bottom: 48px; }
-    .header { background: linear-gradient(135deg, #c94e00, #ff9500); padding: 18px 20px; display: flex; align-items: center; gap: 12px; }
-    .header a { color: #fff; text-decoration: none; font-size: 22px; }
-    .header h1 { font-size: 18px; font-weight: 700; }
-    .section { margin: 16px 16px 0; }
-    .section-label { font-size: 11px; font-weight: 700; color: #555; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
-    .pkg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    .pkg-card { background: #141414; border: 2px solid #1e1e1e; border-radius: 16px; padding: 16px 8px; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; }
-    .pkg-card.selected { border-color: #ff6b00; background: #1a0d00; }
-    .pkg-card.error-highlight { border-color: #ef4444; }
-    .pkg-card.selected::after { content: '✓'; position: absolute; top: 6px; right: 8px; font-size: 11px; color: #ff6b00; font-weight: 700; }
-    .pkg-months { font-size: 11px; color: #666; margin-bottom: 4px; }
-    .pkg-price { font-size: 26px; font-weight: 800; color: #ff9500; line-height: 1; }
-    .pkg-baht { font-size: 11px; color: #555; margin-top: 2px; }
-    .pkg-badge { font-size: 10px; color: #22c55e; margin-top: 4px; font-weight: 600; }
-    .section-error { font-size: 12px; color: #ef4444; margin-top: 6px; display: none; }
-    .payment-box { background: #141414; border: 1px solid #1e1e1e; border-radius: 18px; overflow: hidden; }
-    .payment-header { background: #120d20; border-bottom: 1px solid #1e1830; padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
-    .bank-logo { width: 40px; height: 40px; background: linear-gradient(135deg, #4f00c8, #7b2fff); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
-    .bank-info { flex: 1; }
-    .bank-name { font-size: 14px; font-weight: 700; }
-    .bank-acc { font-size: 12px; color: #888; margin-top: 2px; }
-    .bank-acc strong { color: #c8a0ff; font-family: monospace; font-size: 14px; }
-    .copy-btn { background: rgba(200,160,255,0.12); border: 1px solid rgba(200,160,255,0.25); color: #c8a0ff; border-radius: 8px; padding: 6px 14px; font-size: 12px; cursor: pointer; font-family: inherit; font-weight: 600; transition: all 0.2s; white-space: nowrap; }
-    .copy-btn:active { background: rgba(200,160,255,0.2); }
-    .qr-section { padding: 24px 20px; text-align: center; }
-    .qr-placeholder { width: 200px; height: 200px; margin: 0 auto 14px; background: #1a1a1a; border-radius: 16px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; border: 2px dashed #242424; }
-    .qr-placeholder .qr-icon { font-size: 36px; }
-    .qr-placeholder .qr-text { font-size: 12px; color: #555; line-height: 1.6; }
-    .qr-img-wrap { width: 200px; height: 200px; margin: 0 auto 14px; background: #fff; border-radius: 16px; padding: 10px; display: none; box-shadow: 0 0 0 4px rgba(255,149,0,0.2); }
-    .qr-img-wrap img { width: 100%; height: 100%; object-fit: contain; }
-    .qr-loading { display: none; padding: 40px 0 14px; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .spinner-sm { display: inline-block; width: 28px; height: 28px; border: 3px solid #222; border-top-color: #ff9500; border-radius: 50%; animation: spin 0.8s linear infinite; }
-    .qr-amount { font-size: 28px; font-weight: 800; color: #ff9500; }
-    .qr-amount-sub { font-size: 12px; color: #555; margin-top: 4px; }
-    .input-box { background: #141414; border: 1.5px solid #1e1e1e; border-radius: 14px; padding: 14px 16px; font-size: 15px; color: #fff; width: 100%; outline: none; transition: border 0.2s; font-family: inherit; }
-    .input-box:focus { border-color: #ff6b00; }
-    .input-box.input-error { border-color: #ef4444; }
-    .input-box.input-ok { border-color: #22c55e; }
-    .input-box::placeholder { color: #444; }
-    .field-msg { font-size: 12px; margin-top: 6px; padding-left: 2px; }
-    .field-msg.error { color: #ef4444; }
-    .field-msg.success { color: #22c55e; }
-    .upload-box { background: #141414; border: 2px dashed #222; border-radius: 16px; padding: 28px 20px; text-align: center; cursor: pointer; transition: all 0.2s; }
-    .upload-box.has-image { border-color: #22c55e; border-style: solid; }
-    .upload-box.error-highlight { border-color: #ef4444; }
-    .upload-box img { max-width: 100%; border-radius: 10px; max-height: 200px; object-fit: contain; }
-    .upload-icon { font-size: 32px; margin-bottom: 8px; }
-    .upload-text { font-size: 13px; color: #555; }
-    input[type=file] { display: none; }
-    .btn { width: 100%; background: linear-gradient(135deg, #c94e00, #ff9500); color: #fff; border: none; border-radius: 16px; padding: 17px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 16px; font-family: inherit; transition: opacity 0.2s, transform 0.1s; box-shadow: 0 4px 20px rgba(255,107,0,0.25); }
-    .btn:active { transform: scale(0.98); }
-    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
-    .alert { border-radius: 12px; padding: 14px 16px; margin-top: 12px; font-size: 14px; line-height: 1.6; }
-    .alert.error { background: #1a0808; border: 1px solid #ef4444; color: #fca5a5; }
-    .alert.success { background: #081a08; border: 1px solid #22c55e; color: #86efac; }
+    body { font-family: 'Noto Sans Thai', -apple-system, sans-serif; background: #0c0c0c; color: #fff; min-height: 100vh; padding-bottom: 40px; }
+
+    .header {
+      background: linear-gradient(160deg, #1c0800 0%, #c94e00 55%, #ff9500 100%);
+      padding: 40px 20px 56px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '🐯';
+      position: absolute;
+      font-size: 180px;
+      opacity: 0.06;
+      top: -20px; right: -30px;
+      line-height: 1;
+      pointer-events: none;
+    }
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 14px;
+      backdrop-filter: blur(8px);
+    }
+    .header h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; text-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+    .header p { font-size: 13px; opacity: 0.8; margin-top: 4px; }
+
+    .status-card {
+      margin: -28px 16px 0;
+      background: #181818;
+      border: 1px solid #272727;
+      border-radius: 20px;
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      position: relative;
+      z-index: 10;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    }
+    .status-icon {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .status-icon.green { background: rgba(34,197,94,0.15); }
+    .status-icon.yellow { background: rgba(245,158,11,0.15); }
+    .status-icon.red { background: rgba(239,68,68,0.15); }
+    .status-icon.gray { background: rgba(255,255,255,0.06); }
+    .status-info { flex: 1; }
+    .status-info strong { display: block; font-size: 15px; font-weight: 700; }
+    .status-info span { font-size: 12px; color: #666; margin-top: 2px; display: block; }
+    .status-info.green strong { color: #22c55e; }
+    .status-info.yellow strong { color: #f59e0b; }
+    .status-info.red strong { color: #ef4444; }
+
+    .skel { height: 15px; border-radius: 8px; background: linear-gradient(90deg, #1f1f1f 25%, #2a2a2a 50%, #1f1f1f 75%); background-size: 200% 100%; animation: skel 1.4s ease infinite; margin-bottom: 7px; }
+    .skel.sm { width: 55%; height: 11px; margin-bottom: 0; }
+    @keyframes skel { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    .section-title { font-size: 11px; font-weight: 700; color: #444; letter-spacing: 1px; text-transform: uppercase; padding: 22px 20px 10px; }
+
+    .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 16px; }
+    .menu-card {
+      background: #141414;
+      border: 1px solid #1e1e1e;
+      border-radius: 18px;
+      padding: 20px 14px;
+      text-align: center;
+      text-decoration: none;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      transition: transform 0.15s;
+    }
+    .menu-card:active { transform: scale(0.97); }
+
+    .menu-card.orange { background: linear-gradient(135deg, #180f00, #1f1000); border-color: rgba(255,107,0,0.3); }
+    .menu-card.blue   { background: linear-gradient(135deg, #060e1a, #091520); border-color: rgba(55,138,221,0.25); }
+    .menu-card.green  { background: linear-gradient(135deg, #071208, #09180a); border-color: rgba(34,197,94,0.2); }
+    .menu-card.red    { background: linear-gradient(135deg, #140808, #1c0c0c); border-color: rgba(239,68,68,0.25); }
+
+    .menu-icon { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+    .menu-card.orange .menu-icon { background: rgba(255,107,0,0.15); }
+    .menu-card.blue   .menu-icon { background: rgba(55,138,221,0.12); }
+    .menu-card.green  .menu-icon { background: rgba(34,197,94,0.12); }
+    .menu-card.red    .menu-icon { background: rgba(239,68,68,0.12); }
+
+    .menu-label { font-size: 14px; font-weight: 700; }
+    .menu-sub   { font-size: 11px; }
+    .menu-card.orange .menu-sub { color: rgba(255,149,0,0.6); }
+    .menu-card.blue   .menu-sub { color: rgba(99,170,240,0.6); }
+    .menu-card.green  .menu-sub { color: rgba(74,222,128,0.6); }
+    .menu-card.red    .menu-sub { color: rgba(248,113,113,0.6); }
+
+    /* ===== STATUS BANNER ===== */
+    .status-banners { padding: 0 16px; margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .status-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-radius: 14px;
+      padding: 12px 16px;
+      font-size: 13px;
+      animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .status-banner.pending {
+      background: linear-gradient(135deg, #0d1a2e, #101f38);
+      border: 1px solid rgba(55,138,221,0.3);
+    }
+    .status-banner.report {
+      background: linear-gradient(135deg, #1a0d0d, #200f0f);
+      border: 1px solid rgba(239,68,68,0.3);
+    }
+    .status-banner.inviting {
+      background: linear-gradient(135deg, #0d1a10, #0f2012);
+      border: 1px solid rgba(34,197,94,0.3);
+    }
+    .banner-icon { font-size: 22px; flex-shrink: 0; }
+    .banner-info { flex: 1; }
+    .banner-info strong { display: block; font-size: 13px; font-weight: 700; }
+    .banner-info span { font-size: 11px; margin-top: 2px; display: block; opacity: 0.7; }
+    .banner-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+      animation: blink 1.5s ease infinite;
+    }
+    @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .banner-dot.blue { background: #378ADD; }
+    .banner-dot.red { background: #ef4444; }
+    .banner-dot.green { background: #22c55e; }
+
+    /* Banner toggle content */
+    .banner-toggle-content {
+      display: none;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .banner-toggle-content.open { display: block; }
+    .banner-clickable { cursor: pointer; }
+    .banner-chevron { font-size: 12px; color: #555; flex-shrink: 0; transition: transform 0.2s; }
+    .banner-chevron.open { transform: rotate(180deg); }
+
+    /* Step guide */
+    .step-list { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+    .step-item { display: flex; align-items: flex-start; gap: 10px; font-size: 12px; line-height: 1.5; }
+    .step-num { width: 20px; height: 20px; border-radius: 50%; background: rgba(34,197,94,0.2); color: #22c55e; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+    .step-text { color: #aaa; flex: 1; }
+    .step-text strong { color: #fff; display: block; margin-bottom: 2px; }
+    .step-note { font-size: 11px; color: #555; margin-top: 6px; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 8px; line-height: 1.6; }
   </style>
 </head>
 <body>
   <div class="header">
-    <a href="index.html">←</a>
-    <h1>📋 สมัครสมาชิก</h1>
+    <div class="header-badge">🐯 Tiger Premium</div>
+    <h1>YouTube Premium</h1>
+    <p>Family Plan — ราคาพิเศษ</p>
   </div>
 
-  <!-- เลือกแพ็กเกจ -->
-  <div class="section">
-    <div class="section-label">เลือกแพ็กเกจ</div>
-    <div class="pkg-grid">
-      <div class="pkg-card" data-pkg="1month" data-price="79" onclick="selectPkg(this)">
-        <div class="pkg-months">1 เดือน</div>
-        <div class="pkg-price">79</div>
-        <div class="pkg-baht">บาท</div>
-      </div>
-      <div class="pkg-card" data-pkg="2months" data-price="155" onclick="selectPkg(this)">
-        <div class="pkg-months">2 เดือน</div>
-        <div class="pkg-price">155</div>
-        <div class="pkg-baht">บาท</div>
-        <div class="pkg-badge">ประหยัดกว่า</div>
-      </div>
-      <div class="pkg-card" data-pkg="3months" data-price="230" onclick="selectPkg(this)">
-        <div class="pkg-months">3 เดือน</div>
-        <div class="pkg-price">230</div>
-        <div class="pkg-baht">บาท</div>
-        <div class="pkg-badge">คุ้มที่สุด</div>
-      </div>
-    </div>
-    <div class="section-error" id="pkg-error">⚠️ กรุณาเลือกแพ็กเกจก่อนครับ</div>
-  </div>
-
-  <!-- ช่องทางชำระเงิน + QR -->
-  <div class="section">
-    <div class="section-label">ช่องทางชำระเงิน</div>
-    <div class="payment-box">
-      <div class="payment-header">
-        <div class="bank-logo">💜</div>
-        <div class="bank-info">
-          <div class="bank-name">ธนาคารไทยพาณิชย์ (SCB)</div>
-          <div class="bank-acc">เบอร์พร้อมเพย์: <strong>0993411929</strong></div>
-        </div>
-        <button class="copy-btn" onclick="copyAccount()">📋 Copy</button>
-      </div>
-
-      <div class="qr-section">
-        <div class="qr-placeholder" id="qr-placeholder">
-          <div class="qr-icon">📱</div>
-          <div class="qr-text">เลือกแพ็กเกจด้านบน<br>เพื่อสร้าง QR PromptPay</div>
-        </div>
-        <div class="qr-loading" id="qr-loading">
-          <div class="spinner-sm"></div>
-          <div style="font-size:12px;color:#555;margin-top:10px">กำลังสร้าง QR Code...</div>
-        </div>
-        <div class="qr-img-wrap" id="qr-img-wrap">
-          <img id="qr-img" src="" alt="QR PromptPay"/>
-        </div>
-        <div id="qr-info" style="display:none">
-          <div class="qr-amount" id="qr-amount"></div>
-          <div class="qr-amount-sub">สแกนจ่ายผ่าน Mobile Banking ได้เลย</div>
-          <div style="font-size:11px;color:#444;margin-top:4px">PromptPay · 0993411929</div>
-        </div>
-      </div>
+  <div class="status-card">
+    <div class="status-icon gray" id="status-icon">⏳</div>
+    <div class="status-info" id="status-info">
+      <div class="skel" id="skel1"></div>
+      <div class="skel sm" id="skel2"></div>
+      <strong id="status-text" style="display:none"></strong>
+      <span id="status-sub" style="display:none"></span>
     </div>
   </div>
 
-  <!-- อีเมล -->
-  <div class="section">
-    <div class="section-label">อีเมล YouTube ของคุณ</div>
-    <input type="email" class="input-box" id="member-email" placeholder="example@gmail.com" oninput="validateEmail()" onblur="validateEmailStrict()"/>
-    <div class="field-msg" id="email-msg"></div>
+  <div class="section-title">เมนูหลัก</div>
+  <div class="menu-grid">
+    <a href="register.html" class="menu-card orange">
+      <div class="menu-icon">📋</div>
+      <div class="menu-label">สมัครสมาชิก</div>
+      <div class="menu-sub">เริ่มใช้งานได้เลย</div>
+    </a>
+    <a href="check.html" class="menu-card blue">
+      <div class="menu-icon">📅</div>
+      <div class="menu-label">เช็ควันหมดอายุ</div>
+      <div class="menu-sub">ดูสถานะของคุณ</div>
+    </a>
+    <a href="renew.html" class="menu-card green">
+      <div class="menu-icon">🔄</div>
+      <div class="menu-label">ต่ออายุ</div>
+      <div class="menu-sub">แนบสลิปยืนยัน</div>
+    </a>
+    <a href="report.html" class="menu-card red">
+      <div class="menu-icon">🚨</div>
+      <div class="menu-label">แจ้งปัญหา</div>
+      <div class="menu-sub">ใช้งานไม่ได้?</div>
+    </a>
   </div>
 
-  <!-- แนบสลิป -->
-  <div class="section">
-    <div class="section-label">แนบสลิปโอนเงิน</div>
-    <div class="upload-box" id="upload-box" onclick="document.getElementById('slip-input').click()">
-      <div id="upload-placeholder">
-        <div class="upload-icon">📎</div>
-        <div class="upload-text">แตะเพื่อแนบสลิป</div>
-      </div>
-      <img id="slip-preview" style="display:none"/>
-    </div>
-    <div class="section-error" id="slip-error">⚠️ กรุณาแนบสลิปโอนเงินครับ</div>
-    <input type="file" id="slip-input" accept="image/*" onchange="previewSlip(this)"/>
-  </div>
-
-  <div class="section">
-    <div id="alert-box"></div>
-    <button class="btn" id="submit-btn" onclick="submit()">ยืนยันสมัครสมาชิก 🐯</button>
-  </div>
+  <!-- สถานะงานค้าง -->
+  <div class="status-banners" id="status-banners" style="display:none"></div>
 
   <script>
     const LIFF_ID = '2009843737-CwJgLFBY';
     const BASE_URL = window.location.origin;
-    const PROMPTPAY_ID = '0993411929';
-    const PRICES = { '1month': 79, '2months': 155, '3months': 230 };
+    let _profile = null;
+    let _pollInterval = null;
+    let _emailsExpanded = false;
+    const _bannerExpandedState = new Map(); // จำ state แต่ละ banner
 
-    let profile = null, selectedPkg = null, slipFile = null;
-
-    liff.init({ liffId: LIFF_ID }).then(async () => {
+    async function init() {
+      await liff.init({ liffId: LIFF_ID });
       if (!liff.isLoggedIn()) { liff.login(); return; }
-      profile = await liff.getProfile();
-    });
+      _profile = await liff.getProfile();
 
-    function copyAccount() {
-      navigator.clipboard.writeText(PROMPTPAY_ID).then(() => {
-        const btn = document.querySelector('.copy-btn');
-        const orig = btn.textContent;
-        btn.textContent = 'Copied ✓';
-        setTimeout(() => btn.textContent = orig, 1500);
+      await loadData();
+
+      // poll ทุก 30 วิ
+      _pollInterval = setInterval(loadData, 30000);
+    }
+
+    async function loadData() {
+      try {
+        const [memberRes, reportRes] = await Promise.all([
+          fetch(`${BASE_URL}/api/members/${_profile.userId}`),
+          fetch(`${BASE_URL}/api/admin/report/user/${_profile.userId}`).catch(() => null),
+        ]);
+        const memberData = await memberRes.json();
+        const reportData = reportRes ? await reportRes.json().catch(() => null) : null;
+
+        renderStatus(memberData);
+        renderBanners(memberData, reportData);
+      } catch (err) {
+        console.error('loadData error:', err);
+      }
+    }
+
+    function renderStatus(memberData) {
+      const members = (memberData?.members || [])
+        .filter(m => m.inviteStatus !== 'removed')
+        .sort((a, b) => a.daysLeft - b.daysLeft); // น้อยสุดขึ้นก่อน
+
+      // ซ่อน skeleton ครั้งแรก
+      document.getElementById('skel1').style.display = 'none';
+      document.getElementById('skel2').style.display = 'none';
+      document.getElementById('status-text').style.display = 'block';
+      document.getElementById('status-sub').style.display = 'block';
+
+      const iconEl = document.getElementById('status-icon');
+      const infoEl = document.getElementById('status-info');
+
+      if (!members || members.length === 0) {
+        iconEl.textContent = '👋';
+        iconEl.className = 'status-icon gray';
+        infoEl.className = 'status-info';
+        document.getElementById('status-text').textContent = 'ยังไม่ได้สมัครสมาชิก';
+        document.getElementById('status-sub').textContent = 'กดสมัครสมาชิกได้เลยครับ';
+        // ลบ toggle ถ้ามี
+        const tog = document.getElementById('email-toggle-wrap');
+        if (tog) tog.remove();
+        return;
+      }
+
+      // แสดง email แรก (น้อยสุด)
+      const first = members[0];
+      const d = first.daysLeft;
+      const cls = d > 7 ? 'green' : d > 0 ? 'yellow' : 'red';
+      const icon = d > 7 ? '✅' : d > 0 ? '⚠️' : '❌';
+      const text = d > 7 ? `ใช้งานได้ — เหลือ ${d} วัน`
+        : d > 0 ? `ใกล้หมดอายุ — เหลือ ${d} วัน`
+        : 'หมดอายุแล้ว';
+
+      iconEl.textContent = icon;
+      iconEl.className = `status-icon ${cls}`;
+      infoEl.className = `status-info ${cls}`;
+      document.getElementById('status-text').textContent = text;
+      document.getElementById('status-sub').textContent = `${first.houseEmail || ''} | หมดอายุ ${first.expireDate}`;
+
+      // toggle สำหรับหลายเมล
+      const existingToggle = document.getElementById('email-toggle-wrap');
+      if (existingToggle) existingToggle.remove();
+
+      if (members.length > 1) {
+        const wrap = document.createElement('div');
+        wrap.id = 'email-toggle-wrap';
+        wrap.style.cssText = 'padding:0 16px;margin-top:8px';
+
+        const toggleBtn = document.createElement('button');
+        toggleBtn.id = 'email-toggle-btn';
+        toggleBtn.style.cssText = `
+          width:100%;background:#181818;border:1px solid #272727;border-radius:14px;
+          padding:10px 16px;color:#85B7EB;font-size:12px;cursor:pointer;
+          display:flex;align-items:center;justify-content:space-between;font-family:inherit;
+        `;
+        toggleBtn.innerHTML = `<span>อีเมลทั้งหมด ${members.length} รายการ</span><span id="toggle-arrow">${_emailsExpanded ? '▲' : '▼'}</span>`;
+        toggleBtn.onclick = () => {
+          _emailsExpanded = !_emailsExpanded;
+          document.getElementById('toggle-arrow').textContent = _emailsExpanded ? '▲' : '▼';
+          emailList.style.display = _emailsExpanded ? 'flex' : 'none';
+        };
+
+        const emailList = document.createElement('div');
+        emailList.style.cssText = `display:${_emailsExpanded ? 'flex' : 'none'};flex-direction:column;gap:6px;margin-top:6px`;
+        emailList.innerHTML = members.slice(1).map(m => {
+          const dd = m.daysLeft;
+          const c = dd > 7 ? '#22c55e' : dd > 0 ? '#f59e0b' : '#ef4444';
+          const ic = dd > 7 ? '✅' : dd > 0 ? '⚠️' : '❌';
+          return `
+            <div style="background:#141414;border:1px solid #1e1e1e;border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px">
+              <span style="font-size:16px">${ic}</span>
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:600;color:${c}">${dd > 0 ? `เหลือ ${dd} วัน` : 'หมดอายุแล้ว'}</div>
+                <div style="font-size:11px;color:#666;margin-top:2px">${m.houseEmail || '-'} | หมด ${m.expireDate}</div>
+              </div>
+            </div>`;
+        }).join('');
+
+        wrap.appendChild(toggleBtn);
+        wrap.appendChild(emailList);
+
+        // แทรกหลัง status-card
+        const statusCard = document.querySelector('.status-card');
+        statusCard.parentNode.insertBefore(wrap, statusCard.nextSibling);
+      }
+    }
+
+    function renderBanners(memberData, reportData) {
+      const banners = [];
+      const members = (memberData?.members || []).filter(m => m.inviteStatus !== 'removed');
+
+      members.forEach(m => {
+        if (m.inviteStatus === 'pending') {
+          banners.push({
+            type: 'pending', icon: '⏳',
+            title: 'รอแอดมินดำเนินการ',
+            sub: `อีเมล ${m.houseEmail || 'ของคุณ'} — รอส่งคำเชิญเข้า YouTube Premium`,
+            dot: 'blue',
+            toggleContent: null,
+          });
+        } else if (m.inviteStatus === 'inviting') {
+          banners.push({
+            type: 'inviting', icon: '📨',
+            title: 'ส่งคำเชิญแล้ว — รอคุณกดรับ',
+            sub: `แตะเพื่อดูวิธีรับคำเชิญ ▼`,
+            dot: 'green',
+            toggleContent: `
+              <div class="step-list">
+                <div class="step-item">
+                  <div class="step-num">1</div>
+                  <div class="step-text">
+                    <strong>เปิดอีเมล ${m.houseEmail || 'ของคุณ'}</strong>
+                    ค้นหาอีเมลจาก YouTube หรือ Google Family
+                  </div>
+                </div>
+                <div class="step-item">
+                  <div class="step-num">2</div>
+                  <div class="step-text">
+                    <strong>กดปุ่ม "Accept invitation" หรือ "ยอมรับคำเชิญ"</strong>
+                    ในอีเมลที่ได้รับจาก YouTube Premium Family
+                  </div>
+                </div>
+                <div class="step-item">
+                  <div class="step-num">3</div>
+                  <div class="step-text">
+                    <strong>ล็อกอินด้วยอีเมลนี้บน YouTube</strong>
+                    เปิด youtube.com หรือแอป YouTube แล้วล็อกอิน
+                  </div>
+                </div>
+                <div class="step-item">
+                  <div class="step-num">4</div>
+                  <div class="step-text">
+                    <strong>แจ้งแอดมินว่ากดรับแล้ว</strong>
+                    กด "แจ้งปัญหา" หรือติดต่อแอดมินเพื่อยืนยัน
+                  </div>
+                </div>
+              </div>
+              <div class="step-note">
+                ⚠️ หากไม่พบอีเมล ให้ตรวจสอบใน Spam/Junk<br>
+                ⏱ คำเชิญหมดอายุใน 7 วัน หากหมดอายุกรุณาแจ้งแอดมิน
+              </div>`,
+          });
+        }
+      });
+
+      if (reportData?.reports) {
+        reportData.reports.filter(r => r.status !== 'resolved').forEach(r => {
+          banners.push({
+            type: 'report', icon: '🔧',
+            title: 'กำลังรอการแก้ไขจากแอดมิน',
+            sub: `ปัญหา: ${r.detail || 'ที่คุณแจ้งไว้'} — ทีมงานกำลังดำเนินการ`,
+            dot: 'red',
+            toggleContent: null,
+          });
+        });
+      }
+
+      const container = document.getElementById('status-banners');
+      if (banners.length === 0) {
+        container.style.display = 'none';
+        return;
+      }
+      container.style.display = 'flex';
+      container.innerHTML = banners.map((b, i) => `
+        <div class="status-banner ${b.type} ${b.toggleContent ? 'banner-clickable' : ''}"
+             ${b.toggleContent ? `onclick="toggleBanner(${i})"` : ''}>
+          <div class="banner-icon">${b.icon}</div>
+          <div class="banner-info" style="flex:1">
+            <strong>${b.title}</strong>
+            <span>${b.sub}</span>
+            ${b.toggleContent ? `<div class="banner-toggle-content" id="banner-toggle-${i}">${b.toggleContent}</div>` : ''}
+          </div>
+          ${b.toggleContent ? `<div class="banner-chevron" id="banner-chevron-${i}">▼</div>` : `<div class="banner-dot ${b.dot}"></div>`}
+        </div>
+      `).join('');
+
+      // restore expanded state
+      banners.forEach((b, i) => {
+        if (!b.toggleContent) return;
+        const wasOpen = _bannerExpandedState.get(i);
+        if (wasOpen) {
+          const content = document.getElementById(`banner-toggle-${i}`);
+          const chevron = document.getElementById(`banner-chevron-${i}`);
+          if (content) content.classList.add('open');
+          if (chevron) chevron.classList.add('open');
+        }
       });
     }
 
-    async function selectPkg(el) {
-      document.querySelectorAll('.pkg-card').forEach(c => c.classList.remove('selected', 'error-highlight'));
-      el.classList.add('selected');
-      selectedPkg = el.dataset.pkg;
-      document.getElementById('pkg-error').style.display = 'none';
-      await generateQR(PRICES[selectedPkg]);
+    function toggleBanner(i) {
+      const content = document.getElementById(`banner-toggle-${i}`);
+      const chevron = document.getElementById(`banner-chevron-${i}`);
+      if (!content) return;
+      const isOpen = content.classList.contains('open');
+      content.classList.toggle('open', !isOpen);
+      if (chevron) chevron.classList.toggle('open', !isOpen);
+      // บันทึก state
+      _bannerExpandedState.set(i, !isOpen);
     }
 
-    async function generateQR(amount) {
-      document.getElementById('qr-placeholder').style.display = 'none';
-      document.getElementById('qr-img-wrap').style.display = 'none';
-      document.getElementById('qr-info').style.display = 'none';
-      document.getElementById('qr-loading').style.display = 'block';
-
-      try {
-        const url = `https://promptpay.io/${PROMPTPAY_ID}/${amount}.png`;
-        await new Promise((resolve, reject) => {
-          const img = document.getElementById('qr-img');
-          img.onload = resolve;
-          img.onerror = reject;
-          img.src = url + '?t=' + Date.now();
-        });
-        document.getElementById('qr-loading').style.display = 'none';
-        document.getElementById('qr-img-wrap').style.display = 'block';
-        document.getElementById('qr-info').style.display = 'block';
-        document.getElementById('qr-amount').textContent = `฿${amount.toLocaleString()}`;
-      } catch {
-        document.getElementById('qr-loading').style.display = 'none';
-        document.getElementById('qr-placeholder').style.display = 'flex';
-        document.getElementById('qr-placeholder').innerHTML = `
-          <div style="font-size:13px;color:#888;line-height:1.8;padding:0 8px">
-            โอน <strong style="color:#ff9500">฿${amount}</strong> ไปที่<br>
-            พร้อมเพย์ <strong style="color:#c8a0ff;font-family:monospace">0993411929</strong><br>
-            <span style="font-size:11px;color:#555">แล้วแนบสลิปด้านล่างครับ</span>
-          </div>`;
-      }
-    }
-
-    function validateEmail() {
-      const email = document.getElementById('member-email').value.trim();
-      const input = document.getElementById('member-email');
-      const msg = document.getElementById('email-msg');
-      if (!email) { input.className = 'input-box'; msg.textContent = ''; msg.className = 'field-msg'; return false; }
-      const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-      input.className = `input-box ${ok ? 'input-ok' : 'input-error'}`;
-      msg.textContent = ok ? '✓ อีเมลถูกต้อง' : '⚠️ รูปแบบอีเมลไม่ถูกต้อง';
-      msg.className = `field-msg ${ok ? 'success' : 'error'}`;
-      return ok;
-    }
-
-    function validateEmailStrict() {
-      const email = document.getElementById('member-email').value.trim();
-      if (!email) {
-        document.getElementById('member-email').className = 'input-box input-error';
-        document.getElementById('email-msg').textContent = '⚠️ กรุณากรอกอีเมลครับ';
-        document.getElementById('email-msg').className = 'field-msg error';
-      }
-    }
-
-    function previewSlip(input) {
-      if (!input.files[0]) return;
-      slipFile = input.files[0];
-      const reader = new FileReader();
-      reader.onload = e => {
-        document.getElementById('slip-preview').src = e.target.result;
-        document.getElementById('slip-preview').style.display = 'block';
-        document.getElementById('upload-placeholder').style.display = 'none';
-        document.getElementById('upload-box').classList.add('has-image');
-        document.getElementById('upload-box').classList.remove('error-highlight');
-        document.getElementById('slip-error').style.display = 'none';
-      };
-      reader.readAsDataURL(slipFile);
-    }
-
-    function validate() {
-      let valid = true;
-      if (!selectedPkg) { document.querySelectorAll('.pkg-card').forEach(c => c.classList.add('error-highlight')); document.getElementById('pkg-error').style.display = 'block'; valid = false; }
-      if (!validateEmail()) { validateEmailStrict(); valid = false; }
-      if (!slipFile) { document.getElementById('upload-box').classList.add('error-highlight'); document.getElementById('slip-error').style.display = 'block'; valid = false; }
-      return valid;
-    }
-
-    async function submit() {
-      if (!validate()) return;
-      const btn = document.getElementById('submit-btn');
-      const email = document.getElementById('member-email').value.trim();
-      btn.disabled = true; btn.textContent = 'กำลังตรวจสลิป...';
-      try {
-        const dupRes = await fetch(`${BASE_URL}/api/check-email?email=${encodeURIComponent(email)}`);
-        const dup = await dupRes.json();
-        if (dup.exists) {
-          document.getElementById('alert-box').innerHTML = `<div class="alert error">❌ อีเมล ${email} มีในระบบแล้ว ไม่สามารถสมัครซ้ำได้ครับ</div>`;
-          btn.disabled = false; btn.textContent = 'ยืนยันสมัครสมาชิก 🐯'; return;
-        }
-        const formData = new FormData();
-        formData.append('slip', slipFile);
-        formData.append('lineUserId', profile.userId);
-        formData.append('displayName', profile.displayName);
-        formData.append('packageType', selectedPkg);
-        formData.append('memberEmail', email);
-        const res = await fetch(`${BASE_URL}/api/register`, { method: 'POST', body: formData });
-        const data = await res.json();
-        if (data.success) {
-          document.getElementById('alert-box').innerHTML = `<div class="alert success">✅ สมัครสำเร็จแล้วครับ!<br>📧 ${email}<br>📅 หมดอายุ ${data.expireDate}<br><br>⏳ รอแอดมินส่งคำเชิญภายใน 24 ชม. 🐯</div>`;
-          btn.textContent = 'สมัครสำเร็จแล้ว ✅';
-        } else {
-          document.getElementById('alert-box').innerHTML = `<div class="alert error">❌ ${data.error}</div>`;
-          btn.disabled = false; btn.textContent = 'ยืนยันสมัครสมาชิก 🐯';
-        }
-      } catch {
-        document.getElementById('alert-box').innerHTML = `<div class="alert error">เกิดข้อผิดพลาด กรุณาลองใหม่ครับ</div>`;
-        btn.disabled = false; btn.textContent = 'ยืนยันสมัครสมาชิก 🐯';
-      }
-    }
+    init().catch(console.error);
   </script>
 </body>
 </html>
