@@ -106,7 +106,7 @@
         <div class="bank-logo">💜</div>
         <div class="bank-info">
           <div class="bank-name">ธนาคารไทยพาณิชย์ (SCB)</div>
-          <div class="bank-acc">เลขบัญชี: <strong>4069541526</strong></div>
+          <div class="bank-acc">เบอร์พร้อมเพย์: <strong>0993411929</strong></div>
         </div>
         <button class="copy-btn" onclick="copyAccount()">📋 Copy</button>
       </div>
@@ -126,7 +126,7 @@
         <div id="qr-info" style="display:none">
           <div class="qr-amount" id="qr-amount"></div>
           <div class="qr-amount-sub">สแกนจ่ายผ่าน Mobile Banking ได้เลย</div>
-          <div style="font-size:11px;color:#444;margin-top:4px">PromptPay · 4069541526</div>
+          <div style="font-size:11px;color:#444;margin-top:4px">PromptPay · 0993411929</div>
         </div>
       </div>
     </div>
@@ -161,7 +161,7 @@
   <script>
     const LIFF_ID = '2009843737-CwJgLFBY';
     const BASE_URL = window.location.origin;
-    const PROMPTPAY_ID = '4069541526';
+    const PROMPTPAY_ID = '0993411929';
     const PRICES = { '1month': 79, '2months': 155, '3months': 230 };
 
     let profile = null, selectedPkg = null, slipFile = null;
@@ -212,7 +212,7 @@
         document.getElementById('qr-placeholder').innerHTML = `
           <div style="font-size:13px;color:#888;line-height:1.8;padding:0 8px">
             โอน <strong style="color:#ff9500">฿${amount}</strong> ไปที่<br>
-            SCB <strong style="color:#c8a0ff;font-family:monospace">4069541526</strong><br>
+            พร้อมเพย์ <strong style="color:#c8a0ff;font-family:monospace">0993411929</strong><br>
             <span style="font-size:11px;color:#555">แล้วแนบสลิปด้านล่างครับ</span>
           </div>`;
       }
