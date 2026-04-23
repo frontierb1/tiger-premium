@@ -113,6 +113,43 @@
     .menu-card.blue   .menu-sub { color: rgba(99,170,240,0.6); }
     .menu-card.green  .menu-sub { color: rgba(74,222,128,0.6); }
     .menu-card.red    .menu-sub { color: rgba(248,113,113,0.6); }
+
+    /* ===== STATUS BANNER ===== */
+    .status-banners { padding: 0 16px; margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .status-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-radius: 14px;
+      padding: 12px 16px;
+      font-size: 13px;
+      animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .status-banner.pending {
+      background: linear-gradient(135deg, #0d1a2e, #101f38);
+      border: 1px solid rgba(55,138,221,0.3);
+    }
+    .status-banner.report {
+      background: linear-gradient(135deg, #1a0d0d, #200f0f);
+      border: 1px solid rgba(239,68,68,0.3);
+    }
+    .status-banner.inviting {
+      background: linear-gradient(135deg, #0d1a10, #0f2012);
+      border: 1px solid rgba(34,197,94,0.3);
+    }
+    .banner-icon { font-size: 22px; flex-shrink: 0; }
+    .banner-info { flex: 1; }
+    .banner-info strong { display: block; font-size: 13px; font-weight: 700; }
+    .banner-info span { font-size: 11px; margin-top: 2px; display: block; opacity: 0.7; }
+    .banner-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+      animation: blink 1.5s ease infinite;
+    }
+    @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .banner-dot.blue { background: #378ADD; }
+    .banner-dot.red { background: #ef4444; }
+    .banner-dot.green { background: #22c55e; }
   </style>
 </head>
 <body>
@@ -156,6 +193,9 @@
     </a>
   </div>
 
+  <!-- สถานะงานค้าง -->
+  <div class="status-banners" id="status-banners" style="display:none"></div>
+
   <script>
     const LIFF_ID = '2009843737-CwJgLFBY';
     const BASE_URL = window.location.origin;
@@ -164,9 +204,16 @@
       await liff.init({ liffId: LIFF_ID });
       if (!liff.isLoggedIn()) { liff.login(); return; }
       const profile = await liff.getProfile();
-      const res = await fetch(`${BASE_URL}/api/member/${profile.userId}`);
-      const data = await res.json();
 
+      // โหลด member + reports พร้อมกัน
+      const [memberRes, reportRes] = await Promise.all([
+        fetch(`${BASE_URL}/api/members/${profile.userId}`),
+        fetch(`${BASE_URL}/api/admin/report/user/${profile.userId}`).catch(() => null),
+      ]);
+      const memberData = await memberRes.json();
+      const reportData = reportRes ? await reportRes.json().catch(() => null) : null;
+
+      // ซ่อน skeleton
       document.getElementById('skel1').style.display = 'none';
       document.getElementById('skel2').style.display = 'none';
       document.getElementById('status-text').style.display = 'block';
@@ -175,8 +222,9 @@
       const iconEl = document.getElementById('status-icon');
       const infoEl = document.getElementById('status-info');
 
-      if (data.found) {
-        const d = data.daysLeft;
+      if (memberData.found && memberData.members && memberData.members.length > 0) {
+        const first = memberData.members[0];
+        const d = first.daysLeft;
         const cls = d > 7 ? 'green' : d > 0 ? 'yellow' : 'red';
         const icon = d > 7 ? '✅' : d > 0 ? '⚠️' : '❌';
         const text = d > 7 ? `ใช้งานได้ — เหลือ ${d} วัน` : d > 0 ? `ใกล้หมดอายุ — เหลือ ${d} วัน` : 'หมดอายุแล้ว';
@@ -184,7 +232,7 @@
         iconEl.className = `status-icon ${cls}`;
         infoEl.className = `status-info ${cls}`;
         document.getElementById('status-text').textContent = text;
-        document.getElementById('status-sub').textContent = `หมดอายุ ${data.expireDate}`;
+        document.getElementById('status-sub').textContent = `หมดอายุ ${first.expireDate}`;
       } else {
         iconEl.textContent = '👋';
         iconEl.className = 'status-icon gray';
@@ -192,7 +240,66 @@
         document.getElementById('status-text').textContent = 'ยังไม่ได้สมัครสมาชิก';
         document.getElementById('status-sub').textContent = 'กดสมัครสมาชิกได้เลยครับ';
       }
+
+      // แสดง status banners
+      renderBanners(memberData, reportData);
     }
+
+    function renderBanners(memberData, reportData) {
+      const banners = [];
+      const members = memberData?.members || [];
+
+      // เช็คสถานะแต่ละ row
+      members.forEach(m => {
+        if (m.inviteStatus === 'pending') {
+          banners.push({
+            type: 'pending',
+            icon: '⏳',
+            title: 'รอแอดมินดำเนินการ',
+            sub: `อีเมล ${m.houseEmail || 'ของคุณ'} — รอส่งคำเชิญเข้า YouTube Premium`,
+            dot: 'blue',
+          });
+        } else if (m.inviteStatus === 'inviting') {
+          banners.push({
+            type: 'inviting',
+            icon: '📨',
+            title: 'ส่งคำเชิญแล้ว — รอคุณกดรับ',
+            sub: `กรุณาตรวจสอบอีเมล ${m.houseEmail || 'ของคุณ'} แล้วกด "ยอมรับคำเชิญ"`,
+            dot: 'green',
+          });
+        }
+      });
+
+      // เช็คปัญหาที่แจ้งไว้
+      if (reportData?.reports) {
+        const openReports = reportData.reports.filter(r => r.status !== 'resolved');
+        openReports.forEach(r => {
+          banners.push({
+            type: 'report',
+            icon: '🔧',
+            title: 'กำลังรอการแก้ไขจากแอดมิน',
+            sub: `ปัญหา: ${r.detail || 'ที่คุณแจ้งไว้'} — ทีมงานกำลังดำเนินการ`,
+            dot: 'red',
+          });
+        });
+      }
+
+      if (banners.length === 0) return;
+
+      const container = document.getElementById('status-banners');
+      container.style.display = 'flex';
+      container.innerHTML = banners.map(b => `
+        <div class="status-banner ${b.type}">
+          <div class="banner-icon">${b.icon}</div>
+          <div class="banner-info">
+            <strong>${b.title}</strong>
+            <span>${b.sub}</span>
+          </div>
+          <div class="banner-dot ${b.dot}"></div>
+        </div>
+      `).join('');
+    }
+
     init().catch(console.error);
   </script>
 </body>
