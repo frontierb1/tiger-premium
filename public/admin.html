@@ -430,7 +430,7 @@
             <th class="sortable" onclick="sortHouses('expire')" id="th-expire">วันหมดอายุ <span id="sort-expire">↕</span></th>
             <th class="sortable" onclick="sortHouses('slot')" id="th-slot">ที่ว่าง <span id="sort-slot">↕</span></th>
             <th class="sortable" onclick="sortHouses('status')" id="th-status">สถานะ <span id="sort-status">↕</span></th>
-            <th>Copy เมลสมาชิก</th>
+            <th style="min-width:160px">Copy เมลสมาชิก</th>
           </tr></thead>
           <tbody id="houses-body"></tbody>
         </table>
@@ -1548,10 +1548,12 @@ function renderHouses() {
         </td>
         <td>${h.expireDate} ${daysBadge(days)}</td>
         <td><span class="badge ${slot > 0 ? 'green' : 'red'}">${slot > 0 ? 'ว่าง ' + slot + ' ที่' : 'เต็ม'}${isOverflow ? ' <span class="overflow-warn">เกิน!</span>' : ''}</span></td>
-        <td onclick="event.stopPropagation()" style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;padding:8px 12px">
-          <span class="badge ${isActive ? 'invited' : 'red'}">${isActive ? 'active' : 'inactive'}</span>
-          <button class="btn-sm ${isActive ? 'btn-orange' : 'btn-green'}" style="font-size:10px;padding:3px 8px" onclick="event.stopPropagation();toggleHouseStatus('${h.houseId}','${isActive ? 'inactive' : 'active'}',this)">${isActive ? '⏸ ปิด' : '▶ เปิด'}</button>
-          <button class="btn-sm" style="font-size:10px;padding:3px 8px;background:#2a0a0a;color:#ef4444;border:1px solid #ef4444" onclick="event.stopPropagation();confirmDeleteHouse('${h.houseId}')">🗑 ลบ</button>
+        <td onclick="event.stopPropagation()" style="white-space:nowrap;padding:8px 12px">
+          <div style="display:flex;gap:5px;align-items:center;flex-wrap:nowrap">
+            <span class="badge ${isActive ? 'invited' : 'red'}">${isActive ? 'active' : 'inactive'}</span>
+            <button class="btn-sm ${isActive ? 'btn-orange' : 'btn-green'}" style="font-size:10px;padding:3px 8px" onclick="event.stopPropagation();toggleHouseStatus('${h.houseId}','${isActive ? 'inactive' : 'active'}',this)">${isActive ? '⏸ ปิด' : '▶ เปิด'}</button>
+            <button class="btn-sm" style="font-size:10px;padding:3px 8px;background:#2a0a0a;color:#ef4444;border:1px solid #ef4444" onclick="event.stopPropagation();confirmDeleteHouse('${h.houseId}')">🗑 ลบ</button>
+          </div>
         </td>
         <td onclick="event.stopPropagation()">${copyBtn}</td>
       </tr>
