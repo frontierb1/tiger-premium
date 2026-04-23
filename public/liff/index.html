@@ -199,21 +199,43 @@
   <script>
     const LIFF_ID = '2009843737-CwJgLFBY';
     const BASE_URL = window.location.origin;
+    let _profile = null;
+    let _pollInterval = null;
+    let _emailsExpanded = false;
 
     async function init() {
       await liff.init({ liffId: LIFF_ID });
       if (!liff.isLoggedIn()) { liff.login(); return; }
-      const profile = await liff.getProfile();
+      _profile = await liff.getProfile();
 
-      // โหลด member + reports พร้อมกัน
-      const [memberRes, reportRes] = await Promise.all([
-        fetch(`${BASE_URL}/api/members/${profile.userId}`),
-        fetch(`${BASE_URL}/api/admin/report/user/${profile.userId}`).catch(() => null),
-      ]);
-      const memberData = await memberRes.json();
-      const reportData = reportRes ? await reportRes.json().catch(() => null) : null;
+      await loadData();
 
-      // ซ่อน skeleton
+      // poll ทุก 30 วิ
+      _pollInterval = setInterval(loadData, 30000);
+    }
+
+    async function loadData() {
+      try {
+        const [memberRes, reportRes] = await Promise.all([
+          fetch(`${BASE_URL}/api/members/${_profile.userId}`),
+          fetch(`${BASE_URL}/api/admin/report/user/${_profile.userId}`).catch(() => null),
+        ]);
+        const memberData = await memberRes.json();
+        const reportData = reportRes ? await reportRes.json().catch(() => null) : null;
+
+        renderStatus(memberData);
+        renderBanners(memberData, reportData);
+      } catch (err) {
+        console.error('loadData error:', err);
+      }
+    }
+
+    function renderStatus(memberData) {
+      const members = (memberData?.members || [])
+        .filter(m => m.inviteStatus !== 'removed')
+        .sort((a, b) => a.daysLeft - b.daysLeft); // น้อยสุดขึ้นก่อน
+
+      // ซ่อน skeleton ครั้งแรก
       document.getElementById('skel1').style.display = 'none';
       document.getElementById('skel2').style.display = 'none';
       document.getElementById('status-text').style.display = 'block';
@@ -222,47 +244,102 @@
       const iconEl = document.getElementById('status-icon');
       const infoEl = document.getElementById('status-info');
 
-      if (memberData.found && memberData.members && memberData.members.length > 0) {
-        const first = memberData.members[0];
-        const d = first.daysLeft;
-        const cls = d > 7 ? 'green' : d > 0 ? 'yellow' : 'red';
-        const icon = d > 7 ? '✅' : d > 0 ? '⚠️' : '❌';
-        const text = d > 7 ? `ใช้งานได้ — เหลือ ${d} วัน` : d > 0 ? `ใกล้หมดอายุ — เหลือ ${d} วัน` : 'หมดอายุแล้ว';
-        iconEl.textContent = icon;
-        iconEl.className = `status-icon ${cls}`;
-        infoEl.className = `status-info ${cls}`;
-        document.getElementById('status-text').textContent = text;
-        document.getElementById('status-sub').textContent = `หมดอายุ ${first.expireDate}`;
-      } else {
+      if (!members || members.length === 0) {
         iconEl.textContent = '👋';
         iconEl.className = 'status-icon gray';
         infoEl.className = 'status-info';
         document.getElementById('status-text').textContent = 'ยังไม่ได้สมัครสมาชิก';
         document.getElementById('status-sub').textContent = 'กดสมัครสมาชิกได้เลยครับ';
+        // ลบ toggle ถ้ามี
+        const tog = document.getElementById('email-toggle-wrap');
+        if (tog) tog.remove();
+        return;
       }
 
-      // แสดง status banners
-      renderBanners(memberData, reportData);
+      // แสดง email แรก (น้อยสุด)
+      const first = members[0];
+      const d = first.daysLeft;
+      const cls = d > 7 ? 'green' : d > 0 ? 'yellow' : 'red';
+      const icon = d > 7 ? '✅' : d > 0 ? '⚠️' : '❌';
+      const text = d > 7 ? `ใช้งานได้ — เหลือ ${d} วัน`
+        : d > 0 ? `ใกล้หมดอายุ — เหลือ ${d} วัน`
+        : 'หมดอายุแล้ว';
+
+      iconEl.textContent = icon;
+      iconEl.className = `status-icon ${cls}`;
+      infoEl.className = `status-info ${cls}`;
+      document.getElementById('status-text').textContent = text;
+      document.getElementById('status-sub').textContent = `${first.houseEmail || ''} | หมดอายุ ${first.expireDate}`;
+
+      // toggle สำหรับหลายเมล
+      const existingToggle = document.getElementById('email-toggle-wrap');
+      if (existingToggle) existingToggle.remove();
+
+      if (members.length > 1) {
+        const wrap = document.createElement('div');
+        wrap.id = 'email-toggle-wrap';
+        wrap.style.cssText = 'padding:0 16px;margin-top:8px';
+
+        const toggleBtn = document.createElement('button');
+        toggleBtn.id = 'email-toggle-btn';
+        toggleBtn.style.cssText = `
+          width:100%;background:#181818;border:1px solid #272727;border-radius:14px;
+          padding:10px 16px;color:#85B7EB;font-size:12px;cursor:pointer;
+          display:flex;align-items:center;justify-content:space-between;font-family:inherit;
+        `;
+        toggleBtn.innerHTML = `<span>อีเมลทั้งหมด ${members.length} รายการ</span><span id="toggle-arrow">▼</span>`;
+        toggleBtn.onclick = () => {
+          _emailsExpanded = !_emailsExpanded;
+          document.getElementById('toggle-arrow').textContent = _emailsExpanded ? '▲' : '▼';
+          emailList.style.display = _emailsExpanded ? 'flex' : 'none';
+        };
+
+        const emailList = document.createElement('div');
+        emailList.style.cssText = 'display:none;flex-direction:column;gap:6px;margin-top:6px';
+        emailList.innerHTML = members.slice(1).map(m => {
+          const dd = m.daysLeft;
+          const c = dd > 7 ? '#22c55e' : dd > 0 ? '#f59e0b' : '#ef4444';
+          const ic = dd > 7 ? '✅' : dd > 0 ? '⚠️' : '❌';
+          return `
+            <div style="background:#141414;border:1px solid #1e1e1e;border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px">
+              <span style="font-size:16px">${ic}</span>
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:600;color:${c}">${dd > 0 ? `เหลือ ${dd} วัน` : 'หมดอายุแล้ว'}</div>
+                <div style="font-size:11px;color:#666;margin-top:2px">${m.houseEmail || '-'} | หมด ${m.expireDate}</div>
+              </div>
+            </div>`;
+        }).join('');
+
+        // restore expanded state
+        if (_emailsExpanded) {
+          emailList.style.display = 'flex';
+          document.getElementById('toggle-arrow') && (document.getElementById('toggle-arrow').textContent = '▲');
+        }
+
+        wrap.appendChild(toggleBtn);
+        wrap.appendChild(emailList);
+
+        // แทรกหลัง status-card
+        const statusCard = document.querySelector('.status-card');
+        statusCard.parentNode.insertBefore(wrap, statusCard.nextSibling);
+      }
     }
 
     function renderBanners(memberData, reportData) {
       const banners = [];
-      const members = memberData?.members || [];
+      const members = (memberData?.members || []).filter(m => m.inviteStatus !== 'removed');
 
-      // เช็คสถานะแต่ละ row
       members.forEach(m => {
         if (m.inviteStatus === 'pending') {
           banners.push({
-            type: 'pending',
-            icon: '⏳',
+            type: 'pending', icon: '⏳',
             title: 'รอแอดมินดำเนินการ',
             sub: `อีเมล ${m.houseEmail || 'ของคุณ'} — รอส่งคำเชิญเข้า YouTube Premium`,
             dot: 'blue',
           });
         } else if (m.inviteStatus === 'inviting') {
           banners.push({
-            type: 'inviting',
-            icon: '📨',
+            type: 'inviting', icon: '📨',
             title: 'ส่งคำเชิญแล้ว — รอคุณกดรับ',
             sub: `กรุณาตรวจสอบอีเมล ${m.houseEmail || 'ของคุณ'} แล้วกด "ยอมรับคำเชิญ"`,
             dot: 'green',
@@ -270,13 +347,10 @@
         }
       });
 
-      // เช็คปัญหาที่แจ้งไว้
       if (reportData?.reports) {
-        const openReports = reportData.reports.filter(r => r.status !== 'resolved');
-        openReports.forEach(r => {
+        reportData.reports.filter(r => r.status !== 'resolved').forEach(r => {
           banners.push({
-            type: 'report',
-            icon: '🔧',
+            type: 'report', icon: '🔧',
             title: 'กำลังรอการแก้ไขจากแอดมิน',
             sub: `ปัญหา: ${r.detail || 'ที่คุณแจ้งไว้'} — ทีมงานกำลังดำเนินการ`,
             dot: 'red',
@@ -284,9 +358,11 @@
         });
       }
 
-      if (banners.length === 0) return;
-
       const container = document.getElementById('status-banners');
+      if (banners.length === 0) {
+        container.style.display = 'none';
+        return;
+      }
       container.style.display = 'flex';
       container.innerHTML = banners.map(b => `
         <div class="status-banner ${b.type}">
