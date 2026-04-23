@@ -1427,12 +1427,18 @@ function renderPending(members) {
   document.getElementById('pending-table').style.display = 'table';
   document.getElementById('pending-empty').style.display = 'none';
 
-  // สร้าง options บ้านสำหรับ dropdown แต่ละแถว
   const houseOpts = allHouses
     .filter(h => getHouseSlot(h.houseId) > 0)
     .sort((a,b) => getHouseSlot(b.houseId) - getHouseSlot(a.houseId))
     .map(h => `<option value="${h.houseId}">${h.houseId}  —  ว่าง ${getHouseSlot(h.houseId)} ที่</option>`)
     .join('');
+
+  // จำ state dropdown ก่อน render ใหม่
+  const prevHouseSelect = {};
+  selectedRows.forEach(row => {
+    const sel = document.getElementById(`single-house-${row}`);
+    if (sel) prevHouseSelect[row] = sel.value;
+  });
 
   document.getElementById('pending-body').innerHTML = members.map(m => `
     <tr id="row-${m.rowIndex}">
@@ -1450,6 +1456,21 @@ function renderPending(members) {
       </td>
     </tr>
   `).join('');
+
+  // restore checkbox + dropdown + selected-row style
+  selectedRows.forEach(row => {
+    const cb = document.querySelector(`.row-check[data-row="${row}"]`);
+    const tr = document.getElementById(`row-${row}`);
+    const sel = document.getElementById(`single-house-${row}`);
+    if (cb) cb.checked = true;
+    if (tr) tr.classList.add('selected-row');
+    // restore dropdown value จาก bulk หรือ prev state
+    const bulkHouse = document.getElementById('main-house-select')?.value;
+    if (sel) sel.value = bulkHouse || prevHouseSelect[row] || '';
+  });
+
+  // อัปเดต UI count
+  updateBulkActions();
 }
 
 function renderInviting(members) {
