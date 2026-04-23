@@ -5,43 +5,66 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>สมัครสมาชิก - Tiger Premium</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; padding-bottom: 40px; }
-    .header { background: linear-gradient(135deg, #ff6b00, #ff9500); padding: 20px; display: flex; align-items: center; gap: 12px; }
-    .header a { color: #fff; text-decoration: none; font-size: 20px; }
+    body { font-family: 'Noto Sans Thai', -apple-system, sans-serif; background: #0c0c0c; color: #fff; min-height: 100vh; padding-bottom: 48px; }
+    .header { background: linear-gradient(135deg, #c94e00, #ff9500); padding: 18px 20px; display: flex; align-items: center; gap: 12px; }
+    .header a { color: #fff; text-decoration: none; font-size: 22px; }
     .header h1 { font-size: 18px; font-weight: 700; }
     .section { margin: 16px 16px 0; }
-    .section-title { font-size: 13px; color: #888; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .section-label { font-size: 11px; font-weight: 700; color: #555; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
     .pkg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    .pkg-card { background: #1a1a1a; border: 2px solid #2a2a2a; border-radius: 12px; padding: 14px 8px; text-align: center; cursor: pointer; transition: all 0.2s; }
-    .pkg-card.selected { border-color: #ff6b00; background: #1f1200; }
+    .pkg-card { background: #141414; border: 2px solid #1e1e1e; border-radius: 16px; padding: 16px 8px; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; }
+    .pkg-card.selected { border-color: #ff6b00; background: #1a0d00; }
     .pkg-card.error-highlight { border-color: #ef4444; }
-    .pkg-card .months { font-size: 11px; color: #888; }
-    .pkg-card .price { font-size: 20px; font-weight: 700; color: #ff9500; margin: 4px 0; }
-    .pkg-card .baht { font-size: 11px; color: #666; }
-    .input-wrap { position: relative; }
-    .input-box { background: #1a1a1a; border: 1.5px solid #2a2a2a; border-radius: 12px; padding: 14px 16px; font-size: 15px; color: #fff; width: 100%; outline: none; transition: border 0.2s; }
+    .pkg-card.selected::after { content: '✓'; position: absolute; top: 6px; right: 8px; font-size: 11px; color: #ff6b00; font-weight: 700; }
+    .pkg-months { font-size: 11px; color: #666; margin-bottom: 4px; }
+    .pkg-price { font-size: 26px; font-weight: 800; color: #ff9500; line-height: 1; }
+    .pkg-baht { font-size: 11px; color: #555; margin-top: 2px; }
+    .pkg-badge { font-size: 10px; color: #22c55e; margin-top: 4px; font-weight: 600; }
+    .section-error { font-size: 12px; color: #ef4444; margin-top: 6px; display: none; }
+    .payment-box { background: #141414; border: 1px solid #1e1e1e; border-radius: 18px; overflow: hidden; }
+    .payment-header { background: #120d20; border-bottom: 1px solid #1e1830; padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+    .bank-logo { width: 40px; height: 40px; background: linear-gradient(135deg, #4f00c8, #7b2fff); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+    .bank-info { flex: 1; }
+    .bank-name { font-size: 14px; font-weight: 700; }
+    .bank-acc { font-size: 12px; color: #888; margin-top: 2px; }
+    .bank-acc strong { color: #c8a0ff; font-family: monospace; font-size: 14px; }
+    .copy-btn { background: rgba(200,160,255,0.12); border: 1px solid rgba(200,160,255,0.25); color: #c8a0ff; border-radius: 8px; padding: 6px 14px; font-size: 12px; cursor: pointer; font-family: inherit; font-weight: 600; transition: all 0.2s; white-space: nowrap; }
+    .copy-btn:active { background: rgba(200,160,255,0.2); }
+    .qr-section { padding: 24px 20px; text-align: center; }
+    .qr-placeholder { width: 200px; height: 200px; margin: 0 auto 14px; background: #1a1a1a; border-radius: 16px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; border: 2px dashed #242424; }
+    .qr-placeholder .qr-icon { font-size: 36px; }
+    .qr-placeholder .qr-text { font-size: 12px; color: #555; line-height: 1.6; }
+    .qr-img-wrap { width: 200px; height: 200px; margin: 0 auto 14px; background: #fff; border-radius: 16px; padding: 10px; display: none; box-shadow: 0 0 0 4px rgba(255,149,0,0.2); }
+    .qr-img-wrap img { width: 100%; height: 100%; object-fit: contain; }
+    .qr-loading { display: none; padding: 40px 0 14px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-sm { display: inline-block; width: 28px; height: 28px; border: 3px solid #222; border-top-color: #ff9500; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    .qr-amount { font-size: 28px; font-weight: 800; color: #ff9500; }
+    .qr-amount-sub { font-size: 12px; color: #555; margin-top: 4px; }
+    .input-box { background: #141414; border: 1.5px solid #1e1e1e; border-radius: 14px; padding: 14px 16px; font-size: 15px; color: #fff; width: 100%; outline: none; transition: border 0.2s; font-family: inherit; }
     .input-box:focus { border-color: #ff6b00; }
     .input-box.input-error { border-color: #ef4444; }
     .input-box.input-ok { border-color: #22c55e; }
-    .input-box::placeholder { color: #555; }
-    .field-msg { font-size: 12px; margin-top: 6px; padding-left: 4px; }
+    .input-box::placeholder { color: #444; }
+    .field-msg { font-size: 12px; margin-top: 6px; padding-left: 2px; }
     .field-msg.error { color: #ef4444; }
     .field-msg.success { color: #22c55e; }
-    .upload-box { background: #1a1a1a; border: 2px dashed #333; border-radius: 12px; padding: 32px 20px; text-align: center; cursor: pointer; transition: border 0.2s; }
+    .upload-box { background: #141414; border: 2px dashed #222; border-radius: 16px; padding: 28px 20px; text-align: center; cursor: pointer; transition: all 0.2s; }
     .upload-box.has-image { border-color: #22c55e; border-style: solid; }
     .upload-box.error-highlight { border-color: #ef4444; }
-    .upload-box img { max-width: 100%; border-radius: 8px; max-height: 200px; object-fit: contain; }
-    .upload-icon { font-size: 36px; margin-bottom: 8px; }
-    .upload-text { font-size: 14px; color: #888; }
+    .upload-box img { max-width: 100%; border-radius: 10px; max-height: 200px; object-fit: contain; }
+    .upload-icon { font-size: 32px; margin-bottom: 8px; }
+    .upload-text { font-size: 13px; color: #555; }
     input[type=file] { display: none; }
-    .btn { width: 100%; background: #ff6b00; color: #fff; border: none; border-radius: 12px; padding: 16px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 16px; transition: opacity 0.2s; }
-    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .alert { border-radius: 10px; padding: 12px 14px; margin-top: 12px; font-size: 14px; line-height: 1.5; }
-    .alert.error { background: #2a0a0a; border: 1px solid #ef4444; color: #fca5a5; }
-    .alert.success { background: #0a2a0a; border: 1px solid #22c55e; color: #86efac; }
-    .section-error { font-size: 12px; color: #ef4444; margin-top: 6px; padding-left: 2px; display: none; }
+    .btn { width: 100%; background: linear-gradient(135deg, #c94e00, #ff9500); color: #fff; border: none; border-radius: 16px; padding: 17px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 16px; font-family: inherit; transition: opacity 0.2s, transform 0.1s; box-shadow: 0 4px 20px rgba(255,107,0,0.25); }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+    .alert { border-radius: 12px; padding: 14px 16px; margin-top: 12px; font-size: 14px; line-height: 1.6; }
+    .alert.error { background: #1a0808; border: 1px solid #ef4444; color: #fca5a5; }
+    .alert.success { background: #081a08; border: 1px solid #22c55e; color: #86efac; }
   </style>
 </head>
 <body>
@@ -50,45 +73,75 @@
     <h1>📋 สมัครสมาชิก</h1>
   </div>
 
+  <!-- เลือกแพ็กเกจ -->
   <div class="section">
-    <div class="section-title">เลือกแพ็กเกจ</div>
-    <div class="pkg-grid" id="pkg-grid">
-      <div class="pkg-card" data-pkg="1month" onclick="selectPkg(this)">
-        <div class="months">1 เดือน</div>
-        <div class="price">79</div>
-        <div class="baht">บาท</div>
+    <div class="section-label">เลือกแพ็กเกจ</div>
+    <div class="pkg-grid">
+      <div class="pkg-card" data-pkg="1month" data-price="79" onclick="selectPkg(this)">
+        <div class="pkg-months">1 เดือน</div>
+        <div class="pkg-price">79</div>
+        <div class="pkg-baht">บาท</div>
       </div>
-      <div class="pkg-card" data-pkg="2months" onclick="selectPkg(this)">
-        <div class="months">2 เดือน</div>
-        <div class="price">155</div>
-        <div class="baht">บาท</div>
+      <div class="pkg-card" data-pkg="2months" data-price="155" onclick="selectPkg(this)">
+        <div class="pkg-months">2 เดือน</div>
+        <div class="pkg-price">155</div>
+        <div class="pkg-baht">บาท</div>
+        <div class="pkg-badge">ประหยัดกว่า</div>
       </div>
-      <div class="pkg-card" data-pkg="3months" onclick="selectPkg(this)">
-        <div class="months">3 เดือน</div>
-        <div class="price">230</div>
-        <div class="baht">บาท</div>
+      <div class="pkg-card" data-pkg="3months" data-price="230" onclick="selectPkg(this)">
+        <div class="pkg-months">3 เดือน</div>
+        <div class="pkg-price">230</div>
+        <div class="pkg-baht">บาท</div>
+        <div class="pkg-badge">คุ้มที่สุด</div>
       </div>
     </div>
     <div class="section-error" id="pkg-error">⚠️ กรุณาเลือกแพ็กเกจก่อนครับ</div>
   </div>
 
+  <!-- ช่องทางชำระเงิน + QR -->
   <div class="section">
-    <div class="section-title">อีเมลที่ใช้สมัคร YouTube</div>
-    <div class="input-wrap">
-      <input
-        type="email"
-        class="input-box"
-        id="member-email"
-        placeholder="example@gmail.com"
-        oninput="validateEmail()"
-        onblur="validateEmailStrict()"
-      />
+    <div class="section-label">ช่องทางชำระเงิน</div>
+    <div class="payment-box">
+      <div class="payment-header">
+        <div class="bank-logo">💜</div>
+        <div class="bank-info">
+          <div class="bank-name">ธนาคารไทยพาณิชย์ (SCB)</div>
+          <div class="bank-acc">เบอร์พร้อมเพย์: <strong>0993411929</strong></div>
+        </div>
+        <button class="copy-btn" onclick="copyAccount()">📋 Copy</button>
+      </div>
+
+      <div class="qr-section">
+        <div class="qr-placeholder" id="qr-placeholder">
+          <div class="qr-icon">📱</div>
+          <div class="qr-text">เลือกแพ็กเกจด้านบน<br>เพื่อสร้าง QR PromptPay</div>
+        </div>
+        <div class="qr-loading" id="qr-loading">
+          <div class="spinner-sm"></div>
+          <div style="font-size:12px;color:#555;margin-top:10px">กำลังสร้าง QR Code...</div>
+        </div>
+        <div class="qr-img-wrap" id="qr-img-wrap">
+          <img id="qr-img" src="" alt="QR PromptPay"/>
+        </div>
+        <div id="qr-info" style="display:none">
+          <div class="qr-amount" id="qr-amount"></div>
+          <div class="qr-amount-sub">สแกนจ่ายผ่าน Mobile Banking ได้เลย</div>
+          <div style="font-size:11px;color:#444;margin-top:4px">PromptPay · 0993411929</div>
+        </div>
+      </div>
     </div>
+  </div>
+
+  <!-- อีเมล -->
+  <div class="section">
+    <div class="section-label">อีเมล YouTube ของคุณ</div>
+    <input type="email" class="input-box" id="member-email" placeholder="example@gmail.com" oninput="validateEmail()" onblur="validateEmailStrict()"/>
     <div class="field-msg" id="email-msg"></div>
   </div>
 
+  <!-- แนบสลิป -->
   <div class="section">
-    <div class="section-title">แนบสลิปโอนเงิน</div>
+    <div class="section-label">แนบสลิปโอนเงิน</div>
     <div class="upload-box" id="upload-box" onclick="document.getElementById('slip-input').click()">
       <div id="upload-placeholder">
         <div class="upload-icon">📎</div>
@@ -102,69 +155,87 @@
 
   <div class="section">
     <div id="alert-box"></div>
-    <button class="btn" id="submit-btn" onclick="submit()">ยืนยันสมัครสมาชิก</button>
+    <button class="btn" id="submit-btn" onclick="submit()">ยืนยันสมัครสมาชิก 🐯</button>
   </div>
 
   <script>
     const LIFF_ID = '2009843737-CwJgLFBY';
     const BASE_URL = window.location.origin;
-    let profile = null;
-    let selectedPkg = null;
-    let slipFile = null;
+    const PROMPTPAY_ID = '0993411929';
+    const PRICES = { '1month': 79, '2months': 155, '3months': 230 };
+
+    let profile = null, selectedPkg = null, slipFile = null;
 
     liff.init({ liffId: LIFF_ID }).then(async () => {
       if (!liff.isLoggedIn()) { liff.login(); return; }
       profile = await liff.getProfile();
     });
 
-    function selectPkg(el) {
+    function copyAccount() {
+      navigator.clipboard.writeText(PROMPTPAY_ID).then(() => {
+        const btn = document.querySelector('.copy-btn');
+        const orig = btn.textContent;
+        btn.textContent = 'Copied ✓';
+        setTimeout(() => btn.textContent = orig, 1500);
+      });
+    }
+
+    async function selectPkg(el) {
       document.querySelectorAll('.pkg-card').forEach(c => c.classList.remove('selected', 'error-highlight'));
       el.classList.add('selected');
       selectedPkg = el.dataset.pkg;
       document.getElementById('pkg-error').style.display = 'none';
+      await generateQR(PRICES[selectedPkg]);
+    }
+
+    async function generateQR(amount) {
+      document.getElementById('qr-placeholder').style.display = 'none';
+      document.getElementById('qr-img-wrap').style.display = 'none';
+      document.getElementById('qr-info').style.display = 'none';
+      document.getElementById('qr-loading').style.display = 'block';
+
+      try {
+        const url = `https://promptpay.io/${PROMPTPAY_ID}/${amount}.png`;
+        await new Promise((resolve, reject) => {
+          const img = document.getElementById('qr-img');
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = url + '?t=' + Date.now();
+        });
+        document.getElementById('qr-loading').style.display = 'none';
+        document.getElementById('qr-img-wrap').style.display = 'block';
+        document.getElementById('qr-info').style.display = 'block';
+        document.getElementById('qr-amount').textContent = `฿${amount.toLocaleString()}`;
+      } catch {
+        document.getElementById('qr-loading').style.display = 'none';
+        document.getElementById('qr-placeholder').style.display = 'flex';
+        document.getElementById('qr-placeholder').innerHTML = `
+          <div style="font-size:13px;color:#888;line-height:1.8;padding:0 8px">
+            โอน <strong style="color:#ff9500">฿${amount}</strong> ไปที่<br>
+            พร้อมเพย์ <strong style="color:#c8a0ff;font-family:monospace">0993411929</strong><br>
+            <span style="font-size:11px;color:#555">แล้วแนบสลิปด้านล่างครับ</span>
+          </div>`;
+      }
     }
 
     function validateEmail() {
       const email = document.getElementById('member-email').value.trim();
       const input = document.getElementById('member-email');
       const msg = document.getElementById('email-msg');
-
-      if (email === '') {
-        input.className = 'input-box';
-        msg.textContent = '';
-        msg.className = 'field-msg';
-        return false;
-      }
-
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        input.className = 'input-box input-error';
-        msg.textContent = '⚠️ รูปแบบอีเมลไม่ถูกต้อง เช่น example@gmail.com';
-        msg.className = 'field-msg error';
-        return false;
-      }
-
-      input.className = 'input-box input-ok';
-      msg.textContent = '✓ อีเมลถูกต้อง';
-      msg.className = 'field-msg success';
-      return true;
-    }
-
-    async function checkEmailDuplicate(email) {
-      try {
-        const res = await fetch(`${BASE_URL}/api/check-email?email=${encodeURIComponent(email)}`);
-        const data = await res.json();
-        return data.exists;
-      } catch { return false; }
+      if (!email) { input.className = 'input-box'; msg.textContent = ''; msg.className = 'field-msg'; return false; }
+      const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      input.className = `input-box ${ok ? 'input-ok' : 'input-error'}`;
+      msg.textContent = ok ? '✓ อีเมลถูกต้อง' : '⚠️ รูปแบบอีเมลไม่ถูกต้อง';
+      msg.className = `field-msg ${ok ? 'success' : 'error'}`;
+      return ok;
     }
 
     function validateEmailStrict() {
       const email = document.getElementById('member-email').value.trim();
-      const msg = document.getElementById('email-msg');
-      if (email === '') {
+      if (!email) {
         document.getElementById('member-email').className = 'input-box input-error';
-        msg.textContent = '⚠️ กรุณากรอกอีเมลครับ';
-        msg.className = 'field-msg error';
+        document.getElementById('email-msg').textContent = '⚠️ กรุณากรอกอีเมลครับ';
+        document.getElementById('email-msg').className = 'field-msg error';
       }
     }
 
@@ -183,84 +254,44 @@
       reader.readAsDataURL(slipFile);
     }
 
-    function showAlert(msg, type) {
-      document.getElementById('alert-box').innerHTML = `<div class="alert ${type}">${msg}</div>`;
-    }
-
     function validate() {
       let valid = true;
-
-      if (!selectedPkg) {
-        document.querySelectorAll('.pkg-card').forEach(c => c.classList.add('error-highlight'));
-        document.getElementById('pkg-error').style.display = 'block';
-        valid = false;
-      }
-
-      if (!validateEmail()) {
-        validateEmailStrict();
-        valid = false;
-      }
-
-      if (!slipFile) {
-        document.getElementById('upload-box').classList.add('error-highlight');
-        document.getElementById('slip-error').style.display = 'block';
-        valid = false;
-      }
-
+      if (!selectedPkg) { document.querySelectorAll('.pkg-card').forEach(c => c.classList.add('error-highlight')); document.getElementById('pkg-error').style.display = 'block'; valid = false; }
+      if (!validateEmail()) { validateEmailStrict(); valid = false; }
+      if (!slipFile) { document.getElementById('upload-box').classList.add('error-highlight'); document.getElementById('slip-error').style.display = 'block'; valid = false; }
       return valid;
-    }
-
-    async function checkEmailDuplicate(email) {
-      try {
-        const res = await fetch(`${BASE_URL}/api/check-email?email=${encodeURIComponent(email)}`);
-        const data = await res.json();
-        return data.exists;
-      } catch { return false; }
     }
 
     async function submit() {
       if (!validate()) return;
-
       const btn = document.getElementById('submit-btn');
       const email = document.getElementById('member-email').value.trim();
-      btn.disabled = true;
-      btn.textContent = 'กำลังตรวจสลิป...';
-
+      btn.disabled = true; btn.textContent = 'กำลังตรวจสลิป...';
       try {
-        // เช็คอีเมลซ้ำก่อน
-        const isDuplicate = await checkEmailDuplicate(email);
-        if (isDuplicate) {
-          showAlert(`❌ อีเมล ${email} มีในระบบแล้ว ไม่สามารถสมัครซ้ำได้ครับ`, 'error');
-          btn.disabled = false;
-          btn.textContent = 'ยืนยันสมัครสมาชิก';
-          return;
+        const dupRes = await fetch(`${BASE_URL}/api/check-email?email=${encodeURIComponent(email)}`);
+        const dup = await dupRes.json();
+        if (dup.exists) {
+          document.getElementById('alert-box').innerHTML = `<div class="alert error">❌ อีเมล ${email} มีในระบบแล้ว ไม่สามารถสมัครซ้ำได้ครับ</div>`;
+          btn.disabled = false; btn.textContent = 'ยืนยันสมัครสมาชิก 🐯'; return;
         }
-
         const formData = new FormData();
         formData.append('slip', slipFile);
         formData.append('lineUserId', profile.userId);
         formData.append('displayName', profile.displayName);
         formData.append('packageType', selectedPkg);
         formData.append('memberEmail', email);
-
-        const res = await fetch(`${BASE_URL}/api/register`, {
-          method: 'POST',
-          body: formData,
-        });
+        const res = await fetch(`${BASE_URL}/api/register`, { method: 'POST', body: formData });
         const data = await res.json();
-
         if (data.success) {
-          showAlert(`✅ สมัครสำเร็จ!<br>📧 ${email}<br>📅 หมดอายุ ${data.expireDate}<br><br>แอดมินจะส่งข้อมูลเข้าบ้านภายใน 24 ชม. ครับ 🐯`, 'success');
+          document.getElementById('alert-box').innerHTML = `<div class="alert success">✅ สมัครสำเร็จแล้วครับ!<br>📧 ${email}<br>📅 หมดอายุ ${data.expireDate}<br><br>⏳ รอแอดมินส่งคำเชิญภายใน 24 ชม. 🐯</div>`;
           btn.textContent = 'สมัครสำเร็จแล้ว ✅';
         } else {
-          showAlert(`❌ ${data.error}`, 'error');
-          btn.disabled = false;
-          btn.textContent = 'ยืนยันสมัครสมาชิก';
+          document.getElementById('alert-box').innerHTML = `<div class="alert error">❌ ${data.error}</div>`;
+          btn.disabled = false; btn.textContent = 'ยืนยันสมัครสมาชิก 🐯';
         }
-      } catch (err) {
-        showAlert('เกิดข้อผิดพลาด กรุณาลองใหม่ครับ', 'error');
-        btn.disabled = false;
-        btn.textContent = 'ยืนยันสมัครสมาชิก';
+      } catch {
+        document.getElementById('alert-box').innerHTML = `<div class="alert error">เกิดข้อผิดพลาด กรุณาลองใหม่ครับ</div>`;
+        btn.disabled = false; btn.textContent = 'ยืนยันสมัครสมาชิก 🐯';
       }
     }
   </script>
