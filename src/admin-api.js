@@ -305,6 +305,18 @@ router.post('/report/status', authCheck, async (req, res) => {
   }
 });
 
+// Public endpoint — ลูกค้าดูปัญหาของตัวเอง
+router.get('/report/user/:lineUserId', async (req, res) => {
+  try {
+    const { lineUserId } = req.params;
+    const reports = await getReports();
+    const userReports = reports.filter(r => r.lineUserId === lineUserId);
+    res.json({ success: true, reports: userReports });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Public endpoint — ลูกค้าแจ้งปัญหา (ไม่ต้อง auth)
 router.post('/report', async (req, res) => {
   try {
