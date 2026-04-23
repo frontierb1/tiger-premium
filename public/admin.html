@@ -918,12 +918,15 @@ function localDateStr(d) {
 
 function renderWarnExpiredMembers() {
   const el = document.getElementById('warn-expired-members');
+  if (!el) return;
   const today = localDateStr(new Date());
-  // สมาชิกที่หมดอายุแล้ว แต่ยังอยู่ในบ้าน (inviteStatus = active หรือ inviting)
+  // สมาชิกหมดอายุแล้ว และยังอยู่ในบ้าน (มี houseId) ยกเว้น removed
   const expired = allMembers.filter(m =>
     m.expireDate < today &&
     m.houseId &&
-    (m.inviteStatus === 'active' || m.inviteStatus === 'inviting')
+    m.houseId.trim() !== '' &&
+    m.inviteStatus !== 'removed' &&
+    m.inviteStatus !== 'pending'
   );
   if (expired.length === 0) {
     el.innerHTML = '<div class="warn-empty">✅ ไม่มีสมาชิกหมดอายุในบ้าน</div>';
@@ -1334,6 +1337,12 @@ function renderAll() {
   if (activeTab === 'tab-dashboard') renderDashboard();
   if (activeTab === 'tab-houses') renderWarnExpiringHouses();
   if (activeTab === 'tab-all') renderWarnExpiredMembers();
+
+  // อัปเดต badge ปัญหา (ถ้ามีข้อมูล)
+  if (_allReports.length > 0) {
+    const pendingReports = _allReports.filter(r => r.status === 'pending').length;
+    document.getElementById('badge-reports').textContent = pendingReports > 0 ? `(${pendingReports})` : '';
+  }
 }
 
 function populateHouseSelect() {
@@ -1552,6 +1561,14 @@ function renderHouses() {
         </td>
       </tr>`;
   }).join('');
+
+  // restore toggle state ที่เปิดค้างไว้
+  openHousesState.forEach(houseId => {
+    const row = document.getElementById(`members-${houseId}`);
+    const arrow = document.getElementById(`arrow-${houseId}`);
+    if (row) row.style.display = 'table-row';
+    if (arrow) arrow.textContent = '▼';
+  });
 }
 
 function renderAllMembers(members) {
@@ -1994,6 +2011,9 @@ async function loadLogs() {
 
 
 
+// จำ state บ้านที่เปิดอยู่
+const openHousesState = new Set();
+
 function toggleHouseMembers(houseId) {
   const row = document.getElementById(`members-${houseId}`);
   const arrow = document.getElementById(`arrow-${houseId}`);
@@ -2001,6 +2021,9 @@ function toggleHouseMembers(houseId) {
   const isOpen = row.style.display !== 'none';
   row.style.display = isOpen ? 'none' : 'table-row';
   arrow.textContent = isOpen ? '▶' : '▼';
+  // บันทึก state
+  if (isOpen) openHousesState.delete(houseId);
+  else openHousesState.add(houseId);
 }
 
 async function removeMember(rowIndex, lineUserId, email, btn) {
