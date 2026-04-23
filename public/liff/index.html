@@ -222,6 +222,7 @@
     let _profile = null;
     let _pollInterval = null;
     let _emailsExpanded = false;
+    const _bannerExpandedState = new Map(); // จำ state แต่ละ banner
 
     async function init() {
       await liff.init({ liffId: LIFF_ID });
@@ -307,7 +308,7 @@
           padding:10px 16px;color:#85B7EB;font-size:12px;cursor:pointer;
           display:flex;align-items:center;justify-content:space-between;font-family:inherit;
         `;
-        toggleBtn.innerHTML = `<span>อีเมลทั้งหมด ${members.length} รายการ</span><span id="toggle-arrow">▼</span>`;
+        toggleBtn.innerHTML = `<span>อีเมลทั้งหมด ${members.length} รายการ</span><span id="toggle-arrow">${_emailsExpanded ? '▲' : '▼'}</span>`;
         toggleBtn.onclick = () => {
           _emailsExpanded = !_emailsExpanded;
           document.getElementById('toggle-arrow').textContent = _emailsExpanded ? '▲' : '▼';
@@ -315,7 +316,7 @@
         };
 
         const emailList = document.createElement('div');
-        emailList.style.cssText = 'display:none;flex-direction:column;gap:6px;margin-top:6px';
+        emailList.style.cssText = `display:${_emailsExpanded ? 'flex' : 'none'};flex-direction:column;gap:6px;margin-top:6px`;
         emailList.innerHTML = members.slice(1).map(m => {
           const dd = m.daysLeft;
           const c = dd > 7 ? '#22c55e' : dd > 0 ? '#f59e0b' : '#ef4444';
@@ -329,12 +330,6 @@
               </div>
             </div>`;
         }).join('');
-
-        // restore expanded state
-        if (_emailsExpanded) {
-          emailList.style.display = 'flex';
-          document.getElementById('toggle-arrow') && (document.getElementById('toggle-arrow').textContent = '▲');
-        }
 
         wrap.appendChild(toggleBtn);
         wrap.appendChild(emailList);
@@ -380,9 +375,15 @@
                     ในอีเมลที่ได้รับจาก YouTube Premium Family
                   </div>
                 </div>
-              
                 <div class="step-item">
                   <div class="step-num">3</div>
+                  <div class="step-text">
+                    <strong>ล็อกอินด้วยอีเมลนี้บน YouTube</strong>
+                    เปิด youtube.com หรือแอป YouTube แล้วล็อกอิน
+                  </div>
+                </div>
+                <div class="step-item">
+                  <div class="step-num">4</div>
                   <div class="step-text">
                     <strong>แจ้งแอดมินว่ากดรับแล้ว</strong>
                     กด "แจ้งปัญหา" หรือติดต่อแอดมินเพื่อยืนยัน
@@ -427,6 +428,18 @@
           ${b.toggleContent ? `<div class="banner-chevron" id="banner-chevron-${i}">▼</div>` : `<div class="banner-dot ${b.dot}"></div>`}
         </div>
       `).join('');
+
+      // restore expanded state
+      banners.forEach((b, i) => {
+        if (!b.toggleContent) return;
+        const wasOpen = _bannerExpandedState.get(i);
+        if (wasOpen) {
+          const content = document.getElementById(`banner-toggle-${i}`);
+          const chevron = document.getElementById(`banner-chevron-${i}`);
+          if (content) content.classList.add('open');
+          if (chevron) chevron.classList.add('open');
+        }
+      });
     }
 
     function toggleBanner(i) {
@@ -436,6 +449,8 @@
       const isOpen = content.classList.contains('open');
       content.classList.toggle('open', !isOpen);
       if (chevron) chevron.classList.toggle('open', !isOpen);
+      // บันทึก state
+      _bannerExpandedState.set(i, !isOpen);
     }
 
     init().catch(console.error);
