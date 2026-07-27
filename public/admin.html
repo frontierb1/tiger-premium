@@ -1867,38 +1867,50 @@ function showNotif(msg, type = 'success') {
 }
 
 // ===== เพิ่มบ้านเดียว =====
+// ใช้ endpoint /houses/bulk แทน /house เพราะ /house ฝั่งเซิร์ฟเวอร์บังคับให้ส่ง houseId มาด้วย
+// แต่หน้านี้ตั้งใจให้ระบบตั้งชื่อ house_xx เอง เลยส่งค่าว่างไป → ขึ้น "ข้อมูลไม่ครบ" ทุกครั้ง
+// ส่วน /houses/bulk ไม่บังคับ houseId จึงใช้ได้ทันทีโดยไม่ต้องรออัปโค้ดฝั่งเซิร์ฟเวอร์
 async function addSingleHouse() {
-  const houseId = '';
   const houseEmail = document.getElementById('single-house-email').value.trim();
   const housePassword = document.getElementById('single-house-pass').value.trim();
   let expireDate = document.getElementById('single-house-expire').value;
   const resultEl = document.getElementById('single-house-result');
+  const msg = (color, text) => {
+    resultEl.innerHTML = `<div style="color:${color};font-size:12px;margin-top:8px">${text}</div>`;
+  };
 
   if (!houseEmail || !housePassword) {
-    resultEl.innerHTML = '<div style="color:#ef4444;font-size:12px;margin-top:8px">❌ กรุณากรอกอีเมลและรหัสผ่าน</div>';
+    msg('#ef4444', '❌ กรุณากรอกอีเมลและรหัสผ่าน');
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(houseEmail)) {
+    msg('#ef4444', '❌ รูปแบบอีเมลไม่ถูกต้อง');
     return;
   }
 
   if (!expireDate) expireDate = getDefaultExpire();
+  msg('#85B7EB', 'กำลังเพิ่มบ้าน...');
 
   try {
-    const res = await fetch(`${BASE_URL}/api/admin/house`, {
+    const res = await fetch(`${BASE_URL}/api/admin/houses/bulk`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password },
-      body: JSON.stringify({ houseId, houseEmail, housePassword, expireDate, maxMembers: 5 }),
+      body: JSON.stringify({ text: `${houseEmail}\n${housePassword}`, expireDate, maxMembers: 5 }),
     });
     const data = await res.json();
     if (data.success) {
-      resultEl.innerHTML = `<div style="color:#22c55e;font-size:12px;margin-top:8px">✅ เพิ่มบ้าน ${data.houseId} สำเร็จ</div>`;
+      const id = data.houses?.[0]?.houseId || '';
+      msg('#22c55e', `✅ เพิ่มบ้าน ${id} สำเร็จ`);
       document.getElementById('single-house-email').value = '';
       document.getElementById('single-house-pass').value = '';
-      document.getElementById('single-house-id').value = '';
+      const idEl = document.getElementById('single-house-id');
+      if (idEl) idEl.value = '';
       scheduleLoad(500);
     } else {
-      resultEl.innerHTML = `<div style="color:#ef4444;font-size:12px;margin-top:8px">❌ ${data.error}</div>`;
+      msg('#ef4444', `❌ ${data.error}`);
     }
   } catch (err) {
-    resultEl.innerHTML = '<div style="color:#ef4444;font-size:12px;margin-top:8px">❌ เกิดข้อผิดพลาด</div>';
+    msg('#ef4444', '❌ เกิดข้อผิดพลาด');
   }
 }
 
