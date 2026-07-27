@@ -18,12 +18,12 @@
     <h1>เช็ควันหมดอายุ</h1>
   </header>
 
-  <div id="loading" class="center-state">
+  <div id="loading" class="center-state pull-up">
     <div class="spinner"></div>
     <p>กำลังโหลดข้อมูล…</p>
   </div>
 
-  <div id="empty" class="center-state hidden">
+  <div id="empty" class="center-state pull-up hidden">
     <div class="cs-icon" data-icon="search"></div>
     <h2>ไม่พบข้อมูลสมาชิก</h2>
     <p>กรุณา <a href="register.html" class="link">สมัครสมาชิก</a> ก่อนนะครับ</p>
@@ -62,7 +62,7 @@
       const statusText = t === 'ok' ? 'ใช้งานได้ปกติ' : t === 'warn' ? 'ใกล้หมดอายุ' : 'หมดอายุแล้ว';
 
       return `
-        <section class="section fade-in" ${i === 0 ? 'style="margin-top:16px"' : ''}>
+        <section class="section fade-in ${i === 0 ? 'pull-up' : ''}" ${i === 0 ? 'data-first' : ''}>
           <div class="card">
             <div class="hero ${t}">
               <div class="hero-days">${d > 0 ? d : 0}</div>
