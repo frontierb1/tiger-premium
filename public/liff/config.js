@@ -15,6 +15,7 @@ window.APP = {
   // ===== การชำระเงิน =====
   promptpayId: '0993411929',
   bankName: 'ธนาคารไทยพาณิชย์ (SCB)',
+  bankNumber: '4069541526',
 
   // ===== แพ็กเกจ =====
   packages: [
