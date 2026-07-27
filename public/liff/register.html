@@ -1,299 +1,297 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="th" data-page="สมัครสมาชิก">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>สมัครสมาชิก - Tiger Premium</title>
+  <title>สมัครสมาชิก</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/liff/theme.css">
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Noto Sans Thai', -apple-system, sans-serif; background: #0c0c0c; color: #fff; min-height: 100vh; padding-bottom: 48px; }
-    .header { background: linear-gradient(135deg, #c94e00, #ff9500); padding: 18px 20px; display: flex; align-items: center; gap: 12px; }
-    .header a { color: #fff; text-decoration: none; font-size: 22px; }
-    .header h1 { font-size: 18px; font-weight: 700; }
-    .section { margin: 16px 16px 0; }
-    .section-label { font-size: 11px; font-weight: 700; color: #555; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
-    .pkg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    .pkg-card { background: #141414; border: 2px solid #1e1e1e; border-radius: 16px; padding: 16px 8px; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; }
-    .pkg-card.selected { border-color: #ff6b00; background: #1a0d00; }
-    .pkg-card.error-highlight { border-color: #ef4444; }
-    .pkg-card.selected::after { content: '✓'; position: absolute; top: 6px; right: 8px; font-size: 11px; color: #ff6b00; font-weight: 700; }
-    .pkg-months { font-size: 11px; color: #666; margin-bottom: 4px; }
-    .pkg-price { font-size: 26px; font-weight: 800; color: #ff9500; line-height: 1; }
-    .pkg-baht { font-size: 11px; color: #555; margin-top: 2px; }
-    .pkg-badge { font-size: 10px; color: #22c55e; margin-top: 4px; font-weight: 600; }
-    .section-error { font-size: 12px; color: #ef4444; margin-top: 6px; display: none; }
-    .payment-box { background: #141414; border: 1px solid #1e1e1e; border-radius: 18px; overflow: hidden; }
-    .payment-header { background: #120d20; border-bottom: 1px solid #1e1830; padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
-    .bank-logo { width: 40px; height: 40px; background: linear-gradient(135deg, #4f00c8, #7b2fff); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
-    .bank-info { flex: 1; }
-    .bank-name { font-size: 14px; font-weight: 700; }
-    .bank-acc { font-size: 12px; color: #888; margin-top: 2px; }
-    .bank-acc strong { color: #c8a0ff; font-family: monospace; font-size: 14px; }
-    .copy-btn { background: rgba(200,160,255,0.12); border: 1px solid rgba(200,160,255,0.25); color: #c8a0ff; border-radius: 8px; padding: 6px 14px; font-size: 12px; cursor: pointer; font-family: inherit; font-weight: 600; transition: all 0.2s; white-space: nowrap; }
-    .copy-btn:active { background: rgba(200,160,255,0.2); }
-    .qr-section { padding: 24px 20px; text-align: center; }
-    .qr-placeholder { width: 200px; height: 200px; margin: 0 auto 14px; background: #1a1a1a; border-radius: 16px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; border: 2px dashed #242424; }
-    .qr-placeholder .qr-icon { font-size: 36px; }
-    .qr-placeholder .qr-text { font-size: 12px; color: #555; line-height: 1.6; }
-    .qr-img-wrap { width: 200px; height: 200px; margin: 0 auto 14px; background: #fff; border-radius: 16px; padding: 10px; display: none; box-shadow: 0 0 0 4px rgba(255,149,0,0.2); }
-    .qr-img-wrap img { width: 100%; height: 100%; object-fit: contain; }
-    .qr-loading { display: none; padding: 40px 0 14px; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .spinner-sm { display: inline-block; width: 28px; height: 28px; border: 3px solid #222; border-top-color: #ff9500; border-radius: 50%; animation: spin 0.8s linear infinite; }
-    .qr-amount { font-size: 28px; font-weight: 800; color: #ff9500; }
-    .qr-amount-sub { font-size: 12px; color: #555; margin-top: 4px; }
-    .input-box { background: #141414; border: 1.5px solid #1e1e1e; border-radius: 14px; padding: 14px 16px; font-size: 15px; color: #fff; width: 100%; outline: none; transition: border 0.2s; font-family: inherit; }
-    .input-box:focus { border-color: #ff6b00; }
-    .input-box.input-error { border-color: #ef4444; }
-    .input-box.input-ok { border-color: #22c55e; }
-    .input-box::placeholder { color: #444; }
-    .field-msg { font-size: 12px; margin-top: 6px; padding-left: 2px; }
-    .field-msg.error { color: #ef4444; }
-    .field-msg.success { color: #22c55e; }
-    .upload-box { background: #141414; border: 2px dashed #222; border-radius: 16px; padding: 28px 20px; text-align: center; cursor: pointer; transition: all 0.2s; }
-    .upload-box.has-image { border-color: #22c55e; border-style: solid; }
-    .upload-box.error-highlight { border-color: #ef4444; }
-    .upload-box img { max-width: 100%; border-radius: 10px; max-height: 200px; object-fit: contain; }
-    .upload-icon { font-size: 32px; margin-bottom: 8px; }
-    .upload-text { font-size: 13px; color: #555; }
-    input[type=file] { display: none; }
-    .btn { width: 100%; background: linear-gradient(135deg, #c94e00, #ff9500); color: #fff; border: none; border-radius: 16px; padding: 17px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 16px; font-family: inherit; transition: opacity 0.2s, transform 0.1s; box-shadow: 0 4px 20px rgba(255,107,0,0.25); }
-    .btn:active { transform: scale(0.98); }
-    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
-    .alert { border-radius: 12px; padding: 14px 16px; margin-top: 12px; font-size: 14px; line-height: 1.6; }
-    .alert.error { background: #1a0808; border: 1px solid #ef4444; color: #fca5a5; }
-    .alert.success { background: #081a08; border: 1px solid #22c55e; color: #86efac; }
-  </style>
+  <script src="/liff/config.js"></script>
+  <script src="/liff/liff-auth.js"></script>
 </head>
 <body>
-  <div class="header">
-    <a href="index.html">←</a>
-    <h1>📋 สมัครสมาชิก</h1>
-  </div>
+<div class="app">
 
-  <!-- เลือกแพ็กเกจ -->
-  <div class="section">
-    <div class="section-label">เลือกแพ็กเกจ</div>
-    <div class="pkg-grid">
-      <div class="pkg-card" data-pkg="1month" data-price="79" onclick="selectPkg(this)">
-        <div class="pkg-months">1 เดือน</div>
-        <div class="pkg-price">79</div>
-        <div class="pkg-baht">บาท</div>
+  <header class="topbar">
+    <a href="index.html" class="icon-btn" data-icon="back" aria-label="ย้อนกลับ"></a>
+    <h1>สมัครสมาชิก</h1>
+  </header>
+
+  <!-- 1. เลือกแพ็กเกจ -->
+  <section class="section">
+    <div class="section-label">1 · เลือกแพ็กเกจ</div>
+    <div class="pkg-grid" id="pkg-grid"></div>
+    <div class="field-msg error hidden" id="pkg-error">
+      <span data-icon="alert"></span><span>กรุณาเลือกแพ็กเกจก่อนครับ</span>
+    </div>
+  </section>
+
+  <!-- 2. ชำระเงิน -->
+  <section class="section">
+    <div class="section-label">2 · ชำระเงิน</div>
+    <div class="card">
+      <div class="row">
+        <div class="row-main">
+          <div class="row-title" id="bank-name"></div>
+          <div class="row-sub">พร้อมเพย์ <span class="mono" id="pp-id"></span></div>
+        </div>
+        <button class="btn btn-outline" id="copy-btn" style="width:auto;padding:8px 13px;font-size:12.5px">
+          <span data-icon="copy"></span><span id="copy-label">คัดลอก</span>
+        </button>
       </div>
-      <div class="pkg-card" data-pkg="2months" data-price="155" onclick="selectPkg(this)">
-        <div class="pkg-months">2 เดือน</div>
-        <div class="pkg-price">155</div>
-        <div class="pkg-baht">บาท</div>
-        <div class="pkg-badge">ประหยัดกว่า</div>
-      </div>
-      <div class="pkg-card" data-pkg="3months" data-price="230" onclick="selectPkg(this)">
-        <div class="pkg-months">3 เดือน</div>
-        <div class="pkg-price">230</div>
-        <div class="pkg-baht">บาท</div>
-        <div class="pkg-badge">คุ้มที่สุด</div>
+
+      <div style="padding:22px 20px;text-align:center;border-top:1px solid var(--border)">
+        <!-- ก่อนเลือกแพ็กเกจ -->
+        <div id="qr-empty">
+          <div style="width:200px;height:200px;margin:0 auto;border-radius:var(--r);border:1.5px dashed var(--border-strong);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:var(--text-faint)">
+            <span style="width:26px;height:26px;display:block" data-icon="calendar"></span>
+            <span style="font-size:12.5px;line-height:1.6">เลือกแพ็กเกจด้านบน<br>เพื่อสร้าง QR พร้อมเพย์</span>
+          </div>
+        </div>
+
+        <!-- กำลังสร้าง QR -->
+        <div id="qr-loading" class="hidden" style="padding:70px 0">
+          <div class="spinner" style="margin:0 auto"></div>
+          <div style="font-size:12.5px;color:var(--text-muted);margin-top:12px">กำลังสร้าง QR Code…</div>
+        </div>
+
+        <!-- QR พร้อมใช้ -->
+        <div id="qr-ready" class="hidden">
+          <div style="width:200px;height:200px;margin:0 auto;background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:8px">
+            <img id="qr-img" alt="QR พร้อมเพย์" style="width:100%;height:100%;object-fit:contain"/>
+          </div>
+          <div style="font-size:30px;font-weight:800;letter-spacing:-1px;margin-top:14px" id="qr-amount"></div>
+          <div style="font-size:12.5px;color:var(--text-muted)">สแกนจ่ายผ่าน Mobile Banking ได้เลย</div>
+        </div>
+
+        <!-- สร้าง QR ไม่สำเร็จ -->
+        <div id="qr-fallback" class="hidden">
+          <div class="alert info" style="text-align:left">
+            <span data-icon="alert"></span>
+            <div>สร้าง QR ไม่สำเร็จ กรุณาโอนเอง<br>
+              ยอด <strong id="fb-amount"></strong> ไปที่พร้อมเพย์ <strong class="mono" id="fb-pp"></strong>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-    <div class="section-error" id="pkg-error">⚠️ กรุณาเลือกแพ็กเกจก่อนครับ</div>
-  </div>
+  </section>
 
-  <!-- ช่องทางชำระเงิน + QR -->
-  <div class="section">
-    <div class="section-label">ช่องทางชำระเงิน</div>
-    <div class="payment-box">
-      <div class="payment-header">
-        <div class="bank-logo">💜</div>
-        <div class="bank-info">
-          <div class="bank-name">ธนาคารไทยพาณิชย์ (SCB)</div>
-          <div class="bank-acc">เบอร์พร้อมเพย์: <strong>0993411929</strong></div>
-        </div>
-        <button class="copy-btn" onclick="copyAccount()">📋 Copy</button>
-      </div>
+  <!-- 3. อีเมล -->
+  <section class="section">
+    <div class="section-label">3 · อีเมล YouTube ของคุณ</div>
+    <input type="email" class="input" id="email" inputmode="email" autocomplete="email"
+           placeholder="example@gmail.com" oninput="onEmailInput()" onblur="onEmailBlur()"/>
+    <div class="field-msg hidden" id="email-msg"></div>
+  </section>
 
-      <div class="qr-section">
-        <div class="qr-placeholder" id="qr-placeholder">
-          <div class="qr-icon">📱</div>
-          <div class="qr-text">เลือกแพ็กเกจด้านบน<br>เพื่อสร้าง QR PromptPay</div>
-        </div>
-        <div class="qr-loading" id="qr-loading">
-          <div class="spinner-sm"></div>
-          <div style="font-size:12px;color:#555;margin-top:10px">กำลังสร้าง QR Code...</div>
-        </div>
-        <div class="qr-img-wrap" id="qr-img-wrap">
-          <img id="qr-img" src="" alt="QR PromptPay"/>
-        </div>
-        <div id="qr-info" style="display:none">
-          <div class="qr-amount" id="qr-amount"></div>
-          <div class="qr-amount-sub">สแกนจ่ายผ่าน Mobile Banking ได้เลย</div>
-          <div style="font-size:11px;color:#444;margin-top:4px">PromptPay · 0993411929</div>
-        </div>
+  <!-- 4. แนบสลิป -->
+  <section class="section">
+    <div class="section-label">4 · แนบสลิปโอนเงิน</div>
+    <div class="upload" id="upload" onclick="document.getElementById('slip').click()">
+      <div id="upload-empty">
+        <div class="up-icon" data-icon="upload"></div>
+        <div class="up-text">แตะเพื่อแนบสลิป</div>
+        <div class="up-hint">รองรับไฟล์รูปภาพ ไม่เกิน 8MB</div>
       </div>
+      <img id="slip-preview" class="hidden" alt="ตัวอย่างสลิป"/>
     </div>
-  </div>
-
-  <!-- อีเมล -->
-  <div class="section">
-    <div class="section-label">อีเมล YouTube ของคุณ</div>
-    <input type="email" class="input-box" id="member-email" placeholder="example@gmail.com" oninput="validateEmail()" onblur="validateEmailStrict()"/>
-    <div class="field-msg" id="email-msg"></div>
-  </div>
-
-  <!-- แนบสลิป -->
-  <div class="section">
-    <div class="section-label">แนบสลิปโอนเงิน</div>
-    <div class="upload-box" id="upload-box" onclick="document.getElementById('slip-input').click()">
-      <div id="upload-placeholder">
-        <div class="upload-icon">📎</div>
-        <div class="upload-text">แตะเพื่อแนบสลิป</div>
-      </div>
-      <img id="slip-preview" style="display:none"/>
+    <div class="field-msg error hidden" id="slip-error">
+      <span data-icon="alert"></span><span>กรุณาแนบสลิปโอนเงินครับ</span>
     </div>
-    <div class="section-error" id="slip-error">⚠️ กรุณาแนบสลิปโอนเงินครับ</div>
-    <input type="file" id="slip-input" accept="image/*" onchange="previewSlip(this)"/>
-  </div>
+    <input type="file" id="slip" accept="image/*" onchange="onSlip(this)"/>
+  </section>
 
-  <div class="section">
-    <div id="alert-box"></div>
-    <button class="btn" id="submit-btn" onclick="submit()">ยืนยันสมัครสมาชิก 🐯</button>
-  </div>
+  <section class="section">
+    <div id="alert-box" class="stack" style="margin-bottom:12px"></div>
+    <button class="btn btn-primary" id="submit" onclick="submit()">ยืนยันสมัครสมาชิก</button>
+  </section>
 
-  <script>
-    const LIFF_ID = '2009843737-CwJgLFBY';
-    const BASE_URL = window.location.origin;
-    const PROMPTPAY_ID = '0993411929';
-    const PRICES = { '1month': 79, '2months': 155, '3months': 230 };
+</div>
 
-    let profile = null, selectedPkg = null, slipFile = null;
+<script>
+  const BASE_URL = window.location.origin;
+  let profile = null, selectedPkg = null, slipFile = null;
+  const SUBMIT_LABEL = 'ยืนยันสมัครสมาชิก';
 
-    liff.init({ liffId: LIFF_ID }).then(async () => {
-      if (!liff.isLoggedIn()) { liff.login(); return; }
-      profile = await liff.getProfile();
+  // สร้างการ์ดแพ็กเกจจาก config.js
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('bank-name').textContent = APP.bankName;
+    document.getElementById('pp-id').textContent = APP.promptpayId;
+    document.getElementById('fb-pp').textContent = APP.promptpayId;
+
+    document.getElementById('pkg-grid').innerHTML = APP.packages.map(p => `
+      <button type="button" class="option pkg" data-pkg="${p.id}">
+        <div class="pkg-term">${p.label}</div>
+        <div class="pkg-price">${p.price}</div>
+        <div class="pkg-unit">บาท</div>
+        ${p.note ? `<div class="pkg-note">${p.note}</div>` : ''}
+      </button>`).join('');
+
+    document.querySelectorAll('.pkg').forEach(el => {
+      el.onclick = () => selectPkg(el);
     });
 
-    function copyAccount() {
-      navigator.clipboard.writeText(PROMPTPAY_ID).then(() => {
-        const btn = document.querySelector('.copy-btn');
-        const orig = btn.textContent;
-        btn.textContent = 'Copied ✓';
-        setTimeout(() => btn.textContent = orig, 1500);
+    document.getElementById('copy-btn').onclick = copyAccount;
+  });
+
+  liff.init({ liffId: APP.liffId }).then(async () => {
+    if (!liff.isLoggedIn()) { liff.login(); return; }
+    profile = await liff.getProfile();
+  });
+
+  function copyAccount() {
+    navigator.clipboard.writeText(APP.promptpayId).then(() => {
+      const label = document.getElementById('copy-label');
+      label.textContent = 'คัดลอกแล้ว';
+      setTimeout(() => label.textContent = 'คัดลอก', 1500);
+    });
+  }
+
+  function selectPkg(el) {
+    document.querySelectorAll('.pkg').forEach(c => c.classList.remove('is-selected', 'is-invalid'));
+    el.classList.add('is-selected');
+    selectedPkg = el.dataset.pkg;
+    document.getElementById('pkg-error').classList.add('hidden');
+    generateQR(APP.pkg(selectedPkg).price);
+  }
+
+  function showQR(state) {
+    ['qr-empty', 'qr-loading', 'qr-ready', 'qr-fallback'].forEach(id => {
+      document.getElementById(id).classList.toggle('hidden', id !== state);
+    });
+  }
+
+  async function generateQR(amount) {
+    showQR('qr-loading');
+    try {
+      await new Promise((resolve, reject) => {
+        const img = document.getElementById('qr-img');
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = `https://promptpay.io/${APP.promptpayId}/${amount}.png?t=${Date.now()}`;
       });
+      document.getElementById('qr-amount').textContent = `฿${amount.toLocaleString()}`;
+      showQR('qr-ready');
+    } catch {
+      document.getElementById('fb-amount').textContent = `฿${amount.toLocaleString()}`;
+      showQR('qr-fallback');
     }
+  }
 
-    async function selectPkg(el) {
-      document.querySelectorAll('.pkg-card').forEach(c => c.classList.remove('selected', 'error-highlight'));
-      el.classList.add('selected');
-      selectedPkg = el.dataset.pkg;
-      document.getElementById('pkg-error').style.display = 'none';
-      await generateQR(PRICES[selectedPkg]);
+  function setFieldMsg(ok, text) {
+    const el = document.getElementById('email-msg');
+    el.className = `field-msg ${ok ? 'ok' : 'error'}`;
+    el.innerHTML = `${ok ? ICON.check : ICON.alert}<span>${text}</span>`;
+    el.classList.remove('hidden');
+  }
+
+  function onEmailInput() {
+    const input = document.getElementById('email');
+    const value = input.value.trim();
+    if (!value) {
+      input.className = 'input';
+      document.getElementById('email-msg').classList.add('hidden');
+      return false;
     }
+    const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+    input.className = `input ${ok ? 'is-valid' : 'is-invalid'}`;
+    setFieldMsg(ok, ok ? 'อีเมลถูกต้อง' : 'รูปแบบอีเมลไม่ถูกต้อง');
+    return ok;
+  }
 
-    async function generateQR(amount) {
-      document.getElementById('qr-placeholder').style.display = 'none';
-      document.getElementById('qr-img-wrap').style.display = 'none';
-      document.getElementById('qr-info').style.display = 'none';
-      document.getElementById('qr-loading').style.display = 'block';
+  function onEmailBlur() {
+    if (!document.getElementById('email').value.trim()) {
+      document.getElementById('email').className = 'input is-invalid';
+      setFieldMsg(false, 'กรุณากรอกอีเมลครับ');
+    }
+  }
 
-      try {
-        const url = `https://promptpay.io/${PROMPTPAY_ID}/${amount}.png`;
-        await new Promise((resolve, reject) => {
-          const img = document.getElementById('qr-img');
-          img.onload = resolve;
-          img.onerror = reject;
-          img.src = url + '?t=' + Date.now();
-        });
-        document.getElementById('qr-loading').style.display = 'none';
-        document.getElementById('qr-img-wrap').style.display = 'block';
-        document.getElementById('qr-info').style.display = 'block';
-        document.getElementById('qr-amount').textContent = `฿${amount.toLocaleString()}`;
-      } catch {
-        document.getElementById('qr-loading').style.display = 'none';
-        document.getElementById('qr-placeholder').style.display = 'flex';
-        document.getElementById('qr-placeholder').innerHTML = `
-          <div style="font-size:13px;color:#888;line-height:1.8;padding:0 8px">
-            โอน <strong style="color:#ff9500">฿${amount}</strong> ไปที่<br>
-            พร้อมเพย์ <strong style="color:#c8a0ff;font-family:monospace">0993411929</strong><br>
-            <span style="font-size:11px;color:#555">แล้วแนบสลิปด้านล่างครับ</span>
-          </div>`;
+  function onSlip(input) {
+    if (!input.files[0]) return;
+    slipFile = input.files[0];
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = document.getElementById('slip-preview');
+      img.src = e.target.result;
+      img.classList.remove('hidden');
+      document.getElementById('upload-empty').classList.add('hidden');
+      document.getElementById('upload').classList.add('has-file');
+      document.getElementById('upload').classList.remove('is-invalid');
+      document.getElementById('slip-error').classList.add('hidden');
+    };
+    reader.readAsDataURL(slipFile);
+  }
+
+  function validate() {
+    let ok = true;
+    if (!selectedPkg) {
+      document.querySelectorAll('.pkg').forEach(c => c.classList.add('is-invalid'));
+      document.getElementById('pkg-error').classList.remove('hidden');
+      ok = false;
+    }
+    if (!onEmailInput()) { onEmailBlur(); ok = false; }
+    if (!slipFile) {
+      document.getElementById('upload').classList.add('is-invalid');
+      document.getElementById('slip-error').classList.remove('hidden');
+      ok = false;
+    }
+    return ok;
+  }
+
+  function showAlert(type, html) {
+    document.getElementById('alert-box').innerHTML =
+      `<div class="alert ${type} fade-in">${type === 'success' ? ICON.check : ICON.alert}<div>${html}</div></div>`;
+  }
+
+  function resetBtn() {
+    const btn = document.getElementById('submit');
+    btn.disabled = false;
+    btn.textContent = SUBMIT_LABEL;
+  }
+
+  async function submit() {
+    if (!validate()) return;
+    const btn = document.getElementById('submit');
+    const email = document.getElementById('email').value.trim();
+    document.getElementById('alert-box').innerHTML = '';
+    btn.disabled = true;
+    btn.textContent = 'กำลังตรวจสลิป…';
+
+    try {
+      const dupRes = await apiFetch(`${BASE_URL}/api/check-email?email=${encodeURIComponent(email)}`);
+      const dup = await dupRes.json();
+      if (dup.exists) {
+        showAlert('error', `อีเมล <strong>${email}</strong> มีในระบบแล้ว ไม่สามารถสมัครซ้ำได้ครับ`);
+        resetBtn();
+        return;
       }
-    }
 
-    function validateEmail() {
-      const email = document.getElementById('member-email').value.trim();
-      const input = document.getElementById('member-email');
-      const msg = document.getElementById('email-msg');
-      if (!email) { input.className = 'input-box'; msg.textContent = ''; msg.className = 'field-msg'; return false; }
-      const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-      input.className = `input-box ${ok ? 'input-ok' : 'input-error'}`;
-      msg.textContent = ok ? '✓ อีเมลถูกต้อง' : '⚠️ รูปแบบอีเมลไม่ถูกต้อง';
-      msg.className = `field-msg ${ok ? 'success' : 'error'}`;
-      return ok;
-    }
+      const form = new FormData();
+      form.append('slip', slipFile);
+      form.append('lineUserId', profile.userId);
+      form.append('displayName', profile.displayName);
+      form.append('packageType', selectedPkg);
+      form.append('memberEmail', email);
 
-    function validateEmailStrict() {
-      const email = document.getElementById('member-email').value.trim();
-      if (!email) {
-        document.getElementById('member-email').className = 'input-box input-error';
-        document.getElementById('email-msg').textContent = '⚠️ กรุณากรอกอีเมลครับ';
-        document.getElementById('email-msg').className = 'field-msg error';
+      const res = await apiFetch(`${BASE_URL}/api/register`, { method: 'POST', body: form });
+      const data = await res.json();
+
+      if (data.success) {
+        showAlert('success',
+          `สมัครสำเร็จแล้วครับ<br>อีเมล <strong>${email}</strong><br>ใช้งานได้ถึง <strong>${data.expireDate}</strong>` +
+          `<br><br>รอแอดมินส่งคำเชิญภายใน 24 ชม.`);
+        btn.textContent = 'สมัครสำเร็จแล้ว';
+      } else {
+        showAlert('error', data.error || 'สมัครไม่สำเร็จ กรุณาลองใหม่ครับ');
+        resetBtn();
       }
+    } catch {
+      showAlert('error', 'เกิดข้อผิดพลาด กรุณาลองใหม่ครับ');
+      resetBtn();
     }
-
-    function previewSlip(input) {
-      if (!input.files[0]) return;
-      slipFile = input.files[0];
-      const reader = new FileReader();
-      reader.onload = e => {
-        document.getElementById('slip-preview').src = e.target.result;
-        document.getElementById('slip-preview').style.display = 'block';
-        document.getElementById('upload-placeholder').style.display = 'none';
-        document.getElementById('upload-box').classList.add('has-image');
-        document.getElementById('upload-box').classList.remove('error-highlight');
-        document.getElementById('slip-error').style.display = 'none';
-      };
-      reader.readAsDataURL(slipFile);
-    }
-
-    function validate() {
-      let valid = true;
-      if (!selectedPkg) { document.querySelectorAll('.pkg-card').forEach(c => c.classList.add('error-highlight')); document.getElementById('pkg-error').style.display = 'block'; valid = false; }
-      if (!validateEmail()) { validateEmailStrict(); valid = false; }
-      if (!slipFile) { document.getElementById('upload-box').classList.add('error-highlight'); document.getElementById('slip-error').style.display = 'block'; valid = false; }
-      return valid;
-    }
-
-    async function submit() {
-      if (!validate()) return;
-      const btn = document.getElementById('submit-btn');
-      const email = document.getElementById('member-email').value.trim();
-      btn.disabled = true; btn.textContent = 'กำลังตรวจสลิป...';
-      try {
-        const dupRes = await fetch(`${BASE_URL}/api/check-email?email=${encodeURIComponent(email)}`);
-        const dup = await dupRes.json();
-        if (dup.exists) {
-          document.getElementById('alert-box').innerHTML = `<div class="alert error">❌ อีเมล ${email} มีในระบบแล้ว ไม่สามารถสมัครซ้ำได้ครับ</div>`;
-          btn.disabled = false; btn.textContent = 'ยืนยันสมัครสมาชิก 🐯'; return;
-        }
-        const formData = new FormData();
-        formData.append('slip', slipFile);
-        formData.append('lineUserId', profile.userId);
-        formData.append('displayName', profile.displayName);
-        formData.append('packageType', selectedPkg);
-        formData.append('memberEmail', email);
-        const res = await fetch(`${BASE_URL}/api/register`, { method: 'POST', body: formData });
-        const data = await res.json();
-        if (data.success) {
-          document.getElementById('alert-box').innerHTML = `<div class="alert success">✅ สมัครสำเร็จแล้วครับ!<br>📧 ${email}<br>📅 หมดอายุ ${data.expireDate}<br><br>⏳ รอแอดมินส่งคำเชิญภายใน 24 ชม. 🐯</div>`;
-          btn.textContent = 'สมัครสำเร็จแล้ว ✅';
-        } else {
-          document.getElementById('alert-box').innerHTML = `<div class="alert error">❌ ${data.error}</div>`;
-          btn.disabled = false; btn.textContent = 'ยืนยันสมัครสมาชิก 🐯';
-        }
-      } catch {
-        document.getElementById('alert-box').innerHTML = `<div class="alert error">เกิดข้อผิดพลาด กรุณาลองใหม่ครับ</div>`;
-        btn.disabled = false; btn.textContent = 'ยืนยันสมัครสมาชิก 🐯';
-      }
-    }
-  </script>
+  }
+</script>
 </body>
 </html>
