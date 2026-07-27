@@ -1,105 +1,111 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="th" data-page="ข้อมูลของฉัน">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ข้อมูลของฉัน - Tube Premium</title>
+  <title>ข้อมูลของฉัน</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/liff/theme.css">
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; padding-bottom: 40px; }
-    .header { background: linear-gradient(135deg, #ff6b00, #ff9500); padding: 20px; display: flex; align-items: center; gap: 12px; }
-    .header a { color: #fff; text-decoration: none; font-size: 20px; }
-    .header h1 { font-size: 18px; font-weight: 700; }
-    .loading { text-align: center; padding: 80px 20px; color: #666; }
-    .not-found { text-align: center; padding: 60px 20px; }
-    .not-found .icon { font-size: 56px; margin-bottom: 16px; }
-    .not-found p { color: #888; font-size: 15px; line-height: 1.6; }
-    .not-found a { color: #ff9500; }
-    .member-card { margin: 16px 16px 0; background: #1a1a1a; border-radius: 16px; overflow: hidden; border: 1px solid #2a2a2a; margin-bottom: 12px; }
-    .card-header { background: #ff6b00; padding: 14px 18px; }
-    .card-header .email { font-size: 15px; font-weight: 700; color: #fff; word-break: break-all; }
-    .card-header .pkg { font-size: 12px; color: #ffe0c0; margin-top: 2px; }
-    .card-body { padding: 14px 18px; }
-    .info-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #222; }
-    .info-row:last-child { border-bottom: none; }
-    .info-label { font-size: 13px; color: #888; }
-    .info-value { font-size: 13px; font-weight: 600; }
-    .days-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
-    .days-badge.green { background: #0a2a0a; color: #22c55e; border: 1px solid #22c55e; }
-    .days-badge.yellow { background: #2a1a00; color: #f59e0b; border: 1px solid #f59e0b; }
-    .days-badge.red { background: #2a0a0a; color: #ef4444; border: 1px solid #ef4444; }
-    .renew-btn { display: block; margin: 0 16px 12px; background: #ff6b00; color: #fff; border: none; border-radius: 12px; padding: 13px; font-size: 14px; font-weight: 700; cursor: pointer; text-align: center; text-decoration: none; }
-  </style>
+  <script src="/liff/config.js"></script>
+  <script src="/liff/liff-auth.js"></script>
 </head>
 <body>
-  <div class="header">
-    <a href="index.html">←</a>
-    <h1>🏠 ข้อมูลของฉัน</h1>
+<div class="app">
+
+  <header class="topbar">
+    <a href="index.html" class="icon-btn" data-icon="back" aria-label="ย้อนกลับ"></a>
+    <h1>ข้อมูลของฉัน</h1>
+  </header>
+
+  <div id="loading" class="center-state">
+    <div class="spinner"></div>
+    <p>กำลังโหลดข้อมูล…</p>
   </div>
 
-  <div id="loading" class="loading">กำลังโหลดข้อมูล...</div>
-
-  <div id="not-found" class="not-found" style="display:none">
-    <div class="icon">🔍</div>
-    <p>ไม่พบข้อมูลสมาชิก<br><br>
-    กรุณา <a href="register.html">สมัครสมาชิก</a> ก่อนนะครับ</p>
+  <div id="empty" class="center-state hidden">
+    <div class="cs-icon" data-icon="search"></div>
+    <h2>ไม่พบข้อมูลสมาชิก</h2>
+    <p>กรุณา <a href="register.html" class="link">สมัครสมาชิก</a> ก่อนนะครับ</p>
   </div>
 
-  <div id="main-content" style="display:none"></div>
+  <main id="main" class="hidden">
+    <div class="section" style="margin-top:16px">
+      <div class="section-label" id="count-label"></div>
+      <div class="stack-lg" id="list"></div>
+    </div>
+  </main>
+</div>
 
-  <script>
-    const LIFF_ID = '2009843737-CwJgLFBY';
-    const BASE_URL = window.location.origin;
-    const PKG = { '1month': '1 เดือน (79 บาท)', '2months': '2 เดือน (155 บาท)', '3months': '3 เดือน (230 บาท)' };
+<script>
+  const BASE_URL = window.location.origin;
+  const tone = d => d > 7 ? 'ok' : d > 0 ? 'warn' : 'danger';
 
-    async function init() {
-      await liff.init({ liffId: LIFF_ID });
-      if (!liff.isLoggedIn()) { liff.login(); return; }
-      const profile = await liff.getProfile();
+  const INVITE_LABEL = {
+    pending:  { text: 'รอแอดมินส่งคำเชิญ', cls: 'info' },
+    inviting: { text: 'รอคุณกดรับคำเชิญ',  cls: 'warn' },
+    active:   { text: 'เข้าร่วมแล้ว',       cls: 'ok' },
+  };
 
-      const res = await fetch(`${BASE_URL}/api/members/${profile.userId}`);
-      const data = await res.json();
+  async function init() {
+    await liff.init({ liffId: APP.liffId });
+    if (!liff.isLoggedIn()) { liff.login(); return; }
+    const profile = await liff.getProfile();
 
-      document.getElementById('loading').style.display = 'none';
+    const res = await apiFetch(`${BASE_URL}/api/members/${profile.userId}`);
+    const data = await res.json();
+    document.getElementById('loading').classList.add('hidden');
 
-      if (!data.found || data.members.length === 0) {
-        document.getElementById('not-found').style.display = 'block';
-        return;
-      }
+    const members = (data.members || [])
+      .filter(m => m.inviteStatus !== 'removed')
+      .sort((a, b) => a.daysLeft - b.daysLeft);
 
-      document.getElementById('main-content').style.display = 'block';
-      const container = document.getElementById('main-content');
+    if (!data.found || !members.length) {
+      document.getElementById('empty').classList.remove('hidden');
+      return;
+    }
 
-      data.members.forEach(member => {
-        const days = member.daysLeft;
-        const color = days > 7 ? 'green' : days > 0 ? 'yellow' : 'red';
-        const statusText = days > 7 ? `เหลืออีก ${days} วัน` : days > 0 ? `⚠️ เหลืออีก ${days} วัน` : '❌ หมดอายุแล้ว';
+    document.getElementById('main').classList.remove('hidden');
+    document.getElementById('count-label').textContent =
+      members.length > 1 ? `สมาชิกทั้งหมด ${members.length} รายการ` : 'สมาชิกของคุณ';
 
-        container.innerHTML += `
-          <div class="member-card">
-            <div class="card-header">
-              <div class="email">📧 ${member.houseEmail || '-'}</div>
-              <div class="pkg">${PKG[member.package] || member.package}</div>
+    document.getElementById('list').innerHTML = members.map(m => {
+      const d = m.daysLeft;
+      const t = tone(d);
+      const invite = INVITE_LABEL[m.inviteStatus] || { text: m.inviteStatus || '—', cls: 'muted' };
+
+      return `
+        <div class="fade-in">
+          <div class="card">
+            <div class="row" style="padding:16px">
+              <div class="row-main">
+                <div class="row-title" style="font-size:15px">${m.houseEmail || '—'}</div>
+                <div class="row-sub">${APP.pkgLabel(m.package)}</div>
+              </div>
+              <span class="badge ${t}">${d > 0 ? `${d} วัน` : 'หมดอายุ'}</span>
             </div>
-            <div class="card-body">
-              <div class="info-row">
-                <div class="info-label">วันหมดอายุ</div>
-                <div class="info-value">${member.expireDate}</div>
+            <div style="border-top:1px solid var(--border)">
+              <div class="row">
+                <div class="row-main"><div class="row-sub">วันหมดอายุ</div></div>
+                <div class="row-title">${m.expireDate}</div>
               </div>
-              <div class="info-row">
-                <div class="info-label">สถานะ</div>
-                <div class="info-value">
-                  <span class="days-badge ${color}">${statusText}</span>
-                </div>
+              <div class="row">
+                <div class="row-main"><div class="row-sub">สถานะคำเชิญ</div></div>
+                <span class="badge ${invite.cls}">${invite.text}</span>
               </div>
+              ${m.registeredAt ? `
+              <div class="row">
+                <div class="row-main"><div class="row-sub">สมัครเมื่อ</div></div>
+                <div class="row-title">${String(m.registeredAt).slice(0, 10)}</div>
+              </div>` : ''}
             </div>
           </div>
-          ${days <= 7 ? `<a href="renew.html" class="renew-btn">🔄 ต่ออายุ ${member.houseEmail || ''}</a>` : ''}
-        `;
-      });
-    }
-    init().catch(console.error);
-  </script>
+          ${d <= 7 ? `<a href="renew.html" class="btn btn-primary" style="margin-top:10px">${ICON.refresh}<span>ต่ออายุอีเมลนี้</span></a>` : ''}
+        </div>`;
+    }).join('');
+  }
+
+  init().catch(console.error);
+</script>
 </body>
 </html>
