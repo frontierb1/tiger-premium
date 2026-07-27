@@ -1,7 +1,17 @@
-# 🐯 Tiger Premium — LINE OA System
+# Premium Family — LINE OA System
 
 ระบบขาย YouTube Premium Family ผ่าน LINE OA
 Node.js + Express + Google Sheets + LINE Messaging API + EasySlip
+
+## เปลี่ยนชื่อแบรนด์ / สี / ราคา
+
+ทั้งหมดอยู่ที่ 3 จุด ไม่ต้องไล่แก้ทีละไฟล์
+
+| อยากเปลี่ยน | แก้ที่ |
+|---|---|
+| ชื่อแบรนด์บนหน้าเว็บ, เบอร์พร้อมเพย์, ราคาแพ็กเกจ | `public/liff/config.js` |
+| ชื่อแบรนด์ในข้อความ LINE | ENV `BRAND_NAME` |
+| สี ฟอนต์ ความโค้งมุม ของหน้าลูกค้า | ตัวแปร `:root` ใน `public/liff/theme.css` |
 
 ## โครงสร้างไฟล์
 
@@ -19,9 +29,12 @@ tiger-premium/
 │   ├── line-auth.js    ← verify LINE ID token กัน lineUserId ปลอม
 │   ├── rate-limit.js   ← จำกัดจำนวนครั้งที่เรียก endpoint
 │   └── lock.js         ← กัน race condition ตอนสมัคร/ต่ออายุพร้อมกัน
+│   ├── brand.js        ← ชื่อแบรนด์ในข้อความ LINE (อ่านจาก ENV BRAND_NAME)
 ├── public/
 │   ├── admin.html      ← Admin Dashboard
 │   └── liff/
+│       ├── config.js     ← ★ ชื่อแบรนด์ / พร้อมเพย์ / ราคา / ไอคอน
+│       ├── theme.css     ← ★ ธีมกลางของทุกหน้า (สว่าง มินิมอล)
 │       ├── liff-auth.js  ← apiFetch() แนบ ID token ให้อัตโนมัติ
 │       ├── index.html    ← หน้าหลัก (Rich Menu)
 │       ├── register.html ← สมัครสมาชิก
