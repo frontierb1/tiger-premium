@@ -105,6 +105,11 @@ body {
 /* ดึงเนื้อหาขึ้นไปทับแถบสี */
 .pull-up { margin-top: -32px !important; position: relative; z-index: 10; }
 
+/* หัวข้อย่อยที่ถูกดึงขึ้นไปวางบนแถบสี ต้องเปลี่ยนเป็นสีขาว
+   ไม่งั้นจะเป็นตัวอักษรเทาบนพื้นม่วง = อ่านไม่ออก (หน้าสมัคร / ต่ออายุ / ข้อมูลของฉัน) */
+.pull-up > .section-label { color: rgba(255, 255, 255, .92); }
+.pull-up > .section-label .text-muted { color: rgba(255, 255, 255, .68); }
+
 /* ===================== ส่วนย่อย ===================== */
 .section { padding: 0 16px; margin-top: 20px; }
 .section-label {
