@@ -3,457 +3,271 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Tiger Premium</title>
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <title>หน้าหลัก</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Noto Sans Thai', -apple-system, sans-serif; background: #0c0c0c; color: #fff; min-height: 100vh; padding-bottom: 40px; }
-
-    .header {
-      background: linear-gradient(160deg, #1c0800 0%, #c94e00 55%, #ff9500 100%);
-      padding: 40px 20px 56px;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
-    .header::before {
-      content: '🐯';
-      position: absolute;
-      font-size: 180px;
-      opacity: 0.06;
-      top: -20px; right: -30px;
-      line-height: 1;
-      pointer-events: none;
-    }
-    .header-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(255,255,255,0.15);
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 20px;
-      padding: 4px 14px;
-      font-size: 12px;
-      font-weight: 600;
-      margin-bottom: 14px;
-      backdrop-filter: blur(8px);
-    }
-    .header h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; text-shadow: 0 2px 12px rgba(0,0,0,0.3); }
-    .header p { font-size: 13px; opacity: 0.8; margin-top: 4px; }
-
-    .status-card {
-      margin: -28px 16px 0;
-      background: #181818;
-      border: 1px solid #272727;
-      border-radius: 20px;
-      padding: 16px 18px;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      position: relative;
-      z-index: 10;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.5);
-    }
-    .status-icon {
-      width: 44px; height: 44px;
-      border-radius: 12px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 22px;
-      flex-shrink: 0;
-    }
-    .status-icon.green { background: rgba(34,197,94,0.15); }
-    .status-icon.yellow { background: rgba(245,158,11,0.15); }
-    .status-icon.red { background: rgba(239,68,68,0.15); }
-    .status-icon.gray { background: rgba(255,255,255,0.06); }
-    .status-info { flex: 1; }
-    .status-info strong { display: block; font-size: 15px; font-weight: 700; }
-    .status-info span { font-size: 12px; color: #666; margin-top: 2px; display: block; }
-    .status-info.green strong { color: #22c55e; }
-    .status-info.yellow strong { color: #f59e0b; }
-    .status-info.red strong { color: #ef4444; }
-
-    .skel { height: 15px; border-radius: 8px; background: linear-gradient(90deg, #1f1f1f 25%, #2a2a2a 50%, #1f1f1f 75%); background-size: 200% 100%; animation: skel 1.4s ease infinite; margin-bottom: 7px; }
-    .skel.sm { width: 55%; height: 11px; margin-bottom: 0; }
-    @keyframes skel { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-
-    .section-title { font-size: 11px; font-weight: 700; color: #444; letter-spacing: 1px; text-transform: uppercase; padding: 22px 20px 10px; }
-
-    .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 16px; }
-    .menu-card {
-      background: #141414;
-      border: 1px solid #1e1e1e;
-      border-radius: 18px;
-      padding: 20px 14px;
-      text-align: center;
-      text-decoration: none;
-      color: #fff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      transition: transform 0.15s;
-    }
-    .menu-card:active { transform: scale(0.97); }
-
-    .menu-card.orange { background: linear-gradient(135deg, #180f00, #1f1000); border-color: rgba(255,107,0,0.3); }
-    .menu-card.blue   { background: linear-gradient(135deg, #060e1a, #091520); border-color: rgba(55,138,221,0.25); }
-    .menu-card.green  { background: linear-gradient(135deg, #071208, #09180a); border-color: rgba(34,197,94,0.2); }
-    .menu-card.red    { background: linear-gradient(135deg, #140808, #1c0c0c); border-color: rgba(239,68,68,0.25); }
-
-    .menu-icon { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
-    .menu-card.orange .menu-icon { background: rgba(255,107,0,0.15); }
-    .menu-card.blue   .menu-icon { background: rgba(55,138,221,0.12); }
-    .menu-card.green  .menu-icon { background: rgba(34,197,94,0.12); }
-    .menu-card.red    .menu-icon { background: rgba(239,68,68,0.12); }
-
-    .menu-label { font-size: 14px; font-weight: 700; }
-    .menu-sub   { font-size: 11px; }
-    .menu-card.orange .menu-sub { color: rgba(255,149,0,0.6); }
-    .menu-card.blue   .menu-sub { color: rgba(99,170,240,0.6); }
-    .menu-card.green  .menu-sub { color: rgba(74,222,128,0.6); }
-    .menu-card.red    .menu-sub { color: rgba(248,113,113,0.6); }
-
-    /* ===== STATUS BANNER ===== */
-    .status-banners { padding: 0 16px; margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
-    .status-banner {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      border-radius: 14px;
-      padding: 12px 16px;
-      font-size: 13px;
-      animation: slideUp 0.3s ease;
-    }
-    @keyframes slideUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-    .status-banner.pending {
-      background: linear-gradient(135deg, #0d1a2e, #101f38);
-      border: 1px solid rgba(55,138,221,0.3);
-    }
-    .status-banner.report {
-      background: linear-gradient(135deg, #1a0d0d, #200f0f);
-      border: 1px solid rgba(239,68,68,0.3);
-    }
-    .status-banner.inviting {
-      background: linear-gradient(135deg, #0d1a10, #0f2012);
-      border: 1px solid rgba(34,197,94,0.3);
-    }
-    .banner-icon { font-size: 22px; flex-shrink: 0; }
-    .banner-info { flex: 1; }
-    .banner-info strong { display: block; font-size: 13px; font-weight: 700; }
-    .banner-info span { font-size: 11px; margin-top: 2px; display: block; opacity: 0.7; }
-    .banner-dot {
-      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-      animation: blink 1.5s ease infinite;
-    }
-    @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
-    .banner-dot.blue { background: #378ADD; }
-    .banner-dot.red { background: #ef4444; }
-    .banner-dot.green { background: #22c55e; }
-
-    /* Banner toggle content */
-    .banner-toggle-content {
-      display: none;
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px solid rgba(255,255,255,0.06);
-    }
-    .banner-toggle-content.open { display: block; }
-    .banner-clickable { cursor: pointer; }
-    .banner-chevron { font-size: 12px; color: #555; flex-shrink: 0; transition: transform 0.2s; }
-    .banner-chevron.open { transform: rotate(180deg); }
-
-    /* Step guide */
-    .step-list { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
-    .step-item { display: flex; align-items: flex-start; gap: 10px; font-size: 12px; line-height: 1.5; }
-    .step-num { width: 20px; height: 20px; border-radius: 50%; background: rgba(34,197,94,0.2); color: #22c55e; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
-    .step-text { color: #aaa; flex: 1; }
-    .step-text strong { color: #fff; display: block; margin-bottom: 2px; }
-    .step-note { font-size: 11px; color: #555; margin-top: 6px; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 8px; line-height: 1.6; }
-  </style>
+  <link rel="stylesheet" href="/liff/theme.css">
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script src="/liff/config.js"></script>
+  <script src="/liff/liff-auth.js"></script>
 </head>
 <body>
-  <div class="header">
-    <div class="header-badge">🐯 Tiger Premium</div>
-    <h1>YouTube Premium</h1>
-    <p>Family Plan — ราคาพิเศษ</p>
-  </div>
+<div class="app">
 
-  <div class="status-card">
-    <div class="status-icon gray" id="status-icon">⏳</div>
-    <div class="status-info" id="status-info">
-      <div class="skel" id="skel1"></div>
-      <div class="skel sm" id="skel2"></div>
-      <strong id="status-text" style="display:none"></strong>
-      <span id="status-sub" style="display:none"></span>
+  <header class="masthead">
+    <div class="brand" data-brand></div>
+    <h1>สมาชิกของคุณ</h1>
+    <p data-tagline></p>
+  </header>
+
+  <!-- การ์ดสถานะหลัก -->
+  <div class="section" style="margin-top:4px">
+    <div class="card">
+      <div class="hero idle" id="hero">
+        <div class="skel" style="height:44px;width:120px;margin:6px auto"></div>
+        <div class="skel" style="height:13px;width:180px;margin:14px auto 0"></div>
+      </div>
+      <div id="hero-foot" class="hidden" style="border-top:1px solid var(--border);padding:12px 18px;text-align:center">
+        <span class="badge muted" id="hero-badge"></span>
+      </div>
+    </div>
+
+    <!-- รายการอีเมลเพิ่มเติม (เมื่อมีหลายอัน) -->
+    <div id="more-wrap" class="hidden" style="margin-top:8px">
+      <button class="option" id="more-toggle" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 15px">
+        <span style="font-size:13px;font-weight:600" id="more-label"></span>
+        <span class="n-chevron" data-icon="chevron" id="more-chevron" style="display:flex"></span>
+      </button>
+      <div class="stack hidden" id="more-list" style="margin-top:8px"></div>
     </div>
   </div>
 
-  <div class="section-title">เมนูหลัก</div>
-  <div class="menu-grid">
-    <a href="register.html" class="menu-card orange">
-      <div class="menu-icon">📋</div>
-      <div class="menu-label">สมัครสมาชิก</div>
-      <div class="menu-sub">เริ่มใช้งานได้เลย</div>
-    </a>
-    <a href="check.html" class="menu-card blue">
-      <div class="menu-icon">📅</div>
-      <div class="menu-label">เช็ควันหมดอายุ</div>
-      <div class="menu-sub">ดูสถานะของคุณ</div>
-    </a>
-    <a href="renew.html" class="menu-card green">
-      <div class="menu-icon">🔄</div>
-      <div class="menu-label">ต่ออายุ</div>
-      <div class="menu-sub">แนบสลิปยืนยัน</div>
-    </a>
-    <a href="report.html" class="menu-card red">
-      <div class="menu-icon">🚨</div>
-      <div class="menu-label">แจ้งปัญหา</div>
-      <div class="menu-sub">ใช้งานไม่ได้?</div>
-    </a>
+  <!-- งานที่ต้องรอ / ต้องทำ -->
+  <div class="section hidden" id="notices-section">
+    <div class="section-label">สิ่งที่กำลังดำเนินการ</div>
+    <div class="stack" id="notices"></div>
   </div>
 
-  <!-- สถานะงานค้าง -->
-  <div class="status-banners" id="status-banners" style="display:none"></div>
+  <!-- เมนู -->
+  <nav class="section">
+    <div class="section-label">เมนู</div>
+    <div class="menu">
+      <a href="register.html" class="menu-item">
+        <span class="m-icon" data-icon="plus"></span>
+        <span class="m-title">สมัครสมาชิก</span>
+        <span class="m-sub">เริ่มใช้งานได้เลย</span>
+      </a>
+      <a href="check.html" class="menu-item">
+        <span class="m-icon" data-icon="calendar"></span>
+        <span class="m-title">เช็ควันหมดอายุ</span>
+        <span class="m-sub">ดูสถานะของคุณ</span>
+      </a>
+      <a href="renew.html" class="menu-item">
+        <span class="m-icon" data-icon="refresh"></span>
+        <span class="m-title">ต่ออายุ</span>
+        <span class="m-sub">แนบสลิปยืนยัน</span>
+      </a>
+      <a href="report.html" class="menu-item">
+        <span class="m-icon" data-icon="help"></span>
+        <span class="m-title">แจ้งปัญหา</span>
+        <span class="m-sub">ใช้งานไม่ได้?</span>
+      </a>
+    </div>
+  </nav>
 
-  <script>
-    const LIFF_ID = '2009843737-CwJgLFBY';
-    const BASE_URL = window.location.origin;
-    let _profile = null;
-    let _pollInterval = null;
-    let _emailsExpanded = false;
-    const _bannerExpandedState = new Map(); // จำ state แต่ละ banner
+</div>
 
-    async function init() {
-      await liff.init({ liffId: LIFF_ID });
-      if (!liff.isLoggedIn()) { liff.login(); return; }
-      _profile = await liff.getProfile();
+<script>
+  const BASE_URL = window.location.origin;
+  let _profile = null;
+  let _moreOpen = false;
+  const _noticeOpen = new Map();
 
-      await loadData();
+  async function init() {
+    await liff.init({ liffId: APP.liffId });
+    if (!liff.isLoggedIn()) { liff.login(); return; }
+    _profile = await liff.getProfile();
 
-      // poll ทุก 30 วิ
-      _pollInterval = setInterval(loadData, 30000);
+    document.getElementById('more-toggle').onclick = () => {
+      _moreOpen = !_moreOpen;
+      document.getElementById('more-list').classList.toggle('hidden', !_moreOpen);
+      document.getElementById('more-chevron').classList.toggle('open', _moreOpen);
+    };
+
+    await loadData();
+    setInterval(loadData, 30000); // อัปเดตทุก 30 วิ
+  }
+
+  async function loadData() {
+    try {
+      const [memberRes, reportRes] = await Promise.all([
+        apiFetch(`${BASE_URL}/api/members/${_profile.userId}`),
+        apiFetch(`${BASE_URL}/api/admin/report/user/${_profile.userId}`).catch(() => null),
+      ]);
+      const memberData = await memberRes.json();
+      const reportData = reportRes ? await reportRes.json().catch(() => null) : null;
+
+      renderHero(memberData);
+      renderNotices(memberData, reportData);
+    } catch (err) {
+      console.error('loadData error:', err);
+    }
+  }
+
+  /** แปลงจำนวนวันคงเหลือเป็นระดับสถานะ */
+  function tone(days) {
+    return days > 7 ? 'ok' : days > 0 ? 'warn' : 'danger';
+  }
+
+  function renderHero(memberData) {
+    const members = (memberData?.members || [])
+      .filter(m => m.inviteStatus !== 'removed')
+      .sort((a, b) => a.daysLeft - b.daysLeft);
+
+    const hero = document.getElementById('hero');
+    const foot = document.getElementById('hero-foot');
+    const badge = document.getElementById('hero-badge');
+    const moreWrap = document.getElementById('more-wrap');
+
+    if (members.length === 0) {
+      hero.className = 'hero idle fade-in';
+      hero.innerHTML = `
+        <div class="hero-days">ยังไม่มีสมาชิก</div>
+        <div class="hero-unit">กดสมัครสมาชิกด้านล่างได้เลยครับ</div>`;
+      foot.classList.add('hidden');
+      moreWrap.classList.add('hidden');
+      return;
     }
 
-    async function loadData() {
-      try {
-        const [memberRes, reportRes] = await Promise.all([
-          fetch(`${BASE_URL}/api/members/${_profile.userId}`),
-          fetch(`${BASE_URL}/api/admin/report/user/${_profile.userId}`).catch(() => null),
-        ]);
-        const memberData = await memberRes.json();
-        const reportData = reportRes ? await reportRes.json().catch(() => null) : null;
+    const first = members[0];
+    const d = first.daysLeft;
+    const t = tone(d);
 
-        renderStatus(memberData);
-        renderBanners(memberData, reportData);
-      } catch (err) {
-        console.error('loadData error:', err);
-      }
-    }
+    hero.className = `hero ${t} fade-in`;
+    hero.innerHTML = `
+      <div class="hero-days">${d > 0 ? d : 0}</div>
+      <div class="hero-unit">${d > 0 ? 'วันที่เหลือ' : 'หมดอายุแล้ว'}</div>
+      <div class="hero-email">${ICON.mail}<span>${first.houseEmail || '—'}</span></div>`;
 
-    function renderStatus(memberData) {
-      const members = (memberData?.members || [])
-        .filter(m => m.inviteStatus !== 'removed')
-        .sort((a, b) => a.daysLeft - b.daysLeft); // น้อยสุดขึ้นก่อน
+    foot.classList.remove('hidden');
+    badge.className = `badge ${t}`;
+    badge.innerHTML = `${t === 'ok' ? ICON.check : ICON.alert}<span>${
+      t === 'ok' ? `ใช้งานได้ถึง ${first.expireDate}`
+      : t === 'warn' ? `ใกล้หมดอายุ ${first.expireDate}`
+      : `หมดอายุเมื่อ ${first.expireDate}`}</span>`;
 
-      // ซ่อน skeleton ครั้งแรก
-      document.getElementById('skel1').style.display = 'none';
-      document.getElementById('skel2').style.display = 'none';
-      document.getElementById('status-text').style.display = 'block';
-      document.getElementById('status-sub').style.display = 'block';
-
-      const iconEl = document.getElementById('status-icon');
-      const infoEl = document.getElementById('status-info');
-
-      if (!members || members.length === 0) {
-        iconEl.textContent = '👋';
-        iconEl.className = 'status-icon gray';
-        infoEl.className = 'status-info';
-        document.getElementById('status-text').textContent = 'ยังไม่ได้สมัครสมาชิก';
-        document.getElementById('status-sub').textContent = 'กดสมัครสมาชิกได้เลยครับ';
-        // ลบ toggle ถ้ามี
-        const tog = document.getElementById('email-toggle-wrap');
-        if (tog) tog.remove();
-        return;
-      }
-
-      // แสดง email แรก (น้อยสุด)
-      const first = members[0];
-      const d = first.daysLeft;
-      const cls = d > 7 ? 'green' : d > 0 ? 'yellow' : 'red';
-      const icon = d > 7 ? '✅' : d > 0 ? '⚠️' : '❌';
-      const text = d > 7 ? `ใช้งานได้ — เหลือ ${d} วัน`
-        : d > 0 ? `ใกล้หมดอายุ — เหลือ ${d} วัน`
-        : 'หมดอายุแล้ว';
-
-      iconEl.textContent = icon;
-      iconEl.className = `status-icon ${cls}`;
-      infoEl.className = `status-info ${cls}`;
-      document.getElementById('status-text').textContent = text;
-      document.getElementById('status-sub').textContent = `${first.houseEmail || ''} | หมดอายุ ${first.expireDate}`;
-
-      // toggle สำหรับหลายเมล
-      const existingToggle = document.getElementById('email-toggle-wrap');
-      if (existingToggle) existingToggle.remove();
-
-      if (members.length > 1) {
-        const wrap = document.createElement('div');
-        wrap.id = 'email-toggle-wrap';
-        wrap.style.cssText = 'padding:0 16px;margin-top:8px';
-
-        const toggleBtn = document.createElement('button');
-        toggleBtn.id = 'email-toggle-btn';
-        toggleBtn.style.cssText = `
-          width:100%;background:#181818;border:1px solid #272727;border-radius:14px;
-          padding:10px 16px;color:#85B7EB;font-size:12px;cursor:pointer;
-          display:flex;align-items:center;justify-content:space-between;font-family:inherit;
-        `;
-        toggleBtn.innerHTML = `<span>อีเมลทั้งหมด ${members.length} รายการ</span><span id="toggle-arrow">${_emailsExpanded ? '▲' : '▼'}</span>`;
-        toggleBtn.onclick = () => {
-          _emailsExpanded = !_emailsExpanded;
-          document.getElementById('toggle-arrow').textContent = _emailsExpanded ? '▲' : '▼';
-          emailList.style.display = _emailsExpanded ? 'flex' : 'none';
-        };
-
-        const emailList = document.createElement('div');
-        emailList.style.cssText = `display:${_emailsExpanded ? 'flex' : 'none'};flex-direction:column;gap:6px;margin-top:6px`;
-        emailList.innerHTML = members.slice(1).map(m => {
-          const dd = m.daysLeft;
-          const c = dd > 7 ? '#22c55e' : dd > 0 ? '#f59e0b' : '#ef4444';
-          const ic = dd > 7 ? '✅' : dd > 0 ? '⚠️' : '❌';
-          return `
-            <div style="background:#141414;border:1px solid #1e1e1e;border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px">
-              <span style="font-size:16px">${ic}</span>
-              <div style="flex:1">
-                <div style="font-size:13px;font-weight:600;color:${c}">${dd > 0 ? `เหลือ ${dd} วัน` : 'หมดอายุแล้ว'}</div>
-                <div style="font-size:11px;color:#666;margin-top:2px">${m.houseEmail || '-'} | หมด ${m.expireDate}</div>
+    // อีเมลเพิ่มเติม
+    if (members.length > 1) {
+      moreWrap.classList.remove('hidden');
+      document.getElementById('more-label').textContent = `อีเมลทั้งหมด ${members.length} รายการ`;
+      document.getElementById('more-list').innerHTML = members.slice(1).map(m => {
+        const mt = tone(m.daysLeft);
+        return `
+          <div class="card">
+            <div class="row">
+              <div class="row-main">
+                <div class="row-title">${m.houseEmail || '—'}</div>
+                <div class="row-sub">หมดอายุ ${m.expireDate}</div>
               </div>
-            </div>`;
-        }).join('');
-
-        wrap.appendChild(toggleBtn);
-        wrap.appendChild(emailList);
-
-        // แทรกหลัง status-card
-        const statusCard = document.querySelector('.status-card');
-        statusCard.parentNode.insertBefore(wrap, statusCard.nextSibling);
-      }
+              <span class="badge ${mt}">${m.daysLeft > 0 ? `${m.daysLeft} วัน` : 'หมดอายุ'}</span>
+            </div>
+          </div>`;
+      }).join('');
+      document.getElementById('more-list').classList.toggle('hidden', !_moreOpen);
+      document.getElementById('more-chevron').classList.toggle('open', _moreOpen);
+    } else {
+      moreWrap.classList.add('hidden');
     }
+  }
 
-    function renderBanners(memberData, reportData) {
-      const banners = [];
-      const members = (memberData?.members || []).filter(m => m.inviteStatus !== 'removed');
+  const INVITE_STEPS = (email) => `
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body"><strong>เปิดอีเมล ${email || 'ของคุณ'}</strong>ค้นหาอีเมลจาก YouTube หรือ Google Family</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body"><strong>กด "ยอมรับคำเชิญ" (Accept invitation)</strong>ในอีเมลที่ได้รับจาก YouTube Premium Family</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body"><strong>ล็อกอินด้วยอีเมลนี้บน YouTube</strong>เปิด youtube.com หรือแอป YouTube แล้วล็อกอิน</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body"><strong>แจ้งแอดมินว่ากดรับแล้ว</strong>กด "แจ้งปัญหา" หรือทักแชทหาแอดมินเพื่อยืนยัน</div>
+      </div>
+    </div>
+    <div class="step-note">
+      หากไม่พบอีเมล ให้ตรวจสอบในโฟลเดอร์ Spam / Junk<br>
+      คำเชิญมีอายุ 7 วัน หากหมดอายุกรุณาแจ้งแอดมิน
+    </div>`;
 
-      members.forEach(m => {
-        if (m.inviteStatus === 'pending') {
-          banners.push({
-            type: 'pending', icon: '⏳',
-            title: 'รอแอดมินดำเนินการ',
-            sub: `อีเมล ${m.houseEmail || 'ของคุณ'} — รอส่งคำเชิญเข้า YouTube Premium`,
-            dot: 'blue',
-            toggleContent: null,
-          });
-        } else if (m.inviteStatus === 'inviting') {
-          banners.push({
-            type: 'inviting', icon: '📨',
-            title: 'ส่งคำเชิญแล้ว — รอคุณกดรับ',
-            sub: `แตะเพื่อดูวิธีรับคำเชิญ ▼`,
-            dot: 'green',
-            toggleContent: `
-              <div class="step-list">
-                <div class="step-item">
-                  <div class="step-num">1</div>
-                  <div class="step-text">
-                    <strong>เปิดอีเมล ${m.houseEmail || 'ของคุณ'}</strong>
-                    ค้นหาอีเมลจาก YouTube หรือ Google Family
-                  </div>
-                </div>
-                <div class="step-item">
-                  <div class="step-num">2</div>
-                  <div class="step-text">
-                    <strong>กดปุ่ม "Accept invitation" หรือ "ยอมรับคำเชิญ"</strong>
-                    ในอีเมลที่ได้รับจาก YouTube Premium Family
-                  </div>
-                </div>
-                <div class="step-item">
-                  <div class="step-num">3</div>
-                  <div class="step-text">
-                    <strong>ล็อกอินด้วยอีเมลนี้บน YouTube</strong>
-                    เปิด youtube.com หรือแอป YouTube แล้วล็อกอิน
-                  </div>
-                </div>
-                <div class="step-item">
-                  <div class="step-num">4</div>
-                  <div class="step-text">
-                    <strong>แจ้งแอดมินว่ากดรับแล้ว</strong>
-                    กด "แจ้งปัญหา" หรือติดต่อแอดมินเพื่อยืนยัน
-                  </div>
-                </div>
-              </div>
-              <div class="step-note">
-                ⚠️ หากไม่พบอีเมล ให้ตรวจสอบใน Spam/Junk<br>
-                ⏱ คำเชิญหมดอายุใน 7 วัน หากหมดอายุกรุณาแจ้งแอดมิน
-              </div>`,
-          });
-        }
-      });
+  function renderNotices(memberData, reportData) {
+    const items = [];
+    const members = (memberData?.members || []).filter(m => m.inviteStatus !== 'removed');
 
-      if (reportData?.reports) {
-        reportData.reports.filter(r => r.status !== 'resolved').forEach(r => {
-          banners.push({
-            type: 'report', icon: '🔧',
-            title: 'กำลังรอการแก้ไขจากแอดมิน',
-            sub: `ปัญหา: ${r.detail || 'ที่คุณแจ้งไว้'} — ทีมงานกำลังดำเนินการ`,
-            dot: 'red',
-            toggleContent: null,
-          });
+    members.forEach(m => {
+      if (m.inviteStatus === 'pending') {
+        items.push({
+          tone: 'info', icon: 'clock',
+          title: 'รอแอดมินดำเนินการ',
+          sub: `${m.houseEmail || 'อีเมลของคุณ'} — รอส่งคำเชิญเข้า YouTube Premium`,
+        });
+      } else if (m.inviteStatus === 'inviting') {
+        items.push({
+          tone: 'ok', icon: 'mail',
+          title: 'ส่งคำเชิญแล้ว — รอคุณกดรับ',
+          sub: 'แตะเพื่อดูวิธีรับคำเชิญ',
+          more: INVITE_STEPS(m.houseEmail),
         });
       }
+    });
 
-      const container = document.getElementById('status-banners');
-      if (banners.length === 0) {
-        container.style.display = 'none';
-        return;
-      }
-      container.style.display = 'flex';
-      container.innerHTML = banners.map((b, i) => `
-        <div class="status-banner ${b.type} ${b.toggleContent ? 'banner-clickable' : ''}"
-             ${b.toggleContent ? `onclick="toggleBanner(${i})"` : ''}>
-          <div class="banner-icon">${b.icon}</div>
-          <div class="banner-info" style="flex:1">
-            <strong>${b.title}</strong>
-            <span>${b.sub}</span>
-            ${b.toggleContent ? `<div class="banner-toggle-content" id="banner-toggle-${i}">${b.toggleContent}</div>` : ''}
-          </div>
-          ${b.toggleContent ? `<div class="banner-chevron" id="banner-chevron-${i}">▼</div>` : `<div class="banner-dot ${b.dot}"></div>`}
-        </div>
-      `).join('');
-
-      // restore expanded state
-      banners.forEach((b, i) => {
-        if (!b.toggleContent) return;
-        const wasOpen = _bannerExpandedState.get(i);
-        if (wasOpen) {
-          const content = document.getElementById(`banner-toggle-${i}`);
-          const chevron = document.getElementById(`banner-chevron-${i}`);
-          if (content) content.classList.add('open');
-          if (chevron) chevron.classList.add('open');
-        }
+    (reportData?.reports || []).filter(r => r.status !== 'resolved').forEach(r => {
+      items.push({
+        tone: 'danger', icon: 'wrench',
+        title: 'กำลังรอการแก้ไขจากแอดมิน',
+        sub: r.detail || 'ปัญหาที่คุณแจ้งไว้ — ทีมงานกำลังดำเนินการ',
       });
-    }
+    });
 
-    function toggleBanner(i) {
-      const content = document.getElementById(`banner-toggle-${i}`);
-      const chevron = document.getElementById(`banner-chevron-${i}`);
-      if (!content) return;
-      const isOpen = content.classList.contains('open');
-      content.classList.toggle('open', !isOpen);
-      if (chevron) chevron.classList.toggle('open', !isOpen);
-      // บันทึก state
-      _bannerExpandedState.set(i, !isOpen);
-    }
+    const section = document.getElementById('notices-section');
+    const wrap = document.getElementById('notices');
 
-    init().catch(console.error);
-  </script>
+    if (items.length === 0) { section.classList.add('hidden'); return; }
+    section.classList.remove('hidden');
+
+    wrap.innerHTML = items.map((it, i) => `
+      <div class="notice ${it.tone} ${it.more ? 'clickable' : ''} fade-in" ${it.more ? `onclick="toggleNotice(${i})"` : ''}>
+        <span class="n-icon">${ICON[it.icon]}</span>
+        <div class="n-body">
+          <div class="n-title">${it.title}</div>
+          <div class="n-sub">${it.sub}</div>
+          ${it.more ? `<div class="n-more" id="n-more-${i}">${it.more}</div>` : ''}
+        </div>
+        ${it.more ? `<span class="n-chevron" id="n-chev-${i}">${ICON.chevron}</span>` : ''}
+      </div>`).join('');
+
+    // คืนสถานะเปิด/ปิดที่ผู้ใช้เลือกไว้ ไม่ให้หุบเองตอน refresh อัตโนมัติ
+    items.forEach((it, i) => {
+      if (it.more && _noticeOpen.get(i)) {
+        document.getElementById(`n-more-${i}`)?.classList.add('open');
+        document.getElementById(`n-chev-${i}`)?.classList.add('open');
+      }
+    });
+  }
+
+  function toggleNotice(i) {
+    const more = document.getElementById(`n-more-${i}`);
+    if (!more) return;
+    const open = !more.classList.contains('open');
+    more.classList.toggle('open', open);
+    document.getElementById(`n-chev-${i}`)?.classList.toggle('open', open);
+    _noticeOpen.set(i, open);
+  }
+
+  init().catch(console.error);
+</script>
 </body>
 </html>
