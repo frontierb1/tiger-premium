@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Admin Dashboard - Tiger Premium</title>
+  <title>Admin Dashboard</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <style>
@@ -180,7 +180,7 @@
 
 <div class="login-wrap" id="login-page">
   <div class="login-card">
-    <h2>🐯 Tiger Admin</h2>
+    <h2>Admin</h2>
     <p>เข้าสู่ระบบแอดมิน Dashboard</p>
     <input type="text" id="admin-user" placeholder="Username" onkeydown="if(event.key==='Enter')login()"/>
     <input type="password" id="admin-pass" placeholder="Password" onkeydown="if(event.key==='Enter')login()"/>
@@ -191,7 +191,7 @@
 
 <div id="dashboard" style="display:none">
   <div class="header">
-    <h1>🐯 Tiger Premium — Admin</h1>
+    <h1>Admin Dashboard</h1>
     <div class="header-right">
       <span class="last-update" id="last-update"><span class="spinner"></span>กำลังโหลด...</span>
       <span style="font-size:12px;color:#85B7EB" id="admin-display-name"></span>
@@ -1908,8 +1908,12 @@ function parseBulkHouses(text) {
   const houses = [];
   let pendingEmails = [];
 
+  // ต้องเช็ครูปแบบอีเมลเต็ม ไม่ใช่แค่ "มี @" — ไม่งั้นรหัสผ่านที่มี @ เช่น "@67peipei"
+  // จะถูกเข้าใจผิดว่าเป็นอีเมล แล้วขึ้นว่า "ยังไม่มีรหัสผ่าน"
+  const isEmail = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s);
+
   for (const line of lines) {
-    if (line.includes('@')) {
+    if (isEmail(line)) {
       pendingEmails.push(line);
     } else {
       // บรรทัดนี้คือรหัสผ่าน → assign ให้ทุกเมลที่รอ
