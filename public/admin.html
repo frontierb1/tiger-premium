@@ -1279,13 +1279,22 @@ function daysBadge(days) {
 }
 function pkgLabel(p) { return p === '1month' ? '1 เดือน' : p === '2months' ? '2 เดือน' : '3 เดือน'; }
 
+// นับจำนวนสมาชิกในบ้านจากข้อมูลสมาชิกจริง ไม่อ่านจากคอลัมน์ G/H ของชีต
+// เพราะ 2 คอลัมน์นั้นเป็น "สูตร" ที่ไม่ขยายลงมาให้แถวใหม่ที่ระบบเพิ่มเข้าไป
+// ทำให้บ้านที่เพิ่งสร้างอ่านค่าได้ 0 แล้วขึ้นว่า "เต็ม" ทั้งที่ยังไม่มีใครอยู่
 function getHouseUsed(houseId) {
-  const h = allHouses.find(x => x.houseId === houseId);
-  return h ? (h.currentMembers || 0) : 0;
+  if (!houseId) return 0;
+  return allMembers.filter(m =>
+    m.houseId === houseId &&
+    m.inviteStatus !== 'removed' &&
+    m.status !== 'cancelled'
+  ).length;
 }
 function getHouseSlot(houseId) {
   const h = allHouses.find(x => x.houseId === houseId);
-  return h ? Math.max(0, h.slotsLeft !== undefined ? h.slotsLeft : (h.maxMembers - getHouseUsed(houseId))) : 0;
+  if (!h) return 0;
+  const max = parseInt(h.maxMembers) || 5;
+  return Math.max(0, max - getHouseUsed(houseId));
 }
 
 function checkOverflow() {
