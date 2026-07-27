@@ -1,7 +1,7 @@
 {
-  "name": "tiger-premium",
+  "name": "premium-family",
   "version": "1.0.0",
-  "description": "Tiger Premium LINE OA System",
+  "description": "LINE OA membership system",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
