@@ -427,6 +427,7 @@
             <th class="sortable" onclick="sortHouses('name')" id="th-name">บ้าน <span id="sort-name">↕</span></th>
             <th>อีเมลหัวบ้าน</th>
             <th>Password 🔑</th>
+            <th style="min-width:170px">หมายเหตุ 📝</th>
             <th class="sortable" onclick="sortHouses('expire')" id="th-expire">วันหมดอายุ <span id="sort-expire">↕</span></th>
             <th class="sortable" onclick="sortHouses('slot')" id="th-slot">ที่ว่าง <span id="sort-slot">↕</span></th>
             <th class="sortable" onclick="sortHouses('status')" id="th-status">สถานะ <span id="sort-status">↕</span></th>
@@ -634,6 +635,26 @@
     <div class="modal-actions">
       <button class="modal-btn-cancel" onclick="document.getElementById('modal-house-pass').style.display='none'">ยกเลิก</button>
       <button class="modal-btn-primary" onclick="confirmHousePass()">บันทึก ✅</button>
+    </div>
+  </div>
+</div>
+
+<!-- หมายเหตุของบ้าน — ไม่บังคับกรอก ปล่อยว่างได้ -->
+<div id="modal-house-note" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-icon">📝</div>
+    <div class="modal-title">หมายเหตุของบ้าน</div>
+    <div class="modal-desc" id="house-note-modal-id" style="margin-bottom:14px"></div>
+    <div style="font-size:11px;color:#85B7EB;margin-bottom:5px">โน้ตอะไรก็ได้ (ไม่บังคับ • เว้นว่างเพื่อลบ)</div>
+    <textarea class="modal-select" id="house-note-input" rows="3" maxlength="500"
+              placeholder="เช่น บ้านนี้ต้องเปลี่ยนรหัสทุกเดือน / เจ้าของบ้านคือคุณเอ"
+              style="margin-bottom:6px;resize:vertical;font-family:inherit;line-height:1.5"></textarea>
+    <div style="font-size:11px;color:#5F5E5A;margin-bottom:12px;text-align:right">
+      <span id="house-note-count">0</span>/500
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn-cancel" onclick="document.getElementById('modal-house-note').style.display='none'">ยกเลิก</button>
+      <button class="modal-btn-primary" onclick="confirmHouseNote()">บันทึก ✅</button>
     </div>
   </div>
 </div>
@@ -1577,6 +1598,11 @@ function renderHouses() {
           <span id="pass-text-${h.houseId}" class="mono" style="color:#f59e0b">${h.housePassword || '-'}</span>
           <button class="btn-sm btn-gray" style="font-size:10px;margin-left:6px;padding:3px 8px" onclick="event.stopPropagation();openHousePassModal('${h.houseId}','${(h.housePassword||'').replace(/'/g,"\\'")}')">✏️</button>
         </td>
+        <td style="font-size:12px" onclick="event.stopPropagation()">
+          <span class="house-note-text" style="color:${h.note ? '#e2eaf5' : '#5F5E5A'}">${h.note ? escapeHtml(h.note) : 'ไม่มีหมายเหตุ'}</span>
+          <button class="btn-sm btn-gray house-note-btn" style="font-size:10px;margin-left:6px;padding:3px 8px"
+                  data-house="${escapeAttr(h.houseId)}" data-note="${escapeAttr(h.note || '')}">📝</button>
+        </td>
         <td>${h.expireDate} ${daysBadge(days)}</td>
         <td><span class="badge ${slot > 0 ? 'green' : 'red'}">${slot > 0 ? 'ว่าง ' + slot + ' ที่' : 'เต็ม'}${isOverflow ? ' <span class="overflow-warn">เกิน!</span>' : ''}</span></td>
         <td onclick="event.stopPropagation()" style="white-space:nowrap;padding:8px 12px">
@@ -1589,11 +1615,19 @@ function renderHouses() {
         <td onclick="event.stopPropagation()">${copyBtn}</td>
       </tr>
       <tr id="members-${h.houseId}" style="display:none">
-        <td colspan="8" style="padding:0">
+        <td colspan="9" style="padding:0">
           <table style="width:100%;border-collapse:collapse">${memberRows}</table>
         </td>
       </tr>`;
   }).join('');
+
+  // ผูกปุ่มหมายเหตุ (ใช้ data-attribute แทนการต่อ string กัน ' และ " ทำ onclick พัง)
+  document.querySelectorAll('#houses-body .house-note-btn').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      openHouseNoteModal(btn.dataset.house, btn.dataset.note || '');
+    };
+  });
 
   // restore toggle state ที่เปิดค้างไว้
   openHousesState.forEach(houseId => {
@@ -1602,6 +1636,15 @@ function renderHouses() {
     if (row) row.style.display = 'table-row';
     if (arrow) arrow.textContent = '▼';
   });
+}
+
+// ===== ตัวช่วยกันข้อความพิเศษทำหน้าพัง =====
+function escapeHtml(v) {
+  return String(v ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function escapeAttr(v) {
+  return escapeHtml(v).replace(/"/g, '&quot;').replace(/\n/g, '&#10;');
 }
 
 function renderAllMembers(members) {
@@ -2194,6 +2237,43 @@ async function confirmEdit() {
     const data = await res.json();
     if (data.success) {
       showNotif(`✅ แก้ไขข้อมูลสำเร็จ`, 'success');
+      scheduleLoad(500);
+    } else {
+      showNotif(`❌ ${data.error}`, 'error');
+    }
+  } catch {
+    showNotif('❌ เกิดข้อผิดพลาด', 'error');
+  }
+}
+
+// ===== หมายเหตุของบ้าน =====
+let _houseNoteId = null;
+
+function openHouseNoteModal(houseId, currentNote) {
+  _houseNoteId = houseId;
+  document.getElementById('house-note-modal-id').textContent = `บ้าน: ${houseId}`;
+  const input = document.getElementById('house-note-input');
+  input.value = currentNote || '';
+  document.getElementById('house-note-count').textContent = input.value.length;
+  input.oninput = () => {
+    document.getElementById('house-note-count').textContent = input.value.length;
+  };
+  document.getElementById('modal-house-note').style.display = 'flex';
+  setTimeout(() => input.focus(), 100);
+}
+
+async function confirmHouseNote() {
+  const note = document.getElementById('house-note-input').value.trim();
+  document.getElementById('modal-house-note').style.display = 'none';
+  try {
+    const res = await fetch(`${BASE_URL}/api/admin/house/note`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password },
+      body: JSON.stringify({ houseId: _houseNoteId, note }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      showNotif(note ? '✅ บันทึกหมายเหตุแล้ว' : '✅ ลบหมายเหตุแล้ว', 'success');
       scheduleLoad(500);
     } else {
       showNotif(`❌ ${data.error}`, 'error');
