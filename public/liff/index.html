@@ -203,12 +203,59 @@
       คำเชิญมีอายุ 7 วัน หากหมดอายุกรุณาแจ้งแอดมิน
     </div>`;
 
+  // ขั้นตอนย้ายกลุ่มครอบครัว — แสดงตอนแอดมินย้ายบ้านให้ (สถานะ moving)
+  const MOVE_STEPS = (email) => `
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>เปิดหน้ากลุ่มครอบครัว Google</strong>
+          ล็อกอินด้วย ${email || 'อีเมลที่ใช้สมัคร'} ก่อนนะครับ
+          <a class="btn btn-outline" style="margin-top:8px;padding:10px;font-size:13px"
+             href="https://myaccount.google.com/family/details" target="_blank" rel="noopener">
+            เปิดหน้ากลุ่มครอบครัว
+          </a>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body"><strong>กด "ออกจากกลุ่ม"</strong>ภาษาอังกฤษคือ Leave family group</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>กด "ดูคำเชิญ" แล้วกดยอมรับ</strong>ภาษาอังกฤษคือ View invitation
+          <a class="btn btn-outline" style="margin-top:8px;padding:10px;font-size:13px"
+             href="https://myaccount.google.com/family/create?gar=WzJd&continue=https%3A%2F%2Fmyaccount.google.com%2F%3Fhl%3Dth%26utm_source%3DOGB%26utm_medium%3Dact%26gar%3DWzJd&hl=th&utm_source=OGB&utm_medium=act"
+             target="_blank" rel="noopener">
+            ถ้าไม่เจอคำเชิญ กดตรงนี้
+          </a>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body"><strong>เสร็จแล้วแจ้งแอดมิน</strong>ทักแชทมาบอกได้เลย เดี๋ยวแอดมินเช็คให้</div>
+      </div>
+    </div>
+    <div class="step-note" style="background:var(--danger-bg);color:#8c1d1d">
+      <strong>ห้ามกดออกจากกลุ่มเองเด็ดขาด</strong><br>
+      ถ้าใช้งานไม่ได้อีกครั้ง ให้แจ้งแอดมินก่อนทุกครั้ง
+      เพราะ Google ให้ย้ายกลุ่มได้ปีละครั้งเท่านั้น
+    </div>`;
+
   function renderNotices(memberData, reportData) {
     const items = [];
     const members = (memberData?.members || []).filter(m => m.inviteStatus !== 'removed');
 
     members.forEach(m => {
-      if (m.inviteStatus === 'pending') {
+      if (m.inviteStatus === 'moving') {
+        items.push({
+          tone: 'danger', icon: 'alert',
+          title: 'ย้ายบ้านให้แล้ว — รอคุณย้ายกลุ่ม',
+          sub: 'แตะเพื่อดูวิธีออกจากกลุ่มเดิมและรับคำเชิญใหม่',
+          more: MOVE_STEPS(m.houseEmail),
+        });
+      } else if (m.inviteStatus === 'pending') {
         items.push({
           tone: 'info', icon: 'clock',
           title: 'รอแอดมินดำเนินการ',
@@ -235,7 +282,13 @@
     const section = document.getElementById('notices-section');
     const wrap = document.getElementById('notices');
 
-    if (items.length === 0) { section.classList.add('hidden'); return; }
+    // ล้างของเก่าทิ้งด้วย ไม่งั้นเนื้อหาเดิมจะค้างอยู่ใน DOM ตอนแจ้งเตือนหมด
+    if (items.length === 0) {
+      section.classList.add('hidden');
+      wrap.innerHTML = '';
+      _noticeOpen.clear();
+      return;
+    }
     section.classList.remove('hidden');
 
     wrap.innerHTML = items.map((it, i) => `
