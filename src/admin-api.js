@@ -127,7 +127,7 @@ router.post('/member/move', authCheck, async (req, res) => {
     await writeLog(req.adminUser, req.adminName, 'ย้ายสมาชิก', `${memberEmail || lineUserId} → ${houseId}`);
     if (lineUserId) {
       await sendLineMessage(lineUserId,
-        `📨 Tiger Premium — ส่งคำเชิญใหม่!\n\nแอดมินย้ายคุณไปบ้านใหม่แล้วครับ\n\n✅ กรุณาตรวจสอบอีเมลที่ใช้สมัคร\nแล้วกด "ยอมรับคำเชิญ" ครับ 🐯`
+        `📨 Tiger Premium — ส่งคำเชิญใหม่!\n\nแอดมินย้ายคุณไปบ้านใหม่แล้วครับ\n\n✅ กรุณาตรวจสอบอีเมลที่ใช้สมัคร\nแล้วกด "ยอมรับคำเชิญ" ครับ `
       );
     }
     res.json({ success: true });
@@ -212,7 +212,7 @@ router.post('/inviting', authCheck, async (req, res) => {
     if (!result.success) return res.status(500).json({ error: result.error });
     await writeLog(req.adminUser, req.adminName, 'ส่งเชิญ', `row ${rowIndex} → ${houseId}`);
     await sendLineMessage(lineUserId,
-      `📨 Tiger Premium — ส่งคำเชิญแล้ว!\n\nแอดมินส่งคำเชิญเข้า YouTube Premium Family ให้คุณแล้วครับ\n\n✅ กรุณาตรวจสอบอีเมลที่ใช้สมัคร\nแล้วกด "ยอมรับคำเชิญ" ครับ 🐯`
+      `📨 Tube Premium — ส่งคำเชิญแล้ว!\n\nแอดมินส่งคำเชิญเข้า YouTube Premium Family ให้คุณแล้วครับ\n\n✅ กรุณาตรวจสอบอีเมลที่ใช้สมัคร\nแล้วกด "ยอมรับคำเชิญ" ครับ `
     );
     res.json({ success: true });
   } catch (err) {
@@ -236,7 +236,7 @@ router.post('/invite', authCheck, async (req, res) => {
     const expire = member?.expireDate || '-';
     const daysLeft = expire !== '-' ? dayjs(expire).diff(dayjs(), 'day') : '-';
     await sendLineMessage(lineUserId,
-      `✅ Tiger Premium — เข้าร่วมสำเร็จ!\n\nยืนยันว่าคุณได้กดรับคำเชิญ YouTube Premium Family เรียบร้อยแล้วครับ\n\n📧 อีเมลที่ใช้เข้าบ้าน: ${email}\n📦 แพ็กเกจ: ${pkg}\n📅 วันหมดอายุ: ${expire} (เหลืออีก ${daysLeft} วัน)\n\nหากมีปัญหาการเข้าใช้งาน กรุณาติดต่อแอดมินได้เลยครับ 🐯`
+      `✅ Tube Premium — เข้าร่วมสำเร็จ!\n\nยืนยันว่าคุณได้กดรับคำเชิญ YouTube Premium Family เรียบร้อยแล้วครับ\n\n📧 อีเมลที่ใช้เข้าบ้าน: ${email}\n📦 แพ็กเกจ: ${pkg}\n📅 วันหมดอายุ: ${expire} (เหลืออีก ${daysLeft} วัน)\n\nหากมีปัญหาการเข้าใช้งาน กรุณาติดต่อแอดมินได้เลยครับ `
     );
     res.json({ success: true });
   } catch (err) {
@@ -257,7 +257,7 @@ router.post('/remind', authCheck, async (req, res) => {
     const emoji = days <= 0 ? '❌' : days <= 3 ? '🔴' : '⚠️';
     await writeLog(req.adminUser, req.adminName, 'ส่งแจ้งเตือน', `${member.houseEmail}`);
     await sendLineMessage(lineUserId,
-      `${emoji} แจ้งเตือนจากแอดมิน Tiger Premium\n\n📧 อีเมล: ${member.houseEmail || '-'}\n📦 แพ็กเกจ: ${PKG_LABEL[member.package] || '-'}\n📅 วันหมดอายุ: ${member.expireDate}\n⏰ เหลืออีก: ${days > 0 ? days + ' วัน' : 'หมดอายุแล้ว'}\n\nกด "ต่ออายุ" ในเมนูได้เลยครับ 🐯`
+      `${emoji} แจ้งเตือนจากแอดมิน Tiger Premium\n\n📧 อีเมล: ${member.houseEmail || '-'}\n📦 แพ็กเกจ: ${PKG_LABEL[member.package] || '-'}\n📅 วันหมดอายุ: ${member.expireDate}\n⏰ เหลืออีก: ${days > 0 ? days + ' วัน' : 'หมดอายุแล้ว'}\n\nกด "ต่ออายุ" ในเมนูได้เลยครับ `
     );
     res.json({ success: true });
   } catch (err) {
@@ -296,7 +296,7 @@ router.post('/report/status', authCheck, async (req, res) => {
     // แจ้ง LINE ถ้าแก้ไขแล้ว
     if (status === 'resolved' && lineUserId) {
       await sendLineMessage(lineUserId,
-        `✅ Tiger Premium — แก้ไขปัญหาแล้ว!\n\n📧 อีเมล: ${memberEmail}\n\nแอดมินได้แก้ไขปัญหาที่คุณแจ้งเรียบร้อยแล้วครับ\nหากยังมีปัญหาอยู่ กรุณาแจ้งใหม่ได้เลยครับ 🐯`
+        `✅ Tiger Premium — แก้ไขปัญหาแล้ว!\n\n📧 อีเมล: ${memberEmail}\n\nแอดมินได้แก้ไขปัญหาที่คุณแจ้งเรียบร้อยแล้วครับ\nหากยังมีปัญหาอยู่ กรุณาแจ้งใหม่ได้เลยครับ `
       );
     }
     res.json({ success: true });
