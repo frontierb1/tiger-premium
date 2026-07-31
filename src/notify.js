@@ -34,7 +34,7 @@ function buildMessage(lineUserId, items) {
     const item = items[0];
     const emoji = emojiMap[item.type];
     const title = titleMap[item.type];
-    return `${emoji} แจ้งเตือน Tiger Premium\n\n${title}\n\n📧 ${item.email}\n📅 หมดอายุ: ${item.expireDate} (เหลืออีก ${item.daysLeft} วัน)\n\nกด "ต่ออายุ" ในเมนูด้านล่างได้เลยครับ `;
+    return `${emoji} แจ้งเตือน  Premium\n\n${title}\n\n📧 ${item.email}\n📅 หมดอายุ: ${item.expireDate} (เหลืออีก ${item.daysLeft} วัน)\n\nกด "ต่ออายุ" ในเมนูด้านล่างได้เลยครับ `;
   }
 
   // ถ้ามีหลายเมล → group รวม
