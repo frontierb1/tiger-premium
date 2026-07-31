@@ -33,7 +33,7 @@ async function handleEvent(event) {
   if (event.type === 'follow') {
     await client.replyMessage({
       replyToken: event.replyToken,
-      messages: [{ type: 'text', text: '🐯 ยินดีต้อนรับสู่ Tiger Premium!\n\nกดเมนูด้านล่างเพื่อ:\n📋 สมัครสมาชิก\n📅 เช็ควันหมดอายุ\n🔄 ต่ออายุ\n🏠 ดูข้อมูลบ้าน' }],
+      messages: [{ type: 'text', text: ' ยินดีต้อนรับสู่ Tube Premium!\n\nกดเมนูด้านล่างเพื่อ:\n📋 สมัครสมาชิก\n📅 เช็ควันหมดอายุ\n🔄 ต่ออายุ\n🏠 ดูข้อมูลบ้าน' }],
     });
   }
 
