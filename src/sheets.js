@@ -1,15 +1,38 @@
 const { google } = require('googleapis');
-const dayjs = require('dayjs');
+const { stamp, addDays, parseDate, now } = require('./time');
+const { cached, invalidate } = require('./cache');
 
 const SHEET_ID = process.env.SHEET_ID;
 
+// สร้าง client ครั้งเดียวแล้วใช้ซ้ำ — เดิมสร้าง GoogleAuth ใหม่ทุก request
+let sheetsClient = null;
 async function getSheets() {
+  if (sheetsClient) return sheetsClient;
   const auth = new google.auth.GoogleAuth({
     credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS || '{}'),
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
   });
-  return google.sheets({ version: 'v4', auth });
+  sheetsClient = google.sheets({ version: 'v4', auth });
+  return sheetsClient;
 }
+
+/** อ่านช่วงข้อมูลจาก Sheet ผ่าน cache (invalidate อัตโนมัติเมื่อมีการเขียน) */
+async function readRange(range, cacheKey) {
+  return cached(cacheKey, async () => {
+    const sheets = await getSheets();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range,
+    });
+    return res.data.values || [];
+  });
+}
+
+const MEMBERS_RANGE = 'Members!A:K';
+const readMembers = () => readRange(MEMBERS_RANGE, 'members:all');
+// อ่านถึงคอลัมน์ I เพื่อเอา "หมายเหตุ" ที่แอดมินโน้ตไว้
+const readHouses = () => readRange('Houses!A:I', 'houses:all');
+const readReports = () => readRange('Reports!A:F', 'reports:all');
 
 function rowToMember(row) {
   return {
@@ -29,13 +52,8 @@ function rowToMember(row) {
 
 async function getMemberByLineId(lineUserId) {
   try {
-    const sheets = await getSheets();
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: 'Members!A:K',
-    });
-    const rows = res.data.values || [];
-    const row = rows.find(r => r[0] === lineUserId);
+    const rows = await readMembers();
+    const row = rows.slice(1).find(r => r[0] === lineUserId);
     return row ? rowToMember(row) : null;
   } catch (err) {
     console.error('getMemberByLineId error:', err.message);
@@ -45,13 +63,8 @@ async function getMemberByLineId(lineUserId) {
 
 async function getMembersByLineId(lineUserId) {
   try {
-    const sheets = await getSheets();
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: 'Members!A:K',
-    });
-    const rows = res.data.values || [];
-    return rows.filter(r => r[0] === lineUserId).map(rowToMember);
+    const rows = await readMembers();
+    return rows.slice(1).filter(r => r[0] === lineUserId).map(rowToMember);
   } catch (err) {
     console.error('getMembersByLineId error:', err.message);
     return [];
@@ -60,12 +73,7 @@ async function getMembersByLineId(lineUserId) {
 
 async function getAllMembers() {
   try {
-    const sheets = await getSheets();
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: 'Members!A:K',
-    });
-    const rows = res.data.values || [];
+    const rows = await readMembers();
     return rows.slice(1).map((row, i) => ({ ...rowToMember(row), rowIndex: i + 2 }));
   } catch (err) {
     console.error('getAllMembers error:', err.message);
@@ -73,29 +81,41 @@ async function getAllMembers() {
   }
 }
 
-async function checkEmailExists(email) {
-  try {
-    const sheets = await getSheets();
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: 'Members!A:K',
-    });
-    const rows = res.data.values || [];
-    return rows.some(r => r[5] && r[5].toLowerCase() === email.toLowerCase());
-  } catch (err) {
-    console.error('checkEmailExists error:', err.message);
-    return false;
-  }
+/**
+ * เช็คว่าอีเมลนี้มีในระบบแล้วหรือยัง
+ * @param {boolean} fresh ข้าม cache (ใช้ตอนสมัครจริง เพื่อไม่ให้เห็นข้อมูลค้าง)
+ */
+async function checkEmailExists(email, fresh = false) {
+  // ไม่ try/catch ที่นี่ — ปล่อยให้ error ลอยขึ้นไป ผู้เรียกจะได้ไม่เข้าใจผิดว่า
+  // "อ่านไม่ได้" = "ไม่มีอีเมลนี้" แล้วปล่อยให้สมัครซ้ำ
+  if (fresh) invalidate('members');
+  const rows = await readMembers();
+  const target = String(email || '').trim().toLowerCase();
+  if (!target) return false;
+  return rows.slice(1).some(r => r[5] && String(r[5]).trim().toLowerCase() === target);
+}
+
+/**
+ * เช็คว่าเลขอ้างอิงสลิปนี้เคยถูกใช้ไปแล้วหรือยัง
+ * เราเก็บ transRef ไว้ในคอลัมน์ G ทุกครั้งที่สมัคร/ต่ออายุ
+ * ทำให้กันสลิปซ้ำได้เองโดยไม่ต้องพึ่งฟีเจอร์ของผู้ให้บริการตรวจสลิป
+ */
+async function isSlipUsed(transRef) {
+  const ref = String(transRef || '').trim();
+  if (!ref || ref === '-') return false; // ไม่มีเลขอ้างอิง → ข้ามการเช็ค
+  invalidate('members');
+  const rows = await readMembers();
+  return rows.slice(1).some(r => r[6] && String(r[6]).includes(ref));
 }
 
 async function addMember(data) {
   try {
     const sheets = await getSheets();
     const expireDate = calculateExpireDate(data.packageType);
-    const now = dayjs().format('YYYY-MM-DD HH:mm:ss');
+    const now = stamp();
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
-      range: 'Members!A:K',
+      range: MEMBERS_RANGE,
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [[
@@ -105,7 +125,7 @@ async function addMember(data) {
           expireDate,                                   // D: expire_date
           'active',                                     // E: status
           data.memberEmail || '',                       // F: member_email
-          data.slipUrl ? 'มีสลิป ✓' : '',             // G: slip_url
+          data.slipUrl || '',                           // G: slip_url (เก็บ transRef ไว้ตรวจสอบย้อนหลัง)
           now,                                          // H: created_at
           '',                                           // I: house_id
           'pending',                                    // J: invite_status
@@ -113,6 +133,7 @@ async function addMember(data) {
         ]],
       },
     });
+    invalidate('members');
     return { success: true, expireDate };
   } catch (err) {
     console.error('addMember error:', err.message);
@@ -123,18 +144,16 @@ async function addMember(data) {
 async function renewMember(lineUserId, packageType, slipUrl, memberEmail) {
   try {
     const sheets = await getSheets();
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: 'Members!A:K',
-    });
-    const rows = res.data.values || [];
+    invalidate('members'); // ต่ออายุต้องอ่านค่าล่าสุดเสมอ
+    const rows = await readMembers();
 
     let rowIndex = -1;
     if (memberEmail) {
-      rowIndex = rows.findIndex(r => r[0] === lineUserId && r[5] && r[5].toLowerCase() === memberEmail.toLowerCase());
+      const target = String(memberEmail).trim().toLowerCase();
+      rowIndex = rows.findIndex(r => r[0] === lineUserId && r[5] && String(r[5]).trim().toLowerCase() === target);
     }
     if (rowIndex === -1) {
-      rowIndex = rows.findIndex(r => r[0] === lineUserId);
+      rowIndex = rows.findIndex((r, i) => i > 0 && r[0] === lineUserId);
     }
     if (rowIndex === -1) return { success: false, error: 'ไม่พบสมาชิก' };
 
@@ -142,7 +161,8 @@ async function renewMember(lineUserId, packageType, slipUrl, memberEmail) {
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
-      range: `Members!C${rowIndex + 1}:H${rowIndex + 1}`,
+      // เขียนแค่ C:G — ไม่แตะ H (created_at) เพราะเป็นวันสมัคร/ต่ออายุครั้งล่าสุดที่ใช้อ้างอิง
+      range: `Members!C${rowIndex + 1}:G${rowIndex + 1}`,
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [[
@@ -150,11 +170,20 @@ async function renewMember(lineUserId, packageType, slipUrl, memberEmail) {
           newExpire,                            // D: expire_date
           'active',                             // E: status
           memberEmail || rows[rowIndex][5] || '', // F: member_email
-          slipUrl ? 'มีสลิป ✓' : '',           // G: slip_url
-          dayjs().format('YYYY-MM-DD HH:mm:ss'), // H: created_at (updated)
+          slipUrl || '',                        // G: slip_url (เก็บ transRef ไว้ตรวจสอบย้อนหลัง)
         ]],
       },
     });
+
+    // บันทึกเวลาต่ออายุล่าสุดไว้ที่ H (created_at) — K (registered_at) คงเดิม ไม่ถูกแตะ
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `Members!H${rowIndex + 1}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[stamp()]] },
+    });
+
+    invalidate('members');
     return { success: true, expireDate: newExpire };
   } catch (err) {
     console.error('renewMember error:', err.message);
@@ -171,6 +200,7 @@ async function updateInviteStatus(rowIndex, houseId, status) {
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: [[houseId, status]] },
     });
+    invalidate('members');
     return { success: true };
   } catch (err) {
     console.error('updateInviteStatus error:', err.message);
@@ -180,14 +210,9 @@ async function updateInviteStatus(rowIndex, houseId, status) {
 
 async function getMembersExpiringIn(days) {
   try {
-    const sheets = await getSheets();
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: 'Members!A:K',
-    });
-    const rows = res.data.values || [];
-    const targetDate = dayjs().add(days, 'day').format('YYYY-MM-DD');
-    return rows.filter(r => r[3] === targetDate && r[4] === 'active');
+    const rows = await readMembers();
+    const targetDate = addDays(days); // อิงวันที่ไทย ไม่ใช่ UTC
+    return rows.slice(1).filter(r => r[3] && String(r[3]).trim().slice(0, 10) === targetDate && r[4] === 'active');
   } catch (err) {
     console.error('getMembersExpiringIn error:', err.message);
     return [];
@@ -196,22 +221,35 @@ async function getMembersExpiringIn(days) {
 
 async function getHouses() {
   try {
-    const sheets = await getSheets();
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: 'Houses!A:H',
+    const [rows, memberRows] = await Promise.all([readHouses(), readMembers()]);
+
+    // นับสมาชิกจริงในแต่ละบ้านเอง ไม่พึ่งคอลัมน์ G/H ของชีต
+    // เพราะ 2 คอลัมน์นั้นเป็นสูตรที่ไม่ขยายลงมาให้แถวใหม่ที่ระบบ append เข้าไป
+    // → บ้านที่เพิ่งสร้างจะอ่านได้ 0 แล้วขึ้นว่า "เต็ม" ทั้งที่ยังไม่มีใครอยู่
+    const usedByHouse = new Map();
+    for (const r of memberRows.slice(1)) {
+      const houseId = String(r[8] || '').trim();
+      const inviteStatus = String(r[9] || '').trim();
+      if (!houseId || inviteStatus === 'removed') continue;
+      usedByHouse.set(houseId, (usedByHouse.get(houseId) || 0) + 1);
+    }
+
+    return rows.slice(1).map(row => {
+      const houseId = row[0];
+      const maxMembers = parseInt(row[4]) || 5;
+      const currentMembers = usedByHouse.get(String(houseId || '').trim()) || 0;
+      return {
+        houseId,
+        houseEmail:     row[1],
+        housePassword:  row[2],
+        expireDate:     row[3],
+        maxMembers,
+        status:         row[5],
+        currentMembers,
+        slotsLeft:      Math.max(0, maxMembers - currentMembers),
+        note:           row[8] || '',   // I: หมายเหตุ (ไม่บังคับกรอก)
+      };
     });
-    const rows = res.data.values || [];
-    return rows.slice(1).map(row => ({
-      houseId:        row[0],
-      houseEmail:     row[1],
-      housePassword:  row[2],
-      expireDate:     row[3],
-      maxMembers:     parseInt(row[4]) || 5,
-      status:         row[5],
-      currentMembers: parseInt(row[6]) || 0,
-      slotsLeft:      parseInt(row[7]) || 0,
-    }));
   } catch (err) {
     console.error('getHouses error:', err.message);
     return [];
@@ -219,27 +257,59 @@ async function getHouses() {
 }
 
 function calculateExpireDate(packageType, fromDate = null) {
-  const base = fromDate && dayjs(fromDate).isAfter(dayjs()) ? dayjs(fromDate) : dayjs();
+  // อิงวันที่ไทย: ถ้ายังไม่หมดอายุ ให้ต่อจากวันหมดอายุเดิม ไม่งั้นเริ่มนับจากวันนี้
+  const todayTh = now().startOf('day');
+  const from = parseDate(fromDate);
+  const base = from && from.isAfter(todayTh) ? from : todayTh;
   const months = packageType === '1month' ? 1 : packageType === '2months' ? 2 : 3;
   return base.add(months, 'month').format('YYYY-MM-DD');
 }
 
 // ===== House Management =====
+
+/**
+ * หาเลข house ที่สูงสุดที่เคยใช้ แล้ว +1
+ * เดิมใช้ "จำนวนแถว + 1" ซึ่งทำให้ id ซ้ำถ้าเคยลบบ้านไป
+ */
+function nextHouseNumber(rows) {
+  let max = 0;
+  for (const r of rows) {
+    const m = /^house_(\d+)$/.exec(String(r[0] || '').trim());
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  }
+  return max + 1;
+}
+
+async function readHouseIds() {
+  const sheets = await getSheets();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID, range: 'Houses!A:A',
+  });
+  return res.data.values || [];
+}
+
 async function addHouse(data) {
   try {
     const sheets = await getSheets();
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID, range: 'Houses!A:A',
-    });
-    const rows = res.data.values || [];
-    const nextNum = rows.filter(r => r[0] && r[0].startsWith('house_')).length + 1;
-    const houseId = data.houseId || `house_${String(nextNum).padStart(2,'0')}`;
+    const rows = await readHouseIds();
+    const existingIds = new Set(rows.map(r => String(r[0] || '').trim()));
+
+    let houseId = data.houseId && String(data.houseId).trim();
+    if (houseId) {
+      if (existingIds.has(houseId)) {
+        return { success: false, error: `${houseId} มีอยู่แล้ว กรุณาใช้ชื่ออื่น` };
+      }
+    } else {
+      houseId = `house_${String(nextHouseNumber(rows)).padStart(2, '0')}`;
+    }
+
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
       range: 'Houses!A:F',
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: [[houseId, data.houseEmail, data.housePassword, data.expireDate, data.maxMembers || 5, 'active']] },
     });
+    invalidate('houses');
     return { success: true, houseId };
   } catch (err) {
     console.error('addHouse error:', err.message);
@@ -250,15 +320,12 @@ async function addHouse(data) {
 async function addHouses(housesArray) {
   try {
     const sheets = await getSheets();
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID, range: 'Houses!A:A',
-    });
-    const rows = res.data.values || [];
-    const existingCount = rows.filter(r => r[0] && r[0].startsWith('house_')).length;
+    const rows = await readHouseIds();
+    let num = nextHouseNumber(rows);
 
-    const values = housesArray.map((h, i) => {
-      const num = existingCount + i + 1;
-      const houseId = `house_${String(num).padStart(2,'0')}`;
+    const values = housesArray.map((h) => {
+      const houseId = `house_${String(num).padStart(2, '0')}`;
+      num += 1;
       h.houseId = houseId;
       return [houseId, h.houseEmail, h.housePassword, h.expireDate, h.maxMembers || 5, 'active'];
     });
@@ -269,6 +336,7 @@ async function addHouses(housesArray) {
       valueInputOption: 'USER_ENTERED',
       requestBody: { values },
     });
+    invalidate('houses');
     return { success: true, houses: housesArray };
   } catch (err) {
     console.error('addHouses error:', err.message);
@@ -286,6 +354,7 @@ async function removeMemberFromHouse(rowIndex) {
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: [['', 'removed']] },
     });
+    invalidate('members');
     return { success: true };
   } catch (err) {
     console.error('removeMemberFromHouse error:', err.message);
@@ -302,6 +371,7 @@ async function moveMemberToHouse(rowIndex, houseId) {
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: [[houseId, 'inviting']] },
     });
+    invalidate('members');
     return { success: true };
   } catch (err) {
     console.error('moveMemberToHouse error:', err.message);
@@ -318,6 +388,7 @@ async function updateMemberEmail(rowIndex, newEmail) {
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: [[newEmail]] },
     });
+    invalidate('members');
     return { success: true };
   } catch (err) {
     console.error('updateMemberEmail error:', err.message);
@@ -334,6 +405,7 @@ async function updateMemberExpire(rowIndex, newExpire) {
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: [[newExpire]] },
     });
+    invalidate('members');
     return { success: true };
   } catch (err) {
     console.error('updateMemberExpire error:', err.message);
@@ -344,11 +416,7 @@ async function updateMemberExpire(rowIndex, newExpire) {
 async function updateHousePassword(houseId, newPassword) {
   try {
     const sheets = await getSheets();
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: 'Houses!A:A',
-    });
-    const rows = res.data.values || [];
+    const rows = await readHouseIds();
     const rowIndex = rows.findIndex(r => r[0] === houseId);
     if (rowIndex === -1) return { success: false, error: 'ไม่พบบ้าน' };
     await sheets.spreadsheets.values.update({
@@ -357,6 +425,7 @@ async function updateHousePassword(houseId, newPassword) {
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: [[newPassword]] },
     });
+    invalidate('houses');
     return { success: true };
   } catch (err) {
     console.error('updateHousePassword error:', err.message);
@@ -364,17 +433,40 @@ async function updateHousePassword(houseId, newPassword) {
   }
 }
 
+/**
+ * บันทึกหมายเหตุของบ้าน (คอลัมน์ I ในชีต Houses)
+ * ปล่อยว่างได้ ไม่มีค่าเริ่มต้น — ส่งค่าว่างมาก็คือลบหมายเหตุทิ้ง
+ */
+async function updateHouseNote(houseId, note) {
+  try {
+    const sheets = await getSheets();
+    const rows = await readHouseIds();
+    const rowIndex = rows.findIndex(r => r[0] === houseId);
+    if (rowIndex === -1) return { success: false, error: 'ไม่พบบ้าน' };
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `Houses!I${rowIndex + 1}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[String(note ?? '').slice(0, 500)]] },
+    });
+    invalidate('houses');
+    return { success: true };
+  } catch (err) {
+    console.error('updateHouseNote error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
 async function addReport(data) {
   try {
     const sheets = await getSheets();
-    const dayjs = require('dayjs');
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
       range: 'Reports!A:F',
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [[
-          dayjs().format('YYYY-MM-DD HH:mm:ss'), // A: timestamp
+          stamp(),                                 // A: timestamp (เวลาไทย)
           data.lineUserId,                         // B: line_user_id
           data.displayName || '',                  // C: display_name
           data.memberEmail || '',                  // D: email ที่มีปัญหา
@@ -383,6 +475,7 @@ async function addReport(data) {
         ]],
       },
     });
+    invalidate('reports');
     return { success: true };
   } catch (err) {
     console.error('addReport error:', err.message);
@@ -392,12 +485,7 @@ async function addReport(data) {
 
 async function getReports() {
   try {
-    const sheets = await getSheets();
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: 'Reports!A:F',
-    });
-    const rows = res.data.values || [];
+    const rows = await readReports();
     return rows.slice(1).reverse().map((row, i) => ({
       timestamp:   row[0],
       lineUserId:  row[1],
@@ -422,23 +510,36 @@ async function updateReportStatus(rowIndex, status) {
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: [[status]] },
     });
+    invalidate('reports');
     return { success: true };
   } catch (err) {
     console.error('updateReportStatus error:', err.message);
     return { success: false, error: err.message };
   }
 }
+
+// ===== Admins =====
 async function getAdmins() {
   const admins = [];
 
-  // parse ADMINS_JSON จาก env: [{"username":"x","password":"y","displayName":"z","role":"owner"}]
+  // parse ADMINS_JSON จาก env:
+  // [{"username":"x","password":"y","displayName":"z","role":"owner"}]
   try {
     if (process.env.ADMINS_JSON) {
       const parsed = JSON.parse(process.env.ADMINS_JSON);
-      admins.push(...parsed);
+      if (!Array.isArray(parsed)) throw new Error('ADMINS_JSON ต้องเป็น array');
+      // ⚠️ สำคัญ: authCheck เช็ค status === 'active'
+      // ถ้า JSON ไม่ได้ใส่ status มา จะ login ไม่ได้เลย → ใส่ default ให้ตรงนี้
+      admins.push(...parsed.map(a => ({
+        username:    String(a.username || '').trim(),
+        password:    String(a.password || ''),
+        displayName: a.displayName || a.username || 'Admin',
+        status:      a.status || 'active',
+        role:        a.role || 'admin',
+      })).filter(a => a.username && a.password));
     }
   } catch (e) {
-    console.error('ADMINS_JSON parse error:', e.message);
+    console.error('❌ ADMINS_JSON parse error:', e.message, '— จะใช้ค่าจาก OWNER_USER/ADMIN_USER แทน');
   }
 
   // fallback: OWNER_USER / OWNER_PASS / ADMIN_USER / ADMIN_PASS
@@ -463,18 +564,37 @@ async function getAdmins() {
     }
   }
 
+  if (admins.length === 0) {
+    console.error('❌ ไม่พบข้อมูล admin เลย — ตั้ง ADMINS_JSON หรือ OWNER_USER/OWNER_PASS ใน ENV');
+  }
+
   return admins;
+}
+
+/** เทียบ string แบบ constant-time กัน timing attack ตอน login */
+function safeEqual(a, b) {
+  const crypto = require('crypto');
+  const bufA = Buffer.from(String(a || ''), 'utf8');
+  const bufB = Buffer.from(String(b || ''), 'utf8');
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+/** หา admin ที่ตรงกับ username/password — คืน null ถ้าไม่ผ่าน */
+async function findAdmin(username, password) {
+  const admins = await getAdmins();
+  return admins.find(a =>
+    a.username === username &&
+    safeEqual(a.password, password) &&
+    a.status === 'active'
+  ) || null;
 }
 
 // ===== House Management =====
 async function updateHouseStatus(houseId, newStatus) {
   try {
     const sheets = await getSheets();
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: 'Houses!A:A',
-    });
-    const rows = res.data.values || [];
+    const rows = await readHouseIds();
     const rowIndex = rows.findIndex(r => r[0] === houseId);
     if (rowIndex === -1) return { success: false, error: 'ไม่พบบ้าน' };
     await sheets.spreadsheets.values.update({
@@ -483,6 +603,7 @@ async function updateHouseStatus(houseId, newStatus) {
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: [[newStatus]] },
     });
+    invalidate('houses');
     return { success: true };
   } catch (err) {
     console.error('updateHouseStatus error:', err.message);
@@ -500,11 +621,7 @@ async function deleteHouse(houseId) {
     const sheetId = sheet.properties.sheetId;
 
     // หา row index
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: 'Houses!A:A',
-    });
-    const rows = res.data.values || [];
+    const rows = await readHouseIds();
     const rowIndex = rows.findIndex(r => r[0] === houseId);
     if (rowIndex === -1) return { success: false, error: 'ไม่พบบ้าน' };
 
@@ -524,6 +641,7 @@ async function deleteHouse(houseId) {
         }],
       },
     });
+    invalidate('houses');
     return { success: true };
   } catch (err) {
     console.error('deleteHouse error:', err.message);
@@ -541,13 +659,14 @@ async function writeLog(adminUser, adminName, action, detail) {
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [[
-          dayjs().format('YYYY-MM-DD HH:mm:ss'),
+          stamp(),
           `${adminName} (${adminUser})`,
           action,
           detail,
         ]],
       },
     });
+    invalidate('logs');
   } catch (err) {
     console.error('writeLog error:', err.message);
   }
@@ -555,12 +674,7 @@ async function writeLog(adminUser, adminName, action, detail) {
 
 async function getLogs() {
   try {
-    const sheets = await getSheets();
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: 'Logs!A:D',
-    });
-    const rows = res.data.values || [];
+    const rows = await readRange('Logs!A:D', 'logs:all');
     return rows.slice(1).reverse().map(row => ({
       timestamp:  row[0],
       admin:      row[1],
@@ -578,6 +692,7 @@ module.exports = {
   getMembersByLineId,
   getAllMembers,
   checkEmailExists,
+  isSlipUsed,
   addMember,
   renewMember,
   updateInviteStatus,
@@ -590,12 +705,16 @@ module.exports = {
   updateMemberEmail,
   updateMemberExpire,
   updateHousePassword,
+  updateHouseNote,
   updateHouseStatus,
   deleteHouse,
   addReport,
   getReports,
   updateReportStatus,
   getAdmins,
+  findAdmin,
   writeLog,
   getLogs,
+  calculateExpireDate,
+  invalidate,
 };
