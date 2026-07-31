@@ -333,6 +333,13 @@ input[type=file] { display: none; }
 .btn-primary:disabled { background: var(--border-strong); color: #fff; cursor: not-allowed; transform: none; filter: none; }
 .btn-outline { background: var(--surface); color: var(--text); border: 1px solid var(--border); box-shadow: var(--shadow); }
 
+/* ปุ่มคัดลอกตอนกดแล้ว — เปลี่ยนเป็นเขียวให้รู้ว่าคัดลอกสำเร็จ */
+.btn-outline.is-copied {
+  background: var(--ok-bg);
+  border-color: var(--ok-border);
+  color: var(--ok);
+}
+
 /* ===================== กล่องแจ้งเตือน ===================== */
 .alert {
   border-radius: var(--r);
