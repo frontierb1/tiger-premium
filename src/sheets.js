@@ -379,6 +379,41 @@ async function moveMemberToHouse(rowIndex, houseId) {
   }
 }
 
+/**
+ * ย้ายสมาชิกหลายคนไปบ้านใหม่พร้อมกัน (ใช้ตอนบ้านเดิมพัง ต้องย้ายยกบ้าน)
+ * ตั้งสถานะเป็น 'moving' = ย้ายแล้ว รอลูกค้าออกจากกลุ่มเก่า + กดรับคำเชิญใหม่
+ * แยกจาก 'inviting' เพื่อให้รู้ว่าคนนี้ต้องออกจากกลุ่มเดิมก่อน ไม่ใช่แค่กดรับ
+ *
+ * @param {number[]} rowIndexes แถวในชีต (เลขแถวจริง เริ่มที่ 2)
+ * @param {string} toHouseId บ้านปลายทาง
+ */
+async function moveMembersToHouse(rowIndexes, toHouseId) {
+  try {
+    const rows = (rowIndexes || []).map(Number).filter(n => Number.isInteger(n) && n >= 2);
+    if (!rows.length) return { success: false, error: 'ไม่ได้เลือกสมาชิก' };
+
+    const sheets = await getSheets();
+    // เขียนทีเดียวหลายช่วง เร็วกว่ายิงทีละแถว และลดโอกาสเขียนค้างกลางทาง
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: SHEET_ID,
+      requestBody: {
+        valueInputOption: 'USER_ENTERED',
+        data: rows.map(r => ({
+          range: `Members!I${r}:J${r}`,
+          values: [[toHouseId, 'moving']],
+        })),
+      },
+    });
+
+    invalidate('members');
+    invalidate('houses'); // จำนวนที่ว่างของบ้านเปลี่ยน
+    return { success: true, moved: rows.length };
+  } catch (err) {
+    console.error('moveMembersToHouse error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
 async function updateMemberEmail(rowIndex, newEmail) {
   try {
     const sheets = await getSheets();
@@ -702,6 +737,7 @@ module.exports = {
   addHouses,
   removeMemberFromHouse,
   moveMemberToHouse,
+  moveMembersToHouse,
   updateMemberEmail,
   updateMemberExpire,
   updateHousePassword,
