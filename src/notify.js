@@ -43,7 +43,7 @@ function buildMessage(lineUserId, items) {
     return `${emoji} ${item.email}\n   📅 หมดอายุ: ${item.expireDate} (เหลืออีก ${item.daysLeft} วัน)`;
   }).join('\n\n');
 
-  return `⚠️ แจ้งเตือน Tiger Premium\n\nสมาชิกของคุณมีที่ใกล้หมดอายุ:\n\n${lines}\n\nกด "ต่ออายุ" ในเมนูด้านล่างได้เลยครับ `;
+  return `⚠️ แจ้งเตือน T Premium\n\nสมาชิกของคุณมีที่ใกล้หมดอายุ:\n\n${lines}\n\nกด "ต่ออายุ" ในเมนูด้านล่างได้เลยครับ `;
 }
 
 async function runNotifications() {
