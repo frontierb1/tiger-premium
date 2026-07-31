@@ -16,7 +16,7 @@ const timezone = require('dayjs/plugin/timezone');
 const customParseFormat = require('dayjs/plugin/customParseFormat');
 const {
   getAllMembers, getHouses, updateInviteStatus, getMemberByLineId,
-  addHouse, addHouses, removeMemberFromHouse, moveMemberToHouse,
+  addHouse, addHouses, removeMemberFromHouse, moveMemberToHouse, moveMembersToHouse,
   updateMemberEmail, updateMemberExpire, updateHousePassword, updateHouseNote,
   updateHouseStatus, deleteHouse, addReport, getReports,
   updateReportStatus, getAdmins, writeLog,
@@ -316,6 +316,95 @@ router.post('/house/delete', authCheck, async (req, res) => {
   }
 });
 
+// ===== ย้ายสมาชิกทั้งบ้าน =====
+// ใช้ตอนบ้านพัง ต้องย้ายลูกค้าทั้งหมดไปบ้านใหม่ในทีเดียว
+// ลูกค้าจะได้ข้อความสั้นๆ พร้อมลิงก์ไปหน้าเว็บที่มีขั้นตอนแบบกดได้
+router.post('/house/move-all', authCheck, async (req, res) => {
+  try {
+    const { fromHouseId, toHouseId, rowIndexes, closeOldHouse } = req.body;
+    if (!toHouseId || !Array.isArray(rowIndexes) || !rowIndexes.length) {
+      return res.status(400).json({ error: 'กรุณาเลือกบ้านปลายทางและสมาชิกที่จะย้าย' });
+    }
+    if (fromHouseId && fromHouseId === toHouseId) {
+      return res.status(400).json({ error: 'บ้านปลายทางต้องไม่ใช่บ้านเดิม' });
+    }
+
+    // เช็คว่าบ้านปลายทางมีที่ว่างพอไหม (นับจากข้อมูลจริง ไม่พึ่งสูตรในชีต)
+    const houses = await getHouses();
+    const target = houses.find(h => h.houseId === toHouseId);
+    if (!target) return res.status(400).json({ error: `ไม่พบบ้าน ${toHouseId}` });
+    if (target.slotsLeft < rowIndexes.length) {
+      return res.status(400).json({
+        error: `บ้าน ${toHouseId} ว่างแค่ ${target.slotsLeft} ที่ แต่จะย้าย ${rowIndexes.length} คน`,
+      });
+    }
+
+    const members = await getAllMembers();
+    const picked = rowIndexes
+      .map(r => members.find(m => m.rowIndex === parseInt(r)))
+      .filter(Boolean);
+
+    const result = await moveMembersToHouse(rowIndexes, toHouseId);
+    if (!result.success) return res.status(500).json({ error: result.error });
+
+    await writeLog(req.adminUser, req.adminName, 'ย้ายทั้งบ้าน',
+      `${fromHouseId || '-'} → ${toHouseId} (${result.moved} คน)`);
+
+    // ปิดบ้านเดิมกันเผลอเอาไปใช้ต่อ
+    let closedOld = false;
+    if (closeOldHouse && fromHouseId) {
+      const r = await updateHouseStatus(fromHouseId, 'inactive');
+      closedOld = r.success;
+      if (closedOld) {
+        await writeLog(req.adminUser, req.adminName, 'ปิดบ้านเดิมหลังย้าย', fromHouseId);
+      }
+    }
+
+    // ส่ง LINE ทีละคน เว้นจังหวะเล็กน้อยกัน LINE ตีกลับเพราะยิงถี่
+    const liffUrl = process.env.LIFF_ID ? `https://liff.line.me/${process.env.LIFF_ID}` : '';
+    let sent = 0;
+    for (const m of picked) {
+      if (!m.lineUserId) continue;
+      const ok = await sendLineMessage(m.lineUserId, buildMoveMessage(m, toHouseId, liffUrl));
+      if (ok) sent += 1;
+      await new Promise(r => setTimeout(r, 300));
+    }
+
+    res.json({ success: true, moved: result.moved, sent, closedOld });
+  } catch (err) {
+    console.error('move-all error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/** ข้อความแจ้งลูกค้าตอนย้ายบ้าน — สั้น อ่านง่าย รายละเอียดอยู่ในหน้าเว็บ */
+function buildMoveMessage(member, toHouseId, liffUrl) {
+  const lines = [
+    `🚚 ${BRAND} — ย้ายบ้านให้แล้วครับ`,
+    '',
+    `📧 อีเมล: ${member.houseEmail || '-'}`,
+    '',
+    'รบกวนลูกค้าย้ายกลุ่มนะครับ',
+    'กดออกจากกลุ่มเดิม แล้วกดรับคำเชิญใหม่ได้เลย',
+  ];
+  if (liffUrl) {
+    lines.push('', '👉 ดูวิธีย้ายแบบละเอียด (กดได้เลย)', liffUrl);
+  } else {
+    lines.push(
+      '', 'วิธีออกจากกลุ่มครอบครัว',
+      '1. เข้า https://myaccount.google.com/family/details',
+      '2. กด "ออกจากกลุ่ม" (Leave family group)',
+      '3. กด "ดูคำเชิญ" (View invitation)'
+    );
+  }
+  lines.push(
+    '',
+    '⚠️ หลังย้ายแล้ว ถ้าใช้งานไม่ได้อีก',
+    'กรุณาแจ้งแอดมินก่อน ห้ามกดออกจากกลุ่มเองเด็ดขาด'
+  );
+  return lines.join('\n');
+}
+
 // ===== ส่งคำเชิญ =====
 router.post('/inviting', authCheck, async (req, res) => {
   try {
@@ -492,8 +581,10 @@ async function sendLineMessage(userId, text) {
       channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
     });
     await client.pushMessage({ to: userId, messages: [{ type: 'text', text }] });
+    return true;
   } catch (err) {
     console.error('sendLineMessage error:', err.message);
+    return false;
   }
 }
 
