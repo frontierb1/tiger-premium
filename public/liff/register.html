@@ -31,15 +31,8 @@
   <section class="section">
     <div class="section-label">2 · ชำระเงิน</div>
     <div class="card">
-      <div class="row">
-        <div class="row-main">
-          <div class="row-title" id="bank-name"></div>
-          <div class="row-sub">พร้อมเพย์ <span class="mono" id="pp-id"></span></div>
-        </div>
-        <button class="btn btn-outline" id="copy-btn" style="width:auto;padding:8px 13px;font-size:12.5px">
-          <span data-icon="copy"></span><span id="copy-label">คัดลอก</span>
-        </button>
-      </div>
+      <!-- ช่องทางโอน — สร้างจาก APP.accounts ใน config.js (มีปุ่มคัดลอกแยกแต่ละบัญชี) -->
+      <div id="pay-accounts"></div>
 
       <div style="padding:22px 20px;text-align:center;border-top:1px solid var(--border)">
         <!-- ก่อนเลือกแพ็กเกจ -->
@@ -117,8 +110,7 @@
 
   // สร้างการ์ดแพ็กเกจจาก config.js
   document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('bank-name').textContent = APP.bankName;
-    document.getElementById('pp-id').textContent = APP.promptpayId;
+    renderAccounts();
     document.getElementById('fb-pp').textContent = APP.promptpayId;
 
     document.getElementById('pkg-grid').innerHTML = APP.packages.map(p => `
@@ -133,7 +125,6 @@
       el.onclick = () => selectPkg(el);
     });
 
-    document.getElementById('copy-btn').onclick = copyAccount;
   });
 
   liff.init({ liffId: APP.liffId }).then(async () => {
@@ -141,11 +132,32 @@
     profile = await liff.getProfile();
   });
 
-  function copyAccount() {
-    navigator.clipboard.writeText(APP.promptpayId).then(() => {
-      const label = document.getElementById('copy-label');
-      label.textContent = 'คัดลอกแล้ว';
-      setTimeout(() => label.textContent = 'คัดลอก', 1500);
+  // สร้างรายการบัญชีพร้อมปุ่มคัดลอกของแต่ละบัญชี
+  function renderAccounts() {
+    const wrap = document.getElementById('pay-accounts');
+    wrap.innerHTML = APP.accounts.map((a, i) => `
+      <div class="row">
+        <div class="row-main">
+          <div class="row-sub">${a.label}</div>
+          <div class="row-title mono" style="font-size:16px;letter-spacing:.5px">${a.number}</div>
+          <div class="row-sub">${a.name}</div>
+        </div>
+        <button type="button" class="btn btn-outline copy-acc" data-i="${i}"
+                style="width:auto;padding:8px 13px;font-size:12.5px;flex-shrink:0">
+          ${ICON.copy}<span>คัดลอก</span>
+        </button>
+      </div>`).join('');
+
+    wrap.querySelectorAll('.copy-acc').forEach(btn => {
+      btn.onclick = () => {
+        const acc = APP.accounts[btn.dataset.i];
+        navigator.clipboard.writeText(acc.number).then(() => {
+          const label = btn.querySelector('span');
+          label.textContent = 'คัดลอกแล้ว';
+          btn.classList.add('is-copied');
+          setTimeout(() => { label.textContent = 'คัดลอก'; btn.classList.remove('is-copied'); }, 1500);
+        });
+      };
     });
   }
 
