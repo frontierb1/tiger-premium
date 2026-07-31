@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Admin Dashboard</title>
+  <title>Tube — Admin</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <style>
@@ -180,7 +180,7 @@
 
 <div class="login-wrap" id="login-page">
   <div class="login-card">
-    <h2>Admin</h2>
+    <h2>Tube Admin</h2>
     <p>เข้าสู่ระบบแอดมิน Dashboard</p>
     <input type="text" id="admin-user" placeholder="Username" onkeydown="if(event.key==='Enter')login()"/>
     <input type="password" id="admin-pass" placeholder="Password" onkeydown="if(event.key==='Enter')login()"/>
@@ -191,7 +191,7 @@
 
 <div id="dashboard" style="display:none">
   <div class="header">
-    <h1>Admin Dashboard</h1>
+    <h1>Tube — Admin</h1>
     <div class="header-right">
       <span class="last-update" id="last-update"><span class="spinner"></span>กำลังโหลด...</span>
       <span style="font-size:12px;color:#85B7EB" id="admin-display-name"></span>
@@ -519,6 +519,7 @@
             <th class="sortable" onclick="sortTable('all','days')">เหลือ <span id="sort-all-days">↕</span></th>
             <th class="sortable" onclick="sortTable('all','house')">บ้าน <span id="sort-all-house">↕</span></th>
             <th class="sortable" onclick="sortTable('all','status')">สถานะ <span id="sort-all-status">↕</span></th>
+            <th>แก้ไข</th>
           </tr></thead>
           <tbody id="all-body"></tbody>
         </table>
@@ -1608,6 +1609,9 @@ function renderAllMembers(members) {
   document.getElementById('all-table').style.display = 'table';
   const statusMap = { pending: 'รอเชิญ', inviting: 'กำลังเชิญ', active: 'Active ✅', removed: 'ถูกลบ' };
   const badgeMap = { pending: 'pending', inviting: 'inviting', active: 'invited', removed: 'removed' };
+  // ใส่ค่าลงใน attribute แทนการต่อ string ตรงๆ เพื่อกันอีเมลที่มีเครื่องหมาย ' ทำ onclick พัง
+  const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
   document.getElementById('all-body').innerHTML = members.map(m => `
     <tr>
       <td>${m.houseEmail || '-'}</td>
@@ -1616,8 +1620,23 @@ function renderAllMembers(members) {
       <td>${daysBadge(daysLeft(m.expireDate))}</td>
       <td>${m.houseId || '-'}</td>
       <td><span class="badge ${badgeMap[m.inviteStatus]||'pending'}">${statusMap[m.inviteStatus]||'รอเชิญ'}</span></td>
+      <td>
+        <button class="btn-sm btn-gray edit-member-btn" style="font-size:11px"
+                data-row="${esc(m.rowIndex)}"
+                data-line="${esc(m.lineUserId)}"
+                data-email="${esc(m.houseEmail)}"
+                data-house="${esc(m.houseId)}"
+                data-expire="${esc(m.expireDate)}">✏️ แก้ไข</button>
+      </td>
     </tr>
   `).join('');
+
+  document.querySelectorAll('#all-body .edit-member-btn').forEach(btn => {
+    btn.onclick = () => {
+      const d = btn.dataset;
+      openEditModal(Number(d.row), d.line, d.email, d.house || '-', d.expire);
+    };
+  });
 }
 
 // Checkbox logic
