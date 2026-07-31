@@ -639,6 +639,36 @@
   </div>
 </div>
 
+<!-- ย้ายสมาชิกทั้งบ้านไปบ้านใหม่ -->
+<div id="modal-move-all" class="modal-overlay" style="display:none">
+  <div class="modal-box" style="max-width:460px">
+    <div class="modal-icon">🚚</div>
+    <div class="modal-title">ย้ายสมาชิกทั้งบ้าน</div>
+    <div class="modal-desc" id="move-all-from" style="margin-bottom:14px"></div>
+
+    <div style="font-size:11px;color:#85B7EB;margin-bottom:5px">ย้ายไปบ้าน</div>
+    <select class="modal-select" id="move-all-target" style="margin-bottom:14px"></select>
+
+    <div style="font-size:11px;color:#85B7EB;margin-bottom:5px">
+      สมาชิกที่จะย้าย (<span id="move-all-count">0</span> คน)
+    </div>
+    <div id="move-all-members" style="max-height:190px;overflow-y:auto;background:rgba(10,22,40,.6);border:1px solid #1e3a5f;border-radius:10px;padding:10px;margin-bottom:14px;font-size:12px"></div>
+
+    <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#85B7EB;margin-bottom:8px;cursor:pointer">
+      <input type="checkbox" id="move-all-notify" checked/> ส่งวิธีย้ายกลุ่มทาง LINE ให้ทุกคน
+    </label>
+    <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#85B7EB;margin-bottom:14px;cursor:pointer">
+      <input type="checkbox" id="move-all-close" checked/> ปิดบ้านเดิมเป็น inactive
+    </label>
+
+    <div id="move-all-error" style="color:#ef4444;font-size:12px;margin-bottom:10px;display:none"></div>
+    <div class="modal-actions">
+      <button class="modal-btn-cancel" onclick="document.getElementById('modal-move-all').style.display='none'">ยกเลิก</button>
+      <button class="modal-btn-primary" id="move-all-confirm" onclick="confirmMoveAll()">ย้ายเลย 🚚</button>
+    </div>
+  </div>
+</div>
+
 <!-- หมายเหตุของบ้าน — ไม่บังคับกรอก ปล่อยว่างได้ -->
 <div id="modal-house-note" class="modal-overlay" style="display:none">
   <div class="modal-box">
@@ -792,7 +822,8 @@ function applyRole(role) {
 // Auto-restore session จาก localStorage
 (function restoreSession() {
   try {
-    const saved = localStorage.getItem('tiger_admin');
+    // อ่านคีย์ใหม่ก่อน ถ้าไม่มีค่อยถอยไปคีย์เดิม จะได้ไม่โดนเด้งออกตอนอัปเดต
+    const saved = localStorage.getItem('tube_admin') || localStorage.getItem('tiger_admin');
     if (saved) {
       const admin = JSON.parse(saved);
       if (admin.username && admin.password) {
@@ -806,7 +837,7 @@ function applyRole(role) {
           headers: { 'x-admin-user': admin.username, 'x-admin-pass': admin.password }
         }).then(r => {
           if (r.status === 401) {
-            localStorage.removeItem('tiger_admin');
+            localStorage.removeItem('tube_admin'); localStorage.removeItem('tiger_admin');
             currentAdmin = { username: '', password: '', displayName: '', role: 'admin' };
             document.getElementById('login-page').style.display = 'flex';
             document.getElementById('dashboard').style.display = 'none';
@@ -832,7 +863,7 @@ async function login() {
     const data = await res.json();
     if (data.success) {
       currentAdmin = { username, password, displayName: data.displayName, role: data.role || 'admin' };
-      localStorage.setItem('tiger_admin', JSON.stringify(currentAdmin));
+      localStorage.setItem('tube_admin', JSON.stringify(currentAdmin));
       document.getElementById('login-page').style.display = 'none';
       document.getElementById('dashboard').style.display = 'block';
       document.getElementById('admin-display-name').textContent = `👤 ${data.displayName} ${data.role === 'owner' ? '👑' : ''}`;
@@ -849,7 +880,7 @@ async function login() {
 
 function logout() {
   currentAdmin = { username: '', displayName: '', role: 'admin' };
-  localStorage.removeItem('tiger_admin');
+  localStorage.removeItem('tube_admin'); localStorage.removeItem('tiger_admin');
   document.getElementById('login-page').style.display = 'flex';
   document.getElementById('dashboard').style.display = 'none';
   document.getElementById('admin-user').value = '';
@@ -1339,7 +1370,8 @@ function checkOverflow() {
 
 function renderAll() {
   const pending = allMembers.filter(m => m.inviteStatus === 'pending');
-  const inviting = allMembers.filter(m => m.inviteStatus === 'inviting');
+  // รวมคนที่กำลังย้ายบ้านเข้ามาด้วย จะได้ไม่มีใครตกหล่น
+  const inviting = allMembers.filter(m => m.inviteStatus === 'inviting' || m.inviteStatus === 'moving');
   const expiring = allMembers.filter(m => {
     if (m.inviteStatus === 'removed') return false;
     const d = daysLeft(m.expireDate);
@@ -1569,8 +1601,8 @@ function renderHouses() {
       ? `<button class="btn-sm btn-gray" style="margin:2px" data-emails='${JSON.stringify(allEmails).replace(/'/g,"&#39;")}' onclick="event.stopPropagation();copyEmailList(JSON.parse(this.dataset.emails),this)">📋 Copy ทั้งหมด (${allEmails.length})</button>`
       : '-';
 
-    const statusMap = { pending: 'รอเชิญ', inviting: 'กำลังเชิญ', active: 'Active ✅', removed: 'ถูกลบ' };
-    const badgeMap = { pending: 'pending', inviting: 'inviting', active: 'invited', removed: 'removed' };
+    const statusMap = { pending: 'รอเชิญ', inviting: 'กำลังเชิญ', moving: 'กำลังย้ายบ้าน 🚚', active: 'Active ✅', removed: 'ถูกลบ' };
+    const badgeMap = { pending: 'pending', inviting: 'inviting', moving: 'inviting', active: 'invited', removed: 'removed' };
 
     const memberRows = houseMembers.length > 0 ? houseMembers.map(m => {
       const dl = daysLeft(m.expireDate);
@@ -1609,6 +1641,7 @@ function renderHouses() {
           <div style="display:flex;gap:5px;align-items:center;flex-wrap:nowrap">
             <span class="badge ${isActive ? 'invited' : 'red'}">${isActive ? 'active' : 'inactive'}</span>
             <button class="btn-sm ${isActive ? 'btn-orange' : 'btn-green'}" style="font-size:10px;padding:3px 8px" onclick="event.stopPropagation();toggleHouseStatus('${h.houseId}','${isActive ? 'inactive' : 'active'}',this)">${isActive ? '⏸ ปิด' : '▶ เปิด'}</button>
+            <button class="btn-sm btn-gray move-all-btn" style="font-size:10px;padding:3px 8px" data-house="${escapeAttr(h.houseId)}">🚚 ย้ายทั้งบ้าน</button>
             <button class="btn-sm" style="font-size:10px;padding:3px 8px;background:#2a0a0a;color:#ef4444;border:1px solid #ef4444" onclick="event.stopPropagation();confirmDeleteHouse('${h.houseId}')">🗑 ลบ</button>
           </div>
         </td>
@@ -1627,6 +1660,10 @@ function renderHouses() {
       e.stopPropagation();
       openHouseNoteModal(btn.dataset.house, btn.dataset.note || '');
     };
+  });
+
+  document.querySelectorAll('#houses-body .move-all-btn').forEach(btn => {
+    btn.onclick = (e) => { e.stopPropagation(); openMoveAllModal(btn.dataset.house); };
   });
 
   // restore toggle state ที่เปิดค้างไว้
@@ -1650,8 +1687,8 @@ function escapeAttr(v) {
 function renderAllMembers(members) {
   document.getElementById('all-loading').style.display = 'none';
   document.getElementById('all-table').style.display = 'table';
-  const statusMap = { pending: 'รอเชิญ', inviting: 'กำลังเชิญ', active: 'Active ✅', removed: 'ถูกลบ' };
-  const badgeMap = { pending: 'pending', inviting: 'inviting', active: 'invited', removed: 'removed' };
+  const statusMap = { pending: 'รอเชิญ', inviting: 'กำลังเชิญ', moving: 'กำลังย้ายบ้าน 🚚', active: 'Active ✅', removed: 'ถูกลบ' };
+  const badgeMap = { pending: 'pending', inviting: 'inviting', moving: 'inviting', active: 'invited', removed: 'removed' };
   // ใส่ค่าลงใน attribute แทนการต่อ string ตรงๆ เพื่อกันอีเมลที่มีเครื่องหมาย ' ทำ onclick พัง
   const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 
@@ -2244,6 +2281,111 @@ async function confirmEdit() {
   } catch {
     showNotif('❌ เกิดข้อผิดพลาด', 'error');
   }
+}
+
+// ===== ย้ายสมาชิกทั้งบ้าน =====
+let _moveAllFrom = null;
+
+function openMoveAllModal(fromHouseId) {
+  _moveAllFrom = fromHouseId;
+  const members = allMembers.filter(m =>
+    m.houseId === fromHouseId && m.inviteStatus !== 'removed'
+  );
+
+  document.getElementById('move-all-from').textContent =
+    `จากบ้าน ${fromHouseId} · มีสมาชิก ${members.length} คน`;
+  document.getElementById('move-all-error').style.display = 'none';
+
+  if (members.length === 0) {
+    document.getElementById('move-all-members').innerHTML =
+      '<div style="color:#5F5E5A">บ้านนี้ยังไม่มีสมาชิก</div>';
+    document.getElementById('move-all-count').textContent = '0';
+    document.getElementById('move-all-target').innerHTML = '';
+    document.getElementById('modal-move-all').style.display = 'flex';
+    return;
+  }
+
+  // รายชื่อสมาชิก ติ๊กไว้ทั้งหมด แต่เอาออกได้
+  document.getElementById('move-all-members').innerHTML = members.map(m => `
+    <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer">
+      <input type="checkbox" class="move-all-pick" value="${m.rowIndex}" checked/>
+      <span style="flex:1">${escapeHtml(m.houseEmail || '(ไม่มีอีเมล)')}</span>
+      <span style="color:#5F5E5A;font-size:11px">${escapeHtml(m.inviteStatus || '')}</span>
+    </label>`).join('');
+
+  const refreshCount = () => {
+    const n = document.querySelectorAll('.move-all-pick:checked').length;
+    document.getElementById('move-all-count').textContent = n;
+    fillTargets(n);
+  };
+  document.querySelectorAll('.move-all-pick').forEach(cb => { cb.onchange = refreshCount; });
+
+  // บ้านปลายทาง: เฉพาะบ้านที่เปิดอยู่ ไม่ใช่บ้านเดิม และมีที่ว่างพอ
+  function fillTargets(needed) {
+    const sel = document.getElementById('move-all-target');
+    const options = allHouses
+      .filter(h => h.houseId !== fromHouseId && h.status !== 'inactive')
+      .map(h => ({ h, slot: getHouseSlot(h.houseId) }))
+      .sort((a, b) => b.slot - a.slot);
+
+    const usable = options.filter(o => o.slot >= needed);
+    sel.innerHTML = usable.length
+      ? usable.map(o => `<option value="${escapeAttr(o.h.houseId)}">${escapeHtml(o.h.houseId)} — ว่าง ${o.slot} ที่</option>`).join('')
+      : '<option value="">— ไม่มีบ้านที่ว่างพอ —</option>';
+
+    const err = document.getElementById('move-all-error');
+    if (!usable.length) {
+      err.textContent = `⚠️ ไม่มีบ้านไหนว่างพอสำหรับ ${needed} คน — สร้างบ้านใหม่ก่อน หรือติ๊กสมาชิกออกบางคน`;
+      err.style.display = 'block';
+    } else {
+      err.style.display = 'none';
+    }
+    document.getElementById('move-all-confirm').disabled = !usable.length || needed === 0;
+  }
+
+  refreshCount();
+  document.getElementById('modal-move-all').style.display = 'flex';
+}
+
+async function confirmMoveAll() {
+  const toHouseId = document.getElementById('move-all-target').value;
+  const rowIndexes = [...document.querySelectorAll('.move-all-pick:checked')].map(cb => Number(cb.value));
+  const err = document.getElementById('move-all-error');
+
+  if (!toHouseId) { err.textContent = '⚠️ กรุณาเลือกบ้านปลายทาง'; err.style.display = 'block'; return; }
+  if (!rowIndexes.length) { err.textContent = '⚠️ กรุณาเลือกสมาชิกอย่างน้อย 1 คน'; err.style.display = 'block'; return; }
+
+  const btn = document.getElementById('move-all-confirm');
+  btn.disabled = true;
+  btn.textContent = 'กำลังย้าย...';
+
+  try {
+    const res = await fetch(`${BASE_URL}/api/admin/house/move-all`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-user': currentAdmin.username, 'x-admin-pass': currentAdmin.password },
+      body: JSON.stringify({
+        fromHouseId: _moveAllFrom,
+        toHouseId,
+        rowIndexes,
+        closeOldHouse: document.getElementById('move-all-close').checked,
+        notify: document.getElementById('move-all-notify').checked,
+      }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('modal-move-all').style.display = 'none';
+      showNotif(`✅ ย้าย ${data.moved} คนไป ${toHouseId} แล้ว · ส่ง LINE ${data.sent} คน`, 'success');
+      scheduleLoad(500);
+    } else {
+      err.textContent = `❌ ${data.error}`;
+      err.style.display = 'block';
+    }
+  } catch {
+    err.textContent = '❌ เกิดข้อผิดพลาด';
+    err.style.display = 'block';
+  }
+  btn.disabled = false;
+  btn.textContent = 'ย้ายเลย 🚚';
 }
 
 // ===== หมายเหตุของบ้าน =====
