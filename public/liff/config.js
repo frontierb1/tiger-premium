@@ -24,9 +24,9 @@ window.APP = {
 
   // ===== แพ็กเกจ =====
   packages: [
-    { id: '1month',  months: 1, price: 79,  label: '1 เดือน', note: '' },
-    { id: '2months', months: 2, price: 155, label: '2 เดือน', note: 'ประหยัดกว่า' },
-    { id: '3months', months: 3, price: 230, label: '3 เดือน', note: 'คุ้มที่สุด' },
+    { id: '1month',  months: 1, price: 75,  label: '1 เดือน', note: '' },
+    { id: '2months', months: 2, price: 150, label: '2 เดือน', note: 'ประหยัดกว่า' },
+    { id: '3months', months: 3, price: 220, label: '3 เดือน', note: 'คุ้มที่สุด' },
   ],
 };
 
