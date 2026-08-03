@@ -474,23 +474,19 @@ router.post('/remind', authCheck, async (req, res) => {
 // GET /api/admin/slip-status — ใช้เช็คว่า API key ใช้งานได้ไหม
 // (ถ้ายังไม่ได้อัป src/slip-verify.js จะแจ้งว่ายังไม่พร้อม ไม่ทำให้ระบบพัง)
 router.get('/slip-status', authCheck, async (req, res) => {
+  const KEY = process.env.EASYSLIP_API_KEY || '';
+  if (!KEY) return res.json({ ok: false, สรุป: '❌ ยังไม่ได้ตั้ง EASYSLIP_API_KEY ใน Railway' });
   try {
-    let checkProviderStatus;
-    try {
-      ({ checkProviderStatus } = require('./slip-verify'));
-    } catch {
-      return res.json({ success: true, ok: null, สรุป: 'ยังไม่ได้ติดตั้ง src/slip-verify.js — ข้ามการตรวจ' });
-    }
-    const result = await checkProviderStatus();
+    const axios = require('axios');
+    const r = await axios.get('https://api.easyslip.com/v2/info', {
+      headers: { Authorization: `Bearer ${KEY}` }, timeout: 10000, validateStatus: () => true,
+    });
     res.json({
-      success: true,
-      ...result,
-      สรุป: result.ok
-        ? `✅ ${result.provider} ใช้งานได้ปกติ`
-        : `❌ ${result.provider} ใช้งานไม่ได้ — ${result.hint || result.reason || 'ดูรายละเอียดใน data'}`,
+      ok: r.status === 200, status: r.status, data: r.data,
+      สรุป: r.status === 200 ? '✅ EasySlip ใช้งานได้ปกติ' : `❌ EasySlip ตอบกลับ ${r.status} — ตรวจสอบ API Key`,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.json({ ok: false, สรุป: `❌ ต่อ EasySlip ไม่ได้ — ${err.message}` });
   }
 });
 
