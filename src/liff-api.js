@@ -30,8 +30,8 @@ const submitLimiter = rateLimit({
 
 const PACKAGES = {
   '1month':  { label: '1 เดือน', price: 75,  months: 1 },
-  '2months': { label: '2 เดือน', price: 155, months: 2 },
-  '3months': { label: '3 เดือน', price: 230, months: 3 },
+  '2months': { label: '2 เดือน', price: 150, months: 2 },
+  '3months': { label: '3 เดือน', price: 220, months: 3 },
 };
 
 // ===== Routes =====
