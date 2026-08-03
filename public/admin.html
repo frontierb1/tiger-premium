@@ -888,7 +888,7 @@ function logout() {
 }
 let chartDaily = null, chartRevenue = null, chartPackage = null, chartHouses = null;
 
-const PKG_PRICE = { '1month': 79, '2months': 155, '3months': 230 };
+const PKG_PRICE = { '1month': 75, '2months': 155, '3months': 230 };
 
 function renderDashboard() {
   const now = new Date();
@@ -1122,7 +1122,7 @@ function renderChartPackage() {
   chartPackage = new Chart(ctx, {
     type: 'doughnut',
     data: {
-      labels: ['1 เดือน (฿79)', '2 เดือน (฿155)', '3 เดือน (฿230)'],
+      labels: ['1 เดือน (฿75)', '2 เดือน (฿155)', '3 เดือน (฿230)'],
       datasets: [{
         data: [counts['1month'], counts['2months'], counts['3months']],
         backgroundColor: ['#378ADD', '#22c55e', '#f59e0b'],
