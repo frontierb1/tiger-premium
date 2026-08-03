@@ -1,40 +1,270 @@
+/*
+ * liff-api.js — API สมัครสมาชิก / ต่ออายุ / เช็คข้อมูล (หน้า LIFF เรียกใช้)
+ *
+ * ★ ไฟล์นี้ทำงานได้ด้วยตัวเอง อัปไฟล์เดียวจบ
+ *   ใช้แค่ express, multer, axios, form-data (มีใน package.json อยู่แล้ว)
+ *   + ./sheets และ ./time ที่อยู่บน repo แล้ว
+ *
+ * ★ ตรวจสลิปด้วย EasySlip เท่านั้น (api.easyslip.com)
+ *   ตั้ง ENV: EASYSLIP_API_KEY
+ *
+ * ★ แก้ราคา → ตาราง PACKAGES ด้านล่าง
+ * ★ แก้ชื่อแบรนด์ในข้อความ LINE → ตั้ง ENV BRAND_NAME
+ */
+
 const express = require('express');
 const multer = require('multer');
-const { getMemberByLineId, getMembersByLineId, checkEmailExists, isSlipUsed, addMember, renewMember } = require('./sheets');
+const axios = require('axios');
+const FormData = require('form-data');
+const {
+  getMemberByLineId, getMembersByLineId, checkEmailExists,
+  isSlipUsed, addMember, renewMember,
+} = require('./sheets');
 const { daysLeft } = require('./time');
-const { BRAND } = require('./brand');
-const { requireLineUser } = require('./line-auth');
-const { rateLimit } = require('./rate-limit');
-const { withLock } = require('./lock');
-const { verifySlip } = require('./slip-verify');
 
 const router = express.Router();
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 8 * 1024 * 1024, files: 1 }, // สลิปไม่ควรเกิน 8MB
-  fileFilter: (req, file, cb) => {
-    if (!/^image\//.test(file.mimetype)) {
-      return cb(new Error('กรุณาแนบไฟล์รูปภาพเท่านั้น'));
-    }
-    cb(null, true);
-  },
-});
+const BRAND = process.env.BRAND_NAME || 'Tube';
 
-// จำกัดการยิงสมัคร/ต่ออายุ กันคนสแปมสลิป (ผู้ให้บริการคิดเป็นครั้ง) และ Google Sheets
-const submitLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 5,
-  keyGenerator: (req) => `submit:${req.body?.lineUserId || req.ip}`,
-  message: 'กดส่งถี่เกินไป กรุณารอสักครู่แล้วลองใหม่ครับ',
-});
-
+// ===== ราคาแพ็กเกจ =====
+// ★ ตัวเลขตรงนี้คือตัวที่ใช้เทียบกับยอดในสลิป ต้องตรงกับ public/liff/config.js
 const PACKAGES = {
   '1month':  { label: '1 เดือน', price: 75,  months: 1 },
   '2months': { label: '2 เดือน', price: 150, months: 2 },
   '3months': { label: '3 เดือน', price: 220, months: 3 },
 };
 
-// ===== Routes =====
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024, files: 1 }, // สลิปไม่ควรเกิน 8MB
+  fileFilter: (req, file, cb) => {
+    if (!/^image\//.test(file.mimetype)) return cb(new Error('กรุณาแนบไฟล์รูปภาพเท่านั้น'));
+    cb(null, true);
+  },
+});
+
+
+/* ══════════════ จำกัดจำนวนครั้ง ══════════════ */
+
+const buckets = new Map();
+function rateLimit({ windowMs = 60000, max = 10, keyGenerator, message } = {}) {
+  const genKey = keyGenerator || ((req) => req.ip || 'unknown');
+  const msg = message || 'ส่งคำขอถี่เกินไป กรุณารอสักครู่แล้วลองใหม่ครับ';
+  return function (req, res, next) {
+    const key = genKey(req);
+    const now = Date.now();
+    const b = buckets.get(key);
+    if (!b || b.resetAt <= now) {
+      buckets.set(key, { count: 1, resetAt: now + windowMs });
+      if (buckets.size > 5000) {
+        for (const [k, v] of buckets) if (v.resetAt <= now) buckets.delete(k);
+      }
+      return next();
+    }
+    b.count += 1;
+    if (b.count > max) {
+      res.set('Retry-After', String(Math.ceil((b.resetAt - now) / 1000)));
+      return res.status(429).json({ error: msg });
+    }
+    next();
+  };
+}
+
+
+/* ══════════════ ล็อกกันเขียนซ้ำ ══════════════ */
+// Google Sheets ไม่มี unique constraint — ถ้าสองคนสมัครอีเมลเดียวกันพร้อมกัน
+// จะผ่านการเช็คทั้งคู่แล้วเขียนซ้ำ ล็อกนี้บังคับให้ "เช็ค + เขียน" ทำทีละคิว
+
+const queues = new Map();
+function withLock(key, fn) {
+  const previous = queues.get(key) || Promise.resolve();
+  const run = previous.then(fn, fn);
+  const chain = run.then(() => {}, () => {});
+  queues.set(key, chain);
+  chain.then(() => { if (queues.get(key) === chain) queues.delete(key); });
+  return run;
+}
+
+
+/* ══════════════ ยืนยันตัวตนผ่าน LINE ID token ══════════════ */
+// ถ้าไม่ verify ใครยิง API เองก็สมัคร/ดูข้อมูลในชื่อคนอื่นได้
+// ENV: LINE_LOGIN_CHANNEL_ID = Channel ID ของ LINE Login channel (ไม่ใช่ Messaging API)
+// ถ้ายังไม่ตั้ง ระบบทำงานแบบเดิม (ไม่ verify) และเตือนใน log — deploy ได้ไม่พัง
+
+const CHANNEL_ID = process.env.LINE_LOGIN_CHANNEL_ID || '';
+const tokenCache = new Map();
+let warnedNoChannel = false;
+
+async function verifyIdToken(idToken) {
+  if (!idToken || !CHANNEL_ID) return null;
+
+  const hit = tokenCache.get(idToken);
+  if (hit && hit.expiresAt > Date.now()) return hit.userId;
+
+  try {
+    const params = new URLSearchParams();
+    params.append('id_token', idToken);
+    params.append('client_id', CHANNEL_ID);
+    const res = await axios.post('https://api.line.me/oauth2/v2.1/verify', params, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      timeout: 10000,
+    });
+    const userId = res.data?.sub;
+    if (!userId) return null;
+    tokenCache.set(idToken, { userId, expiresAt: Date.now() + 60000 });
+    if (tokenCache.size > 5000) tokenCache.clear(); // กัน memory โต
+    return userId;
+  } catch (err) {
+    console.error('verifyIdToken failed:', err.response?.data || err.message);
+    return null;
+  }
+}
+
+function requireLineUser({ from = 'body', field = 'lineUserId' } = {}) {
+  return async function (req, res, next) {
+    const claimed = req[from]?.[field];
+
+    if (!CHANNEL_ID) {
+      if (!warnedNoChannel) {
+        warnedNoChannel = true;
+        console.warn('⚠️  ยังไม่ได้ตั้ง LINE_LOGIN_CHANNEL_ID — ระบบจะเชื่อ lineUserId ที่ client ส่งมา (ไม่ปลอดภัย)');
+      }
+      if (!claimed) return res.status(400).json({ error: 'ข้อมูลไม่ครบ (lineUserId)' });
+      req.lineUserId = claimed;
+      return next();
+    }
+
+    const idToken = req.headers['x-line-id-token'];
+    if (!idToken) return res.status(401).json({ error: 'กรุณาเปิดหน้านี้ผ่านแอป LINE ครับ' });
+
+    const verified = await verifyIdToken(idToken);
+    if (!verified) {
+      return res.status(401).json({ error: 'ยืนยันตัวตนไม่สำเร็จ กรุณาปิดหน้านี้แล้วเปิดใหม่ครับ' });
+    }
+    // ใช้ userId จาก token เสมอ — ไม่สนใจค่าที่ client อ้าง
+    if (claimed && claimed !== verified) {
+      console.warn(`🚨 lineUserId mismatch: claimed=${claimed} verified=${verified}`);
+    }
+    req.lineUserId = verified;
+    next();
+  };
+}
+
+
+/* ══════════════ ตรวจสลิป — EasySlip ══════════════ */
+
+const EASYSLIP_KEY = process.env.EASYSLIP_API_KEY || '';
+if (!EASYSLIP_KEY) {
+  console.warn('⚠️  ยังไม่ได้ตั้ง EASYSLIP_API_KEY — ระบบจะไม่รับสลิป');
+}
+
+/** ค้นค่าจาก response แบบลึกทุกชั้น กันโค้ดพังถ้า EasySlip ปรับโครงสร้าง */
+function deepFind(obj, keys, validate) {
+  const want = keys.map(k => k.toLowerCase());
+  const seen = new Set();
+  const stack = [obj];
+  while (stack.length) {
+    const cur = stack.shift();
+    if (!cur || typeof cur !== 'object' || seen.has(cur)) continue;
+    seen.add(cur);
+    for (const [k, v] of Object.entries(cur)) {
+      if (want.includes(k.toLowerCase())) {
+        const val = (v && typeof v === 'object' && 'amount' in v) ? v.amount : v;
+        if (!validate || validate(val)) return val;
+      }
+      if (v && typeof v === 'object') stack.push(v);
+    }
+  }
+  return undefined;
+}
+
+const findAmount = (o) => Number(deepFind(o, ['amount', 'transAmount', 'totalAmount'], v => {
+  const n = Number(v && typeof v === 'object' ? v.amount : v);
+  return Number.isFinite(n) && n > 0;
+})) || 0;
+
+const findTransRef = (o) => deepFind(o,
+  ['transRef', 'transactionRef', 'transRefId', 'referenceNo', 'ref'],
+  v => typeof v === 'string' && v.length >= 6) || '';
+
+/**
+ * ตรวจสลิปกับ EasySlip
+ * ผ่าน    → { valid: true, amount, transRef, senderName, receiverName }
+ * ไม่ผ่าน → { valid: false, message: 'ข้อความบอกลูกค้า' }
+ */
+async function verifySlip(fileBuffer, mimetype, expectedAmount) {
+  if (!EASYSLIP_KEY) {
+    return { valid: false, message: '❌ ระบบตรวจสลิปยังไม่พร้อม กรุณาติดต่อแอดมินครับ' };
+  }
+
+  try {
+    const form = new FormData();
+    form.append('image', fileBuffer, { filename: 'slip.jpg', contentType: mimetype || 'image/jpeg' });
+    form.append('checkDuplicate', 'true');
+    form.append('matchAmount', String(expectedAmount));
+
+    const res = await axios.post('https://api.easyslip.com/v2/verify/bank', form, {
+      headers: { Authorization: `Bearer ${EASYSLIP_KEY}`, ...form.getHeaders() },
+      timeout: 20000,
+      validateStatus: () => true,
+    });
+
+    console.log(`[easyslip] ${res.status} →`, JSON.stringify(res.data).slice(0, 1200));
+
+    if (res.status === 401 || res.status === 403) {
+      return { valid: false, message: '❌ API Key ตรวจสลิปไม่ถูกต้อง กรุณาติดต่อแอดมินครับ' };
+    }
+
+    const data = res.data || {};
+    if (!data.success) {
+      const code = data.error?.code || 'UNKNOWN';
+      const msg = data.error?.message || 'ตรวจสลิปไม่สำเร็จ';
+      if (code === 'SLIP_NOT_FOUND') return { valid: false, message: '❌ ไม่พบ QR Code ในสลิป กรุณาแนบสลิปที่ชัดเจนครับ' };
+      if (code === 'DUPLICATE_SLIP') return { valid: false, message: '❌ สลิปนี้ถูกใช้ไปแล้ว ไม่สามารถใช้ซ้ำได้ครับ' };
+      if (code === 'SLIP_PENDING')   return { valid: false, message: '⏳ สลิปยังไม่ผ่านระบบธนาคาร กรุณารอสักครู่แล้วลองใหม่ครับ' };
+      if (code === 'QUOTA_EXCEEDED') return { valid: false, message: '❌ ระบบตรวจสลิปชั่วคราวไม่พร้อม กรุณาติดต่อแอดมินครับ' };
+      return { valid: false, message: `❌ ${msg}` };
+    }
+
+    const slip = data.data || {};
+    const amount = findAmount(slip);
+
+    if (slip.isDuplicate) {
+      return { valid: false, message: '❌ สลิปนี้ถูกใช้ไปแล้ว ไม่สามารถใช้ซ้ำได้ครับ' };
+    }
+    if (!amount) {
+      return { valid: false, message: '❌ อ่านยอดเงินจากสลิปไม่ได้ กรุณาแนบภาพที่ชัดเจนขึ้นครับ' };
+    }
+    // โอนเกินได้ แต่โอนขาดไม่ได้
+    if (slip.isAmountMatched === false || amount < expectedAmount) {
+      return {
+        valid: false,
+        message: `❌ ยอดเงินไม่ถูกต้อง\nพบ: ${amount} บาท\nต้องการ: ${expectedAmount} บาท`,
+      };
+    }
+
+    return {
+      valid: true,
+      amount,
+      transRef: findTransRef(slip) || '-',
+      senderName:   slip.rawSlip?.sender?.account?.name?.th || '-',
+      receiverName: slip.rawSlip?.receiver?.account?.name?.th || '-',
+    };
+  } catch (err) {
+    console.error('[easyslip] error:', err.response?.data || err.message);
+    return { valid: false, message: '❌ ระบบตรวจสลิปขัดข้อง กรุณาลองใหม่หรือติดต่อแอดมินครับ' };
+  }
+}
+
+
+/* ══════════════ Routes ══════════════ */
+
+// จำกัดการยิงสมัคร/ต่ออายุ กันสแปมสลิป (EasySlip คิดเป็นครั้ง) และกัน Google Sheets โดนถล่ม
+const submitLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  keyGenerator: (req) => `submit:${req.body?.lineUserId || req.ip}`,
+  message: 'กดส่งถี่เกินไป กรุณารอสักครู่แล้วลองใหม่ครับ',
+});
 
 // ข้อมูลสมาชิกเป็นข้อมูลส่วนตัว — ต้องยืนยันว่าเป็นเจ้าของ LINE account จริง
 const requireOwner = requireLineUser({ from: 'params', field: 'lineUserId' });
@@ -54,8 +284,7 @@ router.get('/members/:lineUserId', requireOwner, async (req, res) => {
   try {
     const members = await getMembersByLineId(req.lineUserId);
     if (!members || members.length === 0) return res.json({ found: false, members: [] });
-    const result = members.map(m => ({ ...m, daysLeft: daysLeft(m.expireDate) }));
-    res.json({ found: true, members: result });
+    res.json({ found: true, members: members.map(m => ({ ...m, daysLeft: daysLeft(m.expireDate) })) });
   } catch (err) {
     console.error('GET /members error:', err.message);
     res.status(500).json({ error: 'ดึงข้อมูลไม่สำเร็จ กรุณาลองใหม่ครับ' });
@@ -66,16 +295,34 @@ router.get('/check-email', rateLimit({ windowMs: 60000, max: 30 }), async (req, 
   try {
     const email = req.query.email || '';
     if (!email) return res.json({ exists: false });
-    const exists = await checkEmailExists(email);
-    res.json({ exists });
+    res.json({ exists: await checkEmailExists(email) });
   } catch (err) {
     console.error('check-email error:', err.message);
     res.status(500).json({ error: 'ตรวจสอบอีเมลไม่สำเร็จ กรุณาลองใหม่ครับ' });
   }
 });
 
-router.get('/packages', (req, res) => {
-  res.json(PACKAGES);
+router.get('/packages', (req, res) => res.json(PACKAGES));
+
+// เช็คว่า EasySlip key ใช้งานได้ไหม — เปิด /api/slip-status ในเบราว์เซอร์ได้เลย
+router.get('/slip-status', rateLimit({ windowMs: 60000, max: 10 }), async (req, res) => {
+  if (!EASYSLIP_KEY) {
+    return res.json({ ok: false, สรุป: '❌ ยังไม่ได้ตั้ง EASYSLIP_API_KEY ใน Railway' });
+  }
+  try {
+    const r = await axios.get('https://api.easyslip.com/v2/info', {
+      headers: { Authorization: `Bearer ${EASYSLIP_KEY}` },
+      timeout: 10000, validateStatus: () => true,
+    });
+    res.json({
+      ok: r.status === 200,
+      status: r.status,
+      data: r.data,
+      สรุป: r.status === 200 ? '✅ EasySlip ใช้งานได้ปกติ' : `❌ EasySlip ตอบกลับ ${r.status} — ตรวจสอบ API Key`,
+    });
+  } catch (err) {
+    res.json({ ok: false, สรุป: `❌ ต่อ EasySlip ไม่ได้ — ${err.message}` });
+  }
 });
 
 router.post('/register', upload.single('slip'), submitLimiter, requireLineUser(), async (req, res) => {
@@ -84,58 +331,35 @@ router.post('/register', upload.single('slip'), submitLimiter, requireLineUser()
     const { displayName, packageType } = req.body;
     const memberEmail = String(req.body.memberEmail || '').trim().toLowerCase();
 
-    if (!packageType || !memberEmail) {
-      return res.status(400).json({ error: 'ข้อมูลไม่ครบ กรุณากรอกให้ครบทุกช่อง' });
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(memberEmail)) {
-      return res.status(400).json({ error: 'รูปแบบอีเมลไม่ถูกต้องครับ' });
-    }
-    if (!req.file) {
-      return res.status(400).json({ error: 'กรุณาแนบสลิปโอนเงิน' });
-    }
-    if (!PACKAGES[packageType]) {
-      return res.status(400).json({ error: 'แพ็กเกจไม่ถูกต้อง' });
-    }
+    if (!packageType || !memberEmail) return res.status(400).json({ error: 'ข้อมูลไม่ครบ กรุณากรอกให้ครบทุกช่อง' });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(memberEmail)) return res.status(400).json({ error: 'รูปแบบอีเมลไม่ถูกต้องครับ' });
+    if (!req.file) return res.status(400).json({ error: 'กรุณาแนบสลิปโอนเงิน' });
+    if (!PACKAGES[packageType]) return res.status(400).json({ error: 'แพ็กเกจไม่ถูกต้อง' });
 
     // ล็อกตามอีเมล: "เช็คซ้ำ + เขียน" ต้องทำทีละคิว
-    // ไม่งั้นกดรัวๆ หรือสองคนพร้อมกันจะผ่านการเช็คทั้งคู่แล้วเขียนซ้ำลง Sheet
     const outcome = await withLock(`register:${memberEmail}`, async () => {
-      const emailExists = await checkEmailExists(memberEmail, true); // true = ข้าม cache
-      if (emailExists) {
+      if (await checkEmailExists(memberEmail, true)) { // true = ข้าม cache
         return { status: 400, body: { error: `อีเมล ${memberEmail} มีในระบบแล้ว ไม่สามารถสมัครซ้ำได้ครับ` } };
       }
 
-      // ตรวจสลิป (อยู่ในล็อกด้วย เพื่อไม่ให้สลิปใบเดียวถูกใช้สองรอบพร้อมกัน)
-      const slipResult = await verifySlip(
-        req.file.buffer,
-        req.file.mimetype,
-        PACKAGES[packageType].price
-      );
-      if (!slipResult.valid) {
-        return { status: 400, body: { error: slipResult.message } };
-      }
+      const slip = await verifySlip(req.file.buffer, req.file.mimetype, PACKAGES[packageType].price);
+      if (!slip.valid) return { status: 400, body: { error: slip.message } };
 
-      // กันสลิปซ้ำด้วยตัวเอง — ไม่พึ่งฟีเจอร์ของผู้ให้บริการ
-      // (เทียบเลขอ้างอิงกับที่เคยบันทึกไว้ในคอลัมน์ G)
-      if (await isSlipUsed(slipResult.transRef)) {
+      // กันสลิปซ้ำด้วยตัวเอง — เทียบเลขอ้างอิงกับที่เคยบันทึกไว้ในคอลัมน์ G
+      if (await isSlipUsed(slip.transRef)) {
         return { status: 400, body: { error: '❌ สลิปนี้ถูกใช้ไปแล้ว ไม่สามารถใช้ซ้ำได้ครับ' } };
       }
 
       const result = await addMember({
-        lineUserId,
-        displayName,
-        packageType,
-        memberEmail,
-        slipUrl: `มีสลิป ✓ (${slipResult.transRef})`,
+        lineUserId, displayName, packageType, memberEmail,
+        slipUrl: `มีสลิป ✓ (${slip.transRef})`,
       });
-      if (!result.success) {
-        return { status: 500, body: { error: 'บันทึกข้อมูลไม่สำเร็จ กรุณาติดต่อแอดมินครับ' } };
-      }
+      if (!result.success) return { status: 500, body: { error: 'บันทึกข้อมูลไม่สำเร็จ กรุณาติดต่อแอดมินครับ' } };
 
       return {
         status: 200,
         body: { success: true, expireDate: result.expireDate },
-        notify: `✅ ได้รับข้อมูลการสมัครแล้วครับ!\n\n📦 แพ็กเกจ: ${PACKAGES[packageType].label}\n📧 อีเมล: ${memberEmail}\n💰 ยอดโอน: ${slipResult.amount} บาท\n📅 วันหมดอายุ: ${result.expireDate}\n\n⏳ กรุณารอแอดมินส่งคำเชิญเข้า YouTube Premium\nภายใน 24 ชม. ครับ`,
+        notify: `✅ ได้รับข้อมูลการสมัครแล้วครับ!\n\n📦 แพ็กเกจ: ${PACKAGES[packageType].label}\n📧 อีเมล: ${memberEmail}\n💰 ยอดโอน: ${slip.amount} บาท\n📅 วันหมดอายุ: ${result.expireDate}\n\n⏳ กรุณารอแอดมินส่งคำเชิญเข้า YouTube Premium\nภายใน 24 ชม. ครับ`,
       };
     });
 
@@ -149,41 +373,23 @@ router.post('/register', upload.single('slip'), submitLimiter, requireLineUser()
 
 router.post('/renew', upload.single('slip'), submitLimiter, requireLineUser(), async (req, res) => {
   try {
-    const lineUserId = req.lineUserId; // มาจาก ID token ที่ verify แล้ว
+    const lineUserId = req.lineUserId;
     const { packageType, memberEmail } = req.body;
 
-    if (!packageType) {
-      return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
-    }
-    if (!req.file) {
-      return res.status(400).json({ error: 'กรุณาแนบสลิปโอนเงิน' });
-    }
-    if (!PACKAGES[packageType]) {
-      return res.status(400).json({ error: 'แพ็กเกจไม่ถูกต้อง' });
-    }
+    if (!packageType) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
+    if (!req.file) return res.status(400).json({ error: 'กรุณาแนบสลิปโอนเงิน' });
+    if (!PACKAGES[packageType]) return res.status(400).json({ error: 'แพ็กเกจไม่ถูกต้อง' });
 
-    // ล็อกตาม user+email กันกดต่ออายุรัวๆ แล้วบวกวันซ้อน
+    // ล็อกกันกดต่ออายุรัวๆ แล้วบวกวันซ้อน
     const outcome = await withLock(`renew:${lineUserId}:${memberEmail || ''}`, async () => {
-      const slipResult = await verifySlip(
-        req.file.buffer,
-        req.file.mimetype,
-        PACKAGES[packageType].price
-      );
-      if (!slipResult.valid) {
-        return { status: 400, body: { error: slipResult.message } };
-      }
+      const slip = await verifySlip(req.file.buffer, req.file.mimetype, PACKAGES[packageType].price);
+      if (!slip.valid) return { status: 400, body: { error: slip.message } };
 
-      // กันสลิปซ้ำด้วยตัวเอง — ไม่พึ่งฟีเจอร์ของผู้ให้บริการ
-      if (await isSlipUsed(slipResult.transRef)) {
+      if (await isSlipUsed(slip.transRef)) {
         return { status: 400, body: { error: '❌ สลิปนี้ถูกใช้ไปแล้ว ไม่สามารถใช้ซ้ำได้ครับ' } };
       }
 
-      const result = await renewMember(
-        lineUserId,
-        packageType,
-        `มีสลิป ✓ (${slipResult.transRef})`,
-        memberEmail
-      );
+      const result = await renewMember(lineUserId, packageType, `มีสลิป ✓ (${slip.transRef})`, memberEmail);
       if (!result.success) {
         return { status: 500, body: { error: result.error || 'ต่ออายุไม่สำเร็จ กรุณาติดต่อแอดมินครับ' } };
       }
@@ -191,7 +397,7 @@ router.post('/renew', upload.single('slip'), submitLimiter, requireLineUser(), a
       return {
         status: 200,
         body: { success: true, expireDate: result.expireDate },
-        notify: `✅ ต่ออายุสำเร็จ!\n\n📦 แพ็กเกจ: ${PACKAGES[packageType].label}\n📧 อีเมล: ${memberEmail || ''}\n💰 ยอดโอน: ${slipResult.amount} บาท\n📅 หมดอายุใหม่: ${result.expireDate}\n\nขอบคุณที่ใช้บริการ ${BRAND}`,
+        notify: `✅ ต่ออายุสำเร็จ!\n\n📦 แพ็กเกจ: ${PACKAGES[packageType].label}\n📧 อีเมล: ${memberEmail || ''}\n💰 ยอดโอน: ${slip.amount} บาท\n📅 หมดอายุใหม่: ${result.expireDate}\n\nขอบคุณที่ใช้บริการ ${BRAND}`,
       };
     });
 
@@ -215,7 +421,7 @@ async function sendLineMessage(userId, text) {
   }
 }
 
-// ===== Error handler เฉพาะ router นี้ (multer โยน error เรื่องไฟล์มาที่นี่) =====
+// multer โยน error เรื่องไฟล์มาที่นี่
 router.use((err, req, res, next) => {
   if (err && err.code === 'LIMIT_FILE_SIZE') {
     return res.status(400).json({ error: 'ไฟล์สลิปใหญ่เกินไป (จำกัด 8MB) กรุณาย่อรูปแล้วลองใหม่ครับ' });
