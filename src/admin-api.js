@@ -50,7 +50,7 @@ function daysLeft(expireDate) {
 }
 
 const PKG_LABEL = {
-  '1month': '1 เดือน (79 บาท)',
+  '1month': '1 เดือน (75 บาท)',
   '2months': '2 เดือน (155 บาท)',
   '3months': '3 เดือน (230 บาท)',
 };
