@@ -508,21 +508,22 @@ async function addRenewRequest(data) {
     const now = stamp();
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
-      range: 'RenewRequests!A:K',
+      range: 'RenewRequests!A:L',
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [[
           data.lineUserId || '',   // A: line_user_id
           data.displayName || '',  // B: display_name
-          '',                      // C: package       ← แอดมินกรอก
+          '1month',                // C: package
           '',                      // D: expire_date   ← แอดมินกรอก
           'active',                // E: status
           data.memberEmail || '',  // F: member_email (ที่ลูกค้ากรอกมา)
           'มีสลิป ✓',              // G: slip_url
           now,                     // H: created_at
           '',                      // I: house_id      ← แอดมินกรอก
-          '',                      // J: invite_status ← แอดมินกรอก
+          'active',                // J: invite_status
           now,                     // K: registered_at
+          'รอแอดมินมากรอก',        // L: หมายเหตุ (มีเฉพาะแท็บนี้ ไม่มีใน Members)
         ]],
       },
     });
