@@ -123,11 +123,17 @@
     btn.textContent = 'กำลังบันทึก…';
 
     try {
-      // ส่งแค่อีเมลกับชื่อ — userId ฝั่ง server ดึงจาก ID token เอง ปลอมไม่ได้
+      // ปกติ server จะดึง userId จาก ID token เอง (ปลอมไม่ได้)
+      // ที่ส่ง lineUserId มาด้วยเป็นแค่ตัวสำรอง เผื่อยังไม่ได้ตั้ง ENV LINE_LOGIN_CHANNEL_ID
+      // ถ้าตั้ง ENV แล้ว server จะไม่สนใจค่านี้เลย
       const res = await apiFetch('/api/renew-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ memberEmail: email, displayName: profile?.displayName || '' }),
+        body: JSON.stringify({
+          memberEmail: email,
+          displayName: profile?.displayName || '',
+          lineUserId: profile?.userId || '',
+        }),
       });
       const data = await res.json().catch(() => ({}));
 
