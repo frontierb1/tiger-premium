@@ -325,6 +325,61 @@ router.get('/slip-status', rateLimit({ windowMs: 60000, max: 10 }), async (req, 
   }
 });
 
+/* ══════════════ คำขอต่ออายุ (ไม่คิดเงิน) ══════════════
+ *
+ * ใช้ย้ายลูกค้าจากระบบเก่า — ลูกค้ากดปุ่ม "ต่ออายุ" ในการ์ด → เปิดหน้า
+ * /liff/renew-request.html → กรอกอีเมล → ยิงมาที่นี่ → บันทึกลง Google Sheet
+ * แล้วแอดมินเอาข้อมูลไปกรอกในระบบจริงเอง
+ *
+ * userId มาจาก LINE ID token ที่ verify แล้ว ไม่ใช่ค่าที่ client ส่งมา → ปลอมไม่ได้
+ * URL ของ Apps Script อยู่ใน ENV ฝั่ง server เท่านั้น ลูกค้ามองไม่เห็น
+ *
+ * ตั้ง ENV: COLLECT_URL = URL เว็บแอปของ Apps Script (ลงท้าย /exec)
+ */
+const COLLECT_URL = process.env.COLLECT_URL || '';
+
+// ★ ต้อง verify ก่อน แล้วค่อยจำกัดจำนวนครั้ง
+//   ถ้าจำกัดด้วย IP ก่อน ลูกค้าที่ใช้เน็ตมือถือค่ายเดียวกัน (NAT ร่วม IP) จะบล็อกกันเอง
+router.post('/renew-request',
+  requireLineUser(),
+  rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: 5,
+    keyGenerator: (req) => `rr:${req.lineUserId}`,
+    message: 'ส่งคำขอถี่เกินไป กรุณารอสักครู่ครับ',
+  }),
+  async (req, res) => {
+    const email = String(req.body.memberEmail || '').trim().toLowerCase();
+    if (!email) return res.status(400).json({ error: 'กรุณากรอกอีเมลครับ' });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'รูปแบบอีเมลไม่ถูกต้องครับ' });
+    }
+    if (!COLLECT_URL) {
+      console.warn('⚠️  ยังไม่ได้ตั้ง COLLECT_URL — บันทึกคำขอต่ออายุไม่ได้');
+      return res.status(503).json({ error: 'ระบบยังไม่พร้อม กรุณาติดต่อแอดมินครับ' });
+    }
+
+    try {
+      // URLSearchParams encode ให้เอง — ชื่อไทยหรือชื่อที่มี & จะไม่เพี้ยน
+      const q = new URLSearchParams({
+        customer_id: req.lineUserId,                                  // B
+        customer_name: String(req.body.displayName || '').slice(0, 100), // C
+        order: email,                                                 // D ← อีเมลที่แอดมินต้องใช้
+        img: 'ต่ออายุ (รอแอดมินดำเนินการ)',                            // E
+      });
+      const r = await fetch(`${COLLECT_URL}?${q}`, { redirect: 'follow' });
+      const text = await r.text();
+      console.log(`[renew-request] ${req.lineUserId} ${email} → ${r.status} ${text.slice(0, 100)}`);
+      if (!r.ok) return res.status(502).json({ error: 'บันทึกไม่สำเร็จ กรุณาลองใหม่ครับ' });
+
+      res.json({ success: true });
+    } catch (err) {
+      console.error('[renew-request] error:', err.message);
+      res.status(500).json({ error: 'ระบบขัดข้อง กรุณาลองใหม่ครับ' });
+    }
+  }
+);
+
 router.post('/register', upload.single('slip'), submitLimiter, requireLineUser(), async (req, res) => {
   try {
     const lineUserId = req.lineUserId; // มาจาก ID token ที่ verify แล้ว
