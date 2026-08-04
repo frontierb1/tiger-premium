@@ -492,6 +492,38 @@ async function updateHouseNote(houseId, note) {
   }
 }
 
+/**
+ * บันทึกคำขอต่ออายุของลูกค้าเก่า (ย้ายจากระบบเดิม ไม่คิดเงิน)
+ * เขียนลงแท็บ RenewRequests — แยกจาก Members ไม่กระทบข้อมูลจริง
+ * แอดมินอ่านแล้วเอาไปกรอกใน Members เอง
+ *
+ * ★ ต้องสร้างแท็บชื่อ RenewRequests ในชีตก่อน (สะกดตรงตัวพิมพ์ใหญ่-เล็ก)
+ */
+async function addRenewRequest(data) {
+  try {
+    const sheets = await getSheets();
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID,
+      range: 'RenewRequests!A:E',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [[
+          stamp(),                        // A: วันเวลา (เวลาไทย YYYY-MM-DD HH:mm:ss)
+          data.lineUserId || '',          // B: LINE User ID — เอาไปใส่ Members คอลัมน์ A
+          data.displayName || '',         // C: ชื่อใน LINE
+          data.memberEmail || '',         // D: อีเมลที่ลูกค้ากรอก
+          'pending',                      // E: สถานะ — แอดมินเปลี่ยนเป็น done เองเมื่อกรอกเสร็จ
+        ]],
+      },
+    });
+    invalidate('renewRequests');
+    return { success: true };
+  } catch (err) {
+    console.error('addRenewRequest error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
 async function addReport(data) {
   try {
     const sheets = await getSheets();
@@ -744,6 +776,7 @@ module.exports = {
   updateHouseNote,
   updateHouseStatus,
   deleteHouse,
+  addRenewRequest,
   addReport,
   getReports,
   updateReportStatus,
