@@ -494,25 +494,35 @@ async function updateHouseNote(houseId, note) {
 
 /**
  * บันทึกคำขอต่ออายุของลูกค้าเก่า (ย้ายจากระบบเดิม ไม่คิดเงิน)
- * เขียนลงแท็บ RenewRequests — แยกจาก Members ไม่กระทบข้อมูลจริง
- * แอดมินอ่านแล้วเอาไปกรอกใน Members เอง
+ *
+ * ★ คอลัมน์เรียงเหมือนแท็บ Members ทุกช่อง (A–K)
+ *   แอดมินก็อปทั้งแถวจาก RenewRequests ไปวางต่อท้าย Members ได้เลย ไม่ต้องจัดใหม่
+ *
+ * ช่องที่เว้นว่างไว้ = ให้แอดมินกรอกเอง (package, expire_date, house_id, invite_status)
  *
  * ★ ต้องสร้างแท็บชื่อ RenewRequests ในชีตก่อน (สะกดตรงตัวพิมพ์ใหญ่-เล็ก)
  */
 async function addRenewRequest(data) {
   try {
     const sheets = await getSheets();
+    const now = stamp();
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
-      range: 'RenewRequests!A:E',
+      range: 'RenewRequests!A:K',
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [[
-          stamp(),                        // A: วันเวลา (เวลาไทย YYYY-MM-DD HH:mm:ss)
-          data.lineUserId || '',          // B: LINE User ID — เอาไปใส่ Members คอลัมน์ A
-          data.displayName || '',         // C: ชื่อใน LINE
-          data.memberEmail || '',         // D: อีเมลที่ลูกค้ากรอก
-          'pending',                      // E: สถานะ — แอดมินเปลี่ยนเป็น done เองเมื่อกรอกเสร็จ
+          data.lineUserId || '',   // A: line_user_id
+          data.displayName || '',  // B: display_name
+          '',                      // C: package       ← แอดมินกรอก
+          '',                      // D: expire_date   ← แอดมินกรอก
+          'active',                // E: status
+          data.memberEmail || '',  // F: member_email (ที่ลูกค้ากรอกมา)
+          'มีสลิป ✓',              // G: slip_url
+          now,                     // H: created_at
+          '',                      // I: house_id      ← แอดมินกรอก
+          '',                      // J: invite_status ← แอดมินกรอก
+          now,                     // K: registered_at
         ]],
       },
     });
