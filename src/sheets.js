@@ -508,8 +508,12 @@ async function addRenewRequest(data) {
     const now = stamp();
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
-      range: 'RenewRequests!A:L',
+      // ★ ล็อกจุดเริ่มไว้ที่ A1 + INSERT_ROWS
+      //   ถ้าใช้ 'A:L' เฉยๆ Google จะเดาขอบตารางเอง พอในแท็บมีข้อมูลหลายรูปแบบปนกัน
+      //   มันจะเดาผิดแล้วไปเริ่มเขียนกลางตาราง (เคยไปโผล่ที่คอลัมน์ K)
+      range: 'RenewRequests!A1',
       valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
       requestBody: {
         values: [[
           data.lineUserId || '',   // A: line_user_id
