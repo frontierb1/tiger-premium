@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="th" data-page="ต่ออายุ">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ต่ออายุ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/liff/theme.css">
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script src="/liff/config.js"></script>
+  <script src="/liff/liff-auth.js"></script>
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <h1>ต่ออายุ</h1>
+  </header>
+
+  <!-- กำลังเชื่อมต่อ LINE -->
+  <div id="loading" class="center-state pull-up">
+    <div class="spinner"></div>
+    <p>กำลังเชื่อมต่อ…</p>
+  </div>
+
+  <!-- ฟอร์มกรอกอีเมล -->
+  <div id="form" class="hidden">
+    <section class="section pull-up">
+      <div class="section-label">กรอกอีเมลที่ใช้ดู YouTube</div>
+      <div class="card" style="padding:20px">
+        <p style="margin:0 0 16px;font-size:13.5px;line-height:1.7;color:var(--text-soft)">
+          กรอกอีเมลที่คุณใช้เข้าดู YouTube Premium อยู่ตอนนี้<br>
+          แล้วกดปุ่มด้านล่างได้เลย <strong>ไม่มีค่าใช้จ่าย</strong>
+        </p>
+
+        <input type="email" id="email" class="input" inputmode="email"
+               autocomplete="email" placeholder="yourname@gmail.com"/>
+
+        <div class="field-msg error hidden" id="email-error">
+          <span data-icon="alert"></span><span id="email-error-text">กรุณากรอกอีเมลให้ถูกต้องครับ</span>
+        </div>
+
+        <div id="alert-box"></div>
+
+        <button class="btn btn-primary" id="submit" style="margin-top:18px">ยืนยันต่ออายุ</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- สำเร็จ -->
+  <div id="done" class="center-state pull-up hidden">
+    <div class="cs-icon ok" data-icon="check"></div>
+    <h2>ต่ออายุเรียบร้อยแล้ว</h2>
+    <p id="done-sub" style="line-height:1.8">
+      ระบบได้รับคำขอของคุณแล้วครับ<br>
+      แอดมินจะดำเนินการให้ภายใน 24 ชม.
+    </p>
+    <button id="close-btn" class="btn btn-outline" style="margin-top:22px;min-width:200px">
+      ปิดหน้านี้
+    </button>
+  </div>
+
+  <!-- เปิดผิดทาง -->
+  <div id="error" class="center-state pull-up hidden">
+    <div class="cs-icon" data-icon="alert"></div>
+    <h2>เปิดหน้านี้ไม่ได้</h2>
+    <p id="err-msg">กรุณาเปิดผ่านแอป LINE ครับ</p>
+  </div>
+
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const show = (which) => {
+    ['loading', 'form', 'done', 'error'].forEach(k => $(k).classList.toggle('hidden', k !== which));
+  };
+  const isEmail = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(s).trim());
+
+  let profile = null;
+
+  async function init() {
+    try {
+      await liff.init({ liffId: window.APP.liffId });
+      if (!liff.isLoggedIn()) {
+        liff.login({ redirectUri: window.location.href });
+        return;
+      }
+      profile = await liff.getProfile();
+      show('form');
+      $('email').focus();
+    } catch (err) {
+      console.error('liff init error:', err);
+      $('err-msg').textContent = 'กรุณาเปิดหน้านี้ผ่านแอป LINE ครับ';
+      show('error');
+    }
+  }
+
+  function showAlert(type, html) {
+    $('alert-box').innerHTML =
+      `<div class="alert ${type} fade-in" style="margin-top:14px">${type === 'success' ? ICON.check : ICON.alert}<div>${html}</div></div>`;
+  }
+
+  function clearMsgs() {
+    $('email-error').classList.add('hidden');
+    $('alert-box').innerHTML = '';
+  }
+
+  async function submit() {
+    clearMsgs();
+    const email = $('email').value.trim().toLowerCase();
+
+    if (!isEmail(email)) {
+      $('email-error-text').textContent = email
+        ? 'รูปแบบอีเมลไม่ถูกต้องครับ'
+        : 'กรุณากรอกอีเมลก่อนครับ';
+      $('email-error').classList.remove('hidden');
+      $('email').focus();
+      return;
+    }
+
+    const btn = $('submit');
+    btn.disabled = true;
+    btn.textContent = 'กำลังบันทึก…';
+
+    try {
+      // ส่งแค่อีเมลกับชื่อ — userId ฝั่ง server ดึงจาก ID token เอง ปลอมไม่ได้
+      const res = await apiFetch('/api/renew-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberEmail: email, displayName: profile?.displayName || '' }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        showAlert('error', data.error || 'บันทึกไม่สำเร็จ กรุณาลองใหม่ครับ');
+        btn.disabled = false;
+        btn.textContent = 'ยืนยันต่ออายุ';
+        return;
+      }
+
+      $('done-sub').innerHTML =
+        `ระบบได้รับคำขอต่ออายุของ<br><strong>${email}</strong> แล้วครับ<br>` +
+        `แอดมินจะดำเนินการให้ภายใน 24 ชม.`;
+      show('done');
+    } catch (err) {
+      console.error('submit error:', err);
+      showAlert('error', 'เชื่อมต่อไม่ได้ กรุณาเช็คอินเทอร์เน็ตแล้วลองใหม่ครับ');
+      btn.disabled = false;
+      btn.textContent = 'ยืนยันต่ออายุ';
+    }
+  }
+
+  $('submit').addEventListener('click', submit);
+  $('email').addEventListener('input', clearMsgs);
+  $('email').addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+  $('close-btn').addEventListener('click', () => {
+    if (liff.isInClient()) liff.closeWindow();   // ปิดได้เฉพาะตอนเปิดในแอป LINE
+  });
+
+  init();
+</script>
+</body>
+</html>
